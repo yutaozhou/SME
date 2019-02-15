@@ -608,65 +608,84 @@ class SME_Struct(Param):
 
         return m.hexdigest()
 
+    def _getter(self, ref):
+        value = getattr(self, ref)
+        if value is None:
+            return None
+        return value.ravel()
+
+    def _setter(self, ref, value):
+        if value is None:
+            pass
+        elif np.isscalar(value):
+            if isinstance(getattr(self, ref), Iliffe_vector):
+                getattr(self, ref)[:] = value
+                return
+            else:
+                values = np.full(self.wob.shape, value)
+                value = Iliffe_vector(values=values, index=self.wind)
+        elif isinstance(value, (list, np.ndarray)):
+            value = np.require(value, requirements="W")
+            if value.ndim == 1:
+                value = Iliffe_vector(values=value, index=self.wind)
+            else:
+                value = Iliffe_vector(nseg=len(value), values=value)
+        elif isinstance(value, Iliffe_vector):
+            pass
+        else:
+            raise TypeError("Input value is of the wrong type")
+
+        setattr(self, ref, value)
+
     @property
     def wob(self):
         """array: Wavelength array """
-        return self._wob
+        return self._getter("_wob")
 
     @wob.setter
     def wob(self, value):
-        if value is not None:
-            value = np.require(value, requirements="W")
-        self._wob = value
+        self._setter("_wob", value)
 
     @property
     def sob(self):
         """array: Observed spectrum """
-        return self._sob
+        return self._getter("_sob")
 
     @sob.setter
     def sob(self, value):
-        if value is not None:
-            value = np.require(value, requirements="W")
-        self._sob = value
+        self._setter("_sob", value)
 
     @property
     def uob(self):
         """array: Uncertainties of the observed spectrum """
-        return self._uob
+        return self._getter("_uob")
 
     @uob.setter
     def uob(self, value):
-        if value is not None:
-            value = np.require(value, requirements="W")
-        self._uob = value
+        self._setter("_uob", value)
 
     @property
     def mob(self):
         """array: bad/good/line/continuum Mask to apply to observations """
-        return self._mob
+        return self._getter("_mob")
 
     @mob.setter
     def mob(self, value):
-        if value is not None:
-            value = np.require(value, requirements="W")
-        self._mob = value
+        self._setter("_mob", value)
 
     @property
     def smod(self):
         """array: Synthetic spectrum """
-        return self._smod
+        return self._getter("_smod")
 
     @smod.setter
     def smod(self, value):
-        if value is not None:
-            value = np.require(value, requirements="W")
-        self._smod = value
+        self._setter("_smod", value)
 
     @property
     def wran(self):
         """array of size (nseg, 2): Beginning and end Wavelength points of each segment"""
-        if self._wran is None and self.wob is not None:
+        if self._wran is None and self._wob is not None:
             # Default to just one wavelength range with all points if not specified
             return [self.wob[[0, -1]]]
         return self._wran
@@ -822,7 +841,7 @@ class SME_Struct(Param):
         if self._wind is None:
             if self.wob is None:
                 return None
-            return [0, len(self.wob)]
+            return [0, *self._wob.sizes]
         return self._wind
 
     @wind.setter
@@ -832,73 +851,46 @@ class SME_Struct(Param):
     @property
     def wave(self):
         """Iliffe_vector of shape (nseg, ...): Wavelength """
-        if self.wob is None:
-            return None
-        w = Iliffe_vector(None, index=self.wind, values=self.wob)
-        return w
+        return self._wob
 
     @wave.setter
     def wave(self, value):
-        if isinstance(value, Iliffe_vector):
-            value = value.__values__
         self.wob = value
 
     @property
     def spec(self):
         """Iliffe_vector of shape (nseg, ...): Observed Spectrum """
-        if self.sob is None:
-            return None
-        s = Iliffe_vector(None, index=self.wind, values=self.sob)
-        return s
+        return self._sob
 
     @spec.setter
     def spec(self, value):
-        if isinstance(value, Iliffe_vector):
-            value = value.__values__
         self.sob = value
 
     @property
     def uncs(self):
         """Iliffe_vector of shape (nseg, ...): Uncertainties of the observed spectrum """
-        if self.uob is None:
-            return None
-        u = Iliffe_vector(None, index=self.wind, values=self.uob)
-        return u
+        return self._uob
 
     @uncs.setter
     def uncs(self, value):
-        if isinstance(value, Iliffe_vector):
-            value = value.__values__
         self.uob = value
 
     @property
     def synth(self):
         """Iliffe_vector of shape (nseg, ...): Synthetic Spectrum """
-        if self.smod is None:
-            return None
-        s = Iliffe_vector(None, index=self.wind, values=self.smod)
-        return s
+        return self._smod
 
     @synth.setter
     def synth(self, value):
-        if isinstance(value, Iliffe_vector):
-            value = value.__values__
         self.smod = value
 
     @property
     def mask(self):
         """Iliffe_vector of shape (nseg, ...): Line and Continuum Mask """
-        if self.mob is None:
-            return None
-        if self.mob is not None and self.uob is not None:
-            self.mob[self.uob == 0] = 0
-        m = Iliffe_vector(None, index=self.wind, values=self.mob)
-        return m
+        return self._mob
 
     @mask.setter
     def mask(self, value):
-        if isinstance(value, Iliffe_vector):
-            value = value.__values__
         self.mob = value
 
     @property
@@ -1056,7 +1048,7 @@ class SME_Struct(Param):
                 filename = f"{orig}_{i:02}.npz"
                 i += 1
 
-        logging.info("Saving SME structure %s", filename)
+        # logging.info("Saving SME structure %s", filename)
         np.savez_compressed(filename, sme=self)
 
 

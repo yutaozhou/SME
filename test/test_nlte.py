@@ -106,7 +106,7 @@ def test_dll():
 
     # This is essentially what update_depcoefs does, just for one element
     counter = 0
-    bmat, linerefs, lineindices = nlte(sme, elem)
+    bmat, linerefs, lineindices = nlte(sme, libsme, elem)
     for lr, li in zip(linerefs, lineindices):
         if lr[0] != -1 and lr[1] != -1:
             counter += 1

@@ -111,7 +111,6 @@ venv.bak/
 .DS_Store
 src/sme/dll/sme_synth.so.linux.x86_64.64
 src/sme/dll/sme_synth.so.linux.x86_64.64i
-src/sme/atmospheres/*.sav
 src/sme/**/*.pro
 src/sme/dll/*.INTEL*
 src/sme/dll/vcsbalmer.dat
@@ -121,11 +120,10 @@ src/sme/uioenvfile.txt
 dump.bin
 src/sme/dll/sme_synth.so.*
 src/sme/dll/intel64_lin/*
-src/sme/nlte_grids/*
 src/sme/dll/idl_test.*
 fisher1.dat
 *.cprof
-*.sav
+/*.sav
 uioenvfile.txt
 *.lin
 *.inp
@@ -136,7 +134,6 @@ Untitled.ipynb
 test.py
 mcmc.py
 run_mcmc.py
-src/sme/atmospheres/*
 *.html
 test.py
 *.ech
@@ -144,3 +141,12 @@ test.py
 mymain.py
 *.tar.gz
 *.npz
+
+# Legacy Files
+src/sme/iliffe_vector_old.py
+src/sme/sme_old.py
+
+# Data Folders
+src/sme/atmospheres/*
+src/sme/nlte_grids/*
+

@@ -26,7 +26,7 @@ except (AttributeError, ImportError):
     in_notebook = False
 
 
-def safe_interpolation(x_old, y_old, x_new=None):
+def safe_interpolation(x_old, y_old, x_new=None, fill_value=0):
     """
     'Safe' interpolation method that should avoid
     the common pitfalls of spline interpolation
@@ -73,7 +73,7 @@ def safe_interpolation(x_old, y_old, x_new=None):
             x_old,
             y_old,
             kind="cubic",
-            fill_value=0,
+            fill_value=fill_value,
             bounds_error=False,
             assume_sorted=True,
         )
@@ -85,7 +85,7 @@ def safe_interpolation(x_old, y_old, x_new=None):
             x_old,
             y_old,
             kind="linear",
-            fill_value=0,
+            fill_value=fill_value,
             bounds_error=False,
             assume_sorted=True,
         )

@@ -370,7 +370,9 @@ def determine_rv_and_cont(sme, segment, x_syn, y_syn, use_whole_spectrum=False):
     if vflag_fit:
         # Get a first rough estimate from cross correlation
         # Subtract median (rough continuum estimate) for better correlation
-        y_tmp = util.safe_interpolation(x_syn, y_syn, x_obs)
+        y_tmp = util.safe_interpolation(
+            x_syn, y_syn, x_obs, fill_value=(y_syn[0], y_syn[-1])
+        )
         corr = correlate(
             y_obs - np.median(y_obs), y_tmp - np.median(y_tmp), mode="same"
         )
@@ -385,7 +387,9 @@ def determine_rv_and_cont(sme, segment, x_syn, y_syn, use_whole_spectrum=False):
             )
             rvel = 0
 
-    interpolator = util.safe_interpolation(x_syn, y_syn, None)
+    interpolator = util.safe_interpolation(
+        x_syn, y_syn, None, fill_value=(y_syn[0], y_syn[-1])
+    )
 
     def func(par):
         # The radial velocity shift is inversed
@@ -412,11 +416,11 @@ def determine_rv_and_cont(sme, segment, x_syn, y_syn, use_whole_spectrum=False):
     if vflag_return:
         rvel = res.x[0]
     else:
-        rvel = None
+        rvel = 0
     if cflag:
         cscale = res.x[1:]
     else:
-        cscale = None
+        cscale = [1]
 
     return rvel, cscale
 

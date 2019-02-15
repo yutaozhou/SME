@@ -5,8 +5,16 @@ from os.path import dirname
 from os import remove
 from sme.src.sme.sme import SME_Struct
 
-cwd = dirname(__file__)
-filename = f"{cwd}/__test.npy"
+
+@pytest.fixture
+def cwd():
+    return dirname(__file__)
+
+
+@pytest.fixture
+def filename(cwd):
+    filename = f"{cwd}/__test.npz"
+    return filename
 
 
 def test_empty_structure():
@@ -65,7 +73,7 @@ def test_empty_structure():
     assert empty.nlte.elements == []
 
 
-def test_save_and_load_structure():
+def test_save_and_load_structure(filename):
     sme = SME_Struct()
     assert sme.teff is None
 
@@ -86,7 +94,7 @@ def test_save_and_load_structure():
     assert sme.nseg == 1
 
 
-def test_load_idl_savefile():
+def test_load_idl_savefile(cwd):
     filename = f"{cwd}/testcase1.inp"
     sme = SME_Struct.load(filename)
 

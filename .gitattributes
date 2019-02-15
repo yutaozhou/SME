@@ -1,0 +1,2 @@
+/src/sme/atmospheres/ filter=lfs diff=lfs merge=lfs -text
+/src/sme/nlte_grids/ filter=lfs diff=lfs merge=lfs -text
