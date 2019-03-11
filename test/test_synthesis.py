@@ -2,8 +2,8 @@
 import pytest
 import numpy as np
 
-from sme import synthesize_spectrum
-from sme.src.sme.sme import Iliffe_vector
+from sme.solve import synthesize_spectrum
+from sme.iliffe_vector import Iliffe_vector
 
 
 def test_synthesis_simple(sme_2segments):

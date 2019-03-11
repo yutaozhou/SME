@@ -1,7 +1,7 @@
 from pathlib import Path
-from sme.src.sme.linelist import LineList
-from sme.src.sme.vald import ValdFile, ValdError
-from sme.src.sme.abund import Abund
+from sme.linelist import LineList
+from sme.vald import ValdFile, ValdError
+from sme.abund import Abund
 
 import numpy as np
 import pytest

@@ -3,7 +3,8 @@ from os.path import dirname
 
 import numpy as np
 
-from sme import solve, SME_Struct
+from sme.solve import solve
+from sme.sme import SME_Struct
 
 cwd = dirname(__file__)
 filename = f"{cwd}/testcase1.inp"

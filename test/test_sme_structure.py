@@ -3,7 +3,8 @@ import pytest
 import numpy as np
 from os.path import dirname
 from os import remove
-from sme.src.sme.sme import SME_Struct
+
+from sme.sme import SME_Struct
 
 
 @pytest.fixture

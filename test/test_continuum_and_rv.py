@@ -7,8 +7,9 @@ import numpy as np
 
 from scipy.constants import speed_of_light
 
-from sme.src.sme.sme import SME_Struct
-from sme.src.sme.continuum_and_radial_velocity import determine_rv_and_cont
+from sme.solve import synthesize_spectrum
+from sme.sme import SME_Struct
+from sme.continuum_and_radial_velocity import determine_rv_and_cont
 
 
 @pytest.fixture
@@ -17,12 +18,8 @@ def testcase1():
 
     # TODO get better test case for this
     cwd = dirname(__file__)
-    sme = SME_Struct.load(cwd + "/testcase1.npy")
-    sme.mask = sme.mask
-    sme.wave = sme.wave
-    sme.spec = sme.spec
-    sme.synth = sme.synth
-    sme.uncs = sme.uncs
+    sme = SME_Struct.load(cwd + "/testcase1.inp")
+    sme = synthesize_spectrum(sme)
 
     rv = 10
     x_syn = sme.wave[0] * (1 - rv / c_light)
@@ -93,7 +90,8 @@ def test_nomask(testcase1):
     assert np.allclose(cscale, [0, 1], atol=1e-2)
 
     sme.mask = 0
-    rvel, cscale = determine_rv_and_cont(sme, 0, x_syn, y_syn)
+    with pytest.warns(UserWarning):
+        rvel, cscale = determine_rv_and_cont(sme, 0, x_syn, y_syn)
 
     assert rvel == 0
     assert cscale == [1]

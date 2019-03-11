@@ -6,13 +6,12 @@ from os.path import dirname
 
 import numpy as np
 
-from sme import synthesize_spectrum
-from sme import SME_Struct
-from sme.src.sme.sme import Iliffe_vector
-from sme.src.sme.vald import ValdFile
-from sme.src.sme.sme_synth import SME_DLL
-from sme.src.sme.nlte import nlte
-from sme.src.sme.solve import get_atmosphere
+from sme.sme import SME_Struct
+from sme.iliffe_vector import Iliffe_vector
+from sme.vald import ValdFile
+from sme.sme_synth import SME_DLL
+from sme.nlte import nlte
+from sme.solve import get_atmosphere, synthesize_spectrum
 
 cwd = dirname(__file__)
 
@@ -87,7 +86,7 @@ def test_run_with_nlte():
     sme2 = synthesize_spectrum(sme)
 
     assert isinstance(sme2.nlte.flags, np.ndarray)
-    assert np.issubdtype(sme2.nlte.flags.dtype, np.bool)
+    assert np.issubdtype(sme2.nlte.flags.dtype, np.dtype("bool"))
     assert len(sme2.nlte.flags) == len(sme2.linelist)
     assert np.any(sme2.nlte.flags)
 
