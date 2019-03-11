@@ -94,7 +94,10 @@ def residuals(
     # run spectral synthesis
     try:
         sme2 = synthesize_spectrum(
-            sme, reuse_wavelength_grid=reuse_wavelength_grid, segments=segments
+            sme,
+            reuse_wavelength_grid=reuse_wavelength_grid,
+            segments=segments,
+            passLineList=False,
         )
     except AtmosphereError as ae:
         # Something went wrong (left the grid? Don't go there)
@@ -333,14 +336,21 @@ def solve(
     # But keep the order the same
     param_names, index = np.unique(param_names, return_index=True)
     param_names = param_names[np.argsort(index)]
+    param_names = list(param_names)
 
     if "vrad" in param_names:
         param_names.remove("vrad")
         sme.vrad_flag = "each"
+        logging.info(
+            "Removed fit parameter 'vrad', instead set radial velocity flag to 'each'"
+        )
 
     if "cont" in param_names:
         param_names.remove("cont")
-        sme.cscale_flag = 1
+        sme.cscale_flag = "linear"
+        logging.info(
+            "Removed fit parameter 'cont', instead set continuum flag to 'linear'"
+        )
 
     nparam = len(param_names)
 
@@ -363,6 +373,10 @@ def solve(
     uncs /= spec
 
     logging.info("Fitting Spectrum with Parameters " + "%s, " * nparam, *param_names)
+
+    # Setup LineList only once
+    dll.SetLibraryPath()
+    dll.InputLineList(sme.linelist)
 
     # Do the heavy lifting
     res = least_squares(
@@ -646,6 +660,7 @@ def synthesize_spectrum(
         # Only calculate line opacities in the first segment
         keep_line_opacity = il != segments[0]
         #   Calculate spectral synthesis for each
+        logging.debug("Start Radiative Transfer")
         _, wint[il], sint[il], cint[il] = dll.Transf(
             sme.mu,
             sme.accrt,  # threshold line opacity / cont opacity
@@ -653,6 +668,8 @@ def synthesize_spectrum(
             keep_lineop=keep_line_opacity,
             wave=wint_seg,
         )
+        logging.debug("Radiative Transfer Done")
+        logging.debug(f"Reuse Wavelength Grid: {reuse_wavelength_grid}")
 
         # Create new geomspaced wavelength grid, to be used for intermediary steps
         wgrid, vstep = new_wavelength_grid(wint[il])

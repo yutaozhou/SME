@@ -504,12 +504,12 @@ class SME_DLL:
 
         if wave is None:
             nw = 0
-            wint_seg = np.zeros(nwmax, float)
+            wint_seg = np.zeros(nwmax)
         else:
-            nw = len(wave)
-            nwmax = nw
-            wint_seg = np.asarray(wave, float)
+            nwmax = nw = len(wave)
+            wint_seg = np.asarray(wave)
 
+        mu = np.asarray(mu)
         nmu = np.size(mu)
 
         # Prepare data:
@@ -517,7 +517,7 @@ class SME_DLL:
         cint_seg = np.zeros((nwmax, nmu))  # all continuum intensities
         cintr_seg = np.zeros((nmu))  # red continuum intensity
 
-        type = "sdddiiddddssu"  # s: short, d:double, i:int, u:unicode (string)
+        type = "sdddiiddddss"  # s: short, d:double, i:int, u:unicode (string)
 
         check_error(
             "Transf",
@@ -535,7 +535,9 @@ class SME_DLL:
             long_continuum,
             type=type,
         )
-        nw = np.count_nonzero(wint_seg)
+
+        if nw == 0:
+            nw = np.count_nonzero(wint_seg)
 
         wint_seg = wint_seg[:nw]
         sint_seg = sint_seg[:nw, :].T

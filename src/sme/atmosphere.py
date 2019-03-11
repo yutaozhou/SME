@@ -11,7 +11,7 @@ from scipy.optimize import curve_fit
 from .sme import Atmo
 
 
-class AtmosphereError(Exception):
+class AtmosphereError(RuntimeError):
     """ Something went wrong with the atmosphere interpolation """
 
 
@@ -1008,7 +1008,7 @@ def interp_atmo_func(x1, par, x2, y2, ndep=None, y1=None):
     this restriction can cause discontinuities.
     """
     # Constrained fits may append non-atmospheric quantities to the end of
-    #  input vector.
+    # input vector.
     # Extract the output depth scale:
     if ndep is None:
         ndep = len(x1)

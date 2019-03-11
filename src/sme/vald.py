@@ -128,7 +128,7 @@ class ValdFile:
             lines = lines[::4]
 
         data = StringIO("".join(lines))
-        linelist = pd.read_table(
+        linelist = pd.read_csv(
             data,
             sep=",",
             names=names,

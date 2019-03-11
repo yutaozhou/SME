@@ -1,4 +1,20 @@
-from .util import start_logging
+from . import (
+    util,
+    abund,
+    atmosphere,
+    broadening,
+    continuum_and_radial_velocity,
+    cwrapper,
+    echelle,
+    iliffe_vector,
+    integrate_flux,
+    linelist,
+    nlte,
+    sme_synth,
+    sme,
+    solve,
+    uncertainties,
+    vald,
+)
 
-name = "sme"
-start_logging()
+util.start_logging(None)
