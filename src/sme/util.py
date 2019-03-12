@@ -14,6 +14,7 @@ from platform import python_version
 from numpy import __version__ as npversion
 from pandas import __version__ as pdversion
 from scipy import __version__ as spversion
+from . import version as smeversion
 
 from .sme_synth import SME_DLL
 
@@ -149,7 +150,7 @@ def start_logging(log_file="log.log"):
     logging.debug("----------------------")
     logging.debug("Python version: %s", python_version())
     logging.debug("SME CLib version: %s", dll.SMELibraryVersion())
-    # logging.debug("PySME version: %s", __version__)
+    logging.debug("PySME version: %s", smeversion.full_version)
     logging.debug("Numpy version: %s", npversion)
     logging.debug("Scipy version: %s", spversion)
     logging.debug("Pandas version: %s", pdversion)
