@@ -6,9 +6,9 @@ with argv = number of parameters
 and argc = list of pointers to those parameters
 """
 import ctypes as ct
-import os.path
 import platform
 import sys
+from pathlib import Path
 
 import numpy as np
 
@@ -115,10 +115,9 @@ def idl_call_external(funcname, *args, restype="str", type=None):
 
     # Load library if that wasn't done yet
     if not hasattr(idl_call_external, "lib"):
-        localdir = os.path.dirname(__file__)
-        # libfile = "./dll/idl_test.so"
+        localdir = Path(__file__).parent
         libfile = get_lib_name()
-        libfile = os.path.join(localdir, "dll", libfile)
+        libfile = localdir / "dll" / libfile
         idl_call_external.lib = ct.CDLL(libfile)
 
     # prepare input arguments

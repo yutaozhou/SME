@@ -4,23 +4,21 @@ Notably all SME objects will be Collections, which can accessed both by attribut
 """
 
 
+import hashlib
 import inspect
 import logging
-import os.path
 import platform
 import sys
 from datetime import datetime as dt
-import hashlib
+from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy.io import readsav
 
-
 from . import echelle
 from .abund import Abund
-from .vald import LineList
 from .iliffe_vector import Iliffe_vector
+from .vald import LineList
 
 
 class Collection:
@@ -990,7 +988,7 @@ class SME_Struct(Param):
             If the file format extension is not recognized
         """
         logging.info("Loading SME file %s", filename)
-        _, ext = os.path.splitext(filename)
+        ext = Path(filename).suffix
         if ext == ".npy":
             # Numpy Save file
             s = np.load(filename)
@@ -1038,16 +1036,6 @@ class SME_Struct(Param):
         verbose : bool, optional
             if True will log the event
         """
-
-        if not overwrite:
-            orig = filename
-            if orig.endswith(".npz"):
-                orig = orig[:-4]
-            i = 1
-            while os.path.exists(filename):
-                filename = f"{orig}_{i:02}.npz"
-                i += 1
-
         # logging.info("Saving SME structure %s", filename)
         np.savez_compressed(filename, sme=self)
 

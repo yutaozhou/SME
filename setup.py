@@ -1,26 +1,27 @@
 #!/usr/bin/env python
 
 import os
+from pathlib import Path
 from ruamel.yaml import YAML
 from setuptools import setup
 
 # Create folder structure
-directory = os.path.expanduser("~/.sme/")
-conf = os.path.join(directory, "config.yaml")
-atmo = os.path.join(directory, "atmospheres")
-nlte = os.path.join(directory, "nlte_grids")
-cache_atmo = os.path.join(atmo, "cache")
-cache_nlte = os.path.join(nlte, "cache")
+directory = Path("~/.sme/").expanduser()
+conf = directory / "config.yaml"
+atmo = directory / "atmospheres"
+nlte = directory / "nlte_grids"
+cache_atmo = atmo / "cache"
+cache_nlte = nlte / "cache"
 
-os.makedirs(directory, exist_ok=True)
-os.makedirs(atmo, exist_ok=True)
-os.makedirs(nlte, exist_ok=True)
-os.makedirs(cache_atmo, exist_ok=True)
-os.makedirs(cache_nlte, exist_ok=True)
+directory.makedir(exist_ok=True)
+atmo.makedir(exist_ok=True)
+nlte.makedir(exist_ok=True)
+cache_atmo.makedir(exist_ok=True)
+cache_nlte.makedir(exist_ok=True)
 
 
 # Create config file if it does not exist
-if not os.path.exists(conf):
+if not conf.exists():
     # Hardcode default settings?
     defaults = {
         "data.file_server": "localhost",
@@ -35,7 +36,7 @@ if not os.path.exists(conf):
     # Save file to disk
     yaml = YAML(typ="safe")
     yaml.default_flow_style = False
-    with open(conf, "w") as f:
+    with conf.open("w") as f:
         yaml.dump(defaults, f)
 
 

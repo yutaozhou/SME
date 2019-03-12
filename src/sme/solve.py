@@ -4,29 +4,26 @@ And also determines the best fit parameters
 """
 
 import logging
-import os.path
 import warnings
-
-import matplotlib.pyplot as plt
+from pathlib import Path
 
 import numpy as np
 from scipy.constants import speed_of_light
-from scipy.interpolate import interp1d
 from scipy.io import readsav
 from scipy.optimize import OptimizeWarning, least_squares
 from scipy.optimize._numdiff import approx_derivative
 
 from . import broadening
-from .sme_synth import SME_DLL
 from .abund import Abund
-from .atmosphere import interp_atmo_grid, krz_file, AtmosphereError
+from .atmosphere import AtmosphereError, interp_atmo_grid, krz_file
+from .config import Config
 from .continuum_and_radial_velocity import match_rv_continuum
 from .integrate_flux import integrate_flux
-from .nlte import update_nlte_coefficients
-from .util import safe_interpolation
-from .uncertainties import uncertainties
-from .config import Config
 from .large_file_storage import LargeFileStorage
+from .nlte import update_nlte_coefficients
+from .sme_synth import SME_DLL
+from .uncertainties import uncertainties
+from .util import safe_interpolation
 
 clight = speed_of_light * 1e-3  # km/s
 warnings.filterwarnings("ignore", category=OptimizeWarning)
@@ -227,8 +224,8 @@ def get_bounds(param_names, atmo_file, lfs_atmo):
 
     # Create bounds based on atmosphere grid
     if "teff" in param_names or "logg" in param_names or "monh" in param_names:
-        atmo_file = os.path.basename(atmo_file)
-        _, ext = os.path.splitext(atmo_file)
+        atmo_file = Path(atmo_file)
+        ext = atmo_file.suffix
         atmo_file = lfs_atmo.get(atmo_file)
 
         if ext == ".sav":

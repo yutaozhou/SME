@@ -1,5 +1,10 @@
-import os
-import sys
+"""
+Handle the Yaml configuration file
+At the moment it is only used for the LargeFileStorage
+"""
+
+from pathlib import Path
+
 from ruamel.yaml import YAML
 
 
@@ -21,11 +26,11 @@ class Config:
 
     @property
     def filename(self):
-        return self._filename
+        return str(self._filename)
 
     @filename.setter
     def filename(self, value):
-        self._filename = os.path.expanduser(value)
+        self._filename = Path(value).expanduser()
 
     @_requires_load
     def __getitem__(self, key):
@@ -36,11 +41,11 @@ class Config:
         self._cfg[key] = value
 
     def load(self):
-        with open(self.filename) as f:
+        with self._filename.open("r") as f:
             self._cfg = self._yaml.load(f)
         return self._cfg
 
     @_requires_load
     def save(self):
-        with open(self.filename, "w") as f:
+        with self._filename.open("w") as f:
             self._yaml.dump(self._cfg, f)

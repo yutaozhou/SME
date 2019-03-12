@@ -4,18 +4,18 @@ Utility functions for SME
 safe interpolation
 """
 
+import argparse
 import logging
+from pathlib import Path
+from platform import python_version
 
 import numpy as np
-import os.path
-from scipy.interpolate import interp1d
-
-from platform import python_version
 from numpy import __version__ as npversion
 from pandas import __version__ as pdversion
 from scipy import __version__ as spversion
-from . import version as smeversion
+from scipy.interpolate import interp1d
 
+from . import version as smeversion
 from .sme_synth import SME_DLL
 
 try:
@@ -130,11 +130,9 @@ def start_logging(log_file="log.log"):
 
     # Log file settings
     if log_file is not None:
-        log_dir = os.path.dirname(log_file)
-        if log_dir == "":
-            log_dir = "./"
-        if not os.path.exists(log_dir):
-            os.makedirs(log_dir)
+        log_file = Path(log_file)
+        log_dir = log_file.parent
+        log_dir.mkdir(exist_ok=True)
         file = logging.FileHandler(log_file)
         file.setLevel(logging.DEBUG)
         file_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")

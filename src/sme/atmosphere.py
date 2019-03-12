@@ -1,7 +1,6 @@
 """ Handles reading and interpolation of atmopshere (grid) data """
 import itertools
 import logging
-import os
 
 import numpy as np
 from scipy.interpolate import interp1d

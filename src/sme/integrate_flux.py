@@ -3,9 +3,8 @@ Integrate flux profile over the stellar disk
 """
 
 import numpy as np
-
-from scipy.ndimage.filters import convolve
 from scipy.interpolate import interp1d
+from scipy.ndimage.filters import convolve
 
 
 def integrate_flux(mu, inten, deltav, vsini, vrt, osamp=1):

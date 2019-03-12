@@ -5,7 +5,6 @@ reads and interpolates departure coefficients from library files
 
 import itertools
 import logging
-import os.path
 import warnings
 
 import numpy as np
@@ -140,7 +139,7 @@ class DirectAccessFile:
 
 
 class Grid:
-    """NLTE Grid class that handles all NLTE data reading and interpolation    
+    """NLTE Grid class that handles all NLTE data reading and interpolation
     """
 
     def __init__(self, sme, elem, lfs_nlte):
@@ -150,8 +149,6 @@ class Grid:
         self.linelist = sme.linelist
         #:array(str): Elemental Species Names for the linelist
         self.species = sme.species
-
-        localdir = os.path.dirname(__file__)
         #:str: complete filename of the NLTE grid data file
         self.fname = lfs_nlte.get(sme.nlte.grids[elem])
         depth_name = str.lower(sme.atmo.interp)
@@ -516,15 +513,3 @@ def update_nlte_coefficients(sme, dll, lfs_nlte):
     # flags = sme_synth.GetNLTEflags(sme.linelist)
 
     return sme
-
-
-if __name__ == "__main__":
-    in_file = "sme.npy"
-
-    localdir = os.path.dirname(__file__)
-    fname = os.path.join(localdir, "nlte_grids/marcs2012_Na.grd")
-
-    sme = np.load(in_file)
-    sme = np.atleast_1d(sme)[0]
-
-    grid = nlte(sme, "Na")

@@ -1,5 +1,6 @@
 """ Main entry point for an SME script """
 import logging
+import os
 import sys
 
 import matplotlib.pyplot as plt
@@ -21,18 +22,14 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         in_file, vald_file, fitparameters = util.parse_args()
     else:
-        # in_file = "./wasp117_15.inp"
-        in_file = "./sun_6440_grid.out"
-        # vald_file = "./4000-6920.lin"
-        # atmo_file = "marcs2012p_t2.0.sav"
-        vald_file = None
+        os.chdir(os.path.dirname(__file__))
+        in_file = "sun_6440_grid.inp"
+        vald_file = "sun.lin"
         atmo_file = None
         fitparameters = []
 
     # Load files
     sme = SME.SME_Struct.load(in_file)
-
-    sme.mask = 1
 
     if vald_file is not None:
         vald = ValdFile(vald_file)
@@ -50,17 +47,12 @@ if __name__ == "__main__":
         else:
             fitparameters = ["teff", "logg", "monh"]
 
-    fitparameters = ["teff", "logg", "monh"]
-    # sme.vrad_flag = "whole"
-    # sme.cscale_flag = "constant"
-    # sme.nlte.set_nlte("Ca")
-    # sme.nlte.remove_nlte("Ca")
-    # sme.nlte.remove_nlte("Na")
-    # sme.nlte.remove_nlte("Ba")
+    # fitparameters = ["teff", "logg", "monh"]
+    sme.nlte.set_nlte("Ca")
 
     # Start SME solver
     # sme = synthesize_spectrum(sme, segments=[0])
-    sme = solve(sme, fitparameters, filename=f"{target}.npz")
+    sme = solve(sme, fitparameters, filename=f"{target}.npz", segments=[0])
 
     try:
         # Calculate stellar age based on abundances

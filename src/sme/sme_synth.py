@@ -1,10 +1,11 @@
 """ Wrapper for sme_synth.so C library """
 import os
 import warnings
+from pathlib import Path
 
 import numpy as np
 
-from .cwrapper import idl_call_external, get_lib_name
+from .cwrapper import get_lib_name, idl_call_external
 
 
 def check_error(name, *args, **kwargs):
@@ -92,8 +93,8 @@ class SME_DLL:
 
     def SetLibraryPath(self):
         """ Set the path to the library """
-        prefix = os.path.dirname(__file__)
-        libpath = os.path.join(prefix, "dll") + os.sep
+        prefix = Path(__file__).parent
+        libpath = str(prefix / "dll") + os.sep
         check_error("SetLibraryPath", libpath)
 
     def InputWaveRange(self, wfirst, wlast):

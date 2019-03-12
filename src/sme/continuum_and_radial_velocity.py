@@ -5,21 +5,18 @@ and fit best radial velocity to observation
 
 import logging
 import warnings
-
 from itertools import product
 
-import numpy as np
 import matplotlib.pyplot as plt
-from scipy.signal import correlate
+import numpy as np
+from scipy.constants import speed_of_light
+from scipy.linalg import lu_factor, lu_solve
 from scipy.ndimage.filters import median_filter
 from scipy.optimize import least_squares
-from scipy.linalg import lu_factor, lu_solve
-from scipy.constants import speed_of_light
+from scipy.signal import correlate
 
-
-from .sme_synth import SME_DLL
 from . import util
-
+from .sme_synth import SME_DLL
 
 c_light = speed_of_light * 1e-3  # speed of light in km/s
 

@@ -11,9 +11,13 @@ import hashlib
 import logging
 import os
 import shutil
+from pathlib import Path
 
 import wget
 from ruamel.yaml import YAML
+
+# We are lazy and want a simple check if a file is in the Path
+Path.__contains__ = lambda self, key: len(list(self.glob(key))) != 0
 
 
 class LargeFileStorage:
@@ -33,19 +37,19 @@ class LargeFileStorage:
         self.server = Server(server)
 
         if isinstance(pointers, str):
-            pointers = os.path.join(os.path.dirname(__file__), pointers)
-            if not os.path.exists(pointers):
-                with open(pointers, "w") as f:
+            path = Path(__file__).parent / pointers
+            if not path.exists():
+                with path.open("w") as f:
                     f.writelines("")
             yaml = YAML(typ="safe")
-            with open(pointers, "r") as f:
+            with path.open("r") as f:
                 pointers = yaml.load(f)
         #:dict(fname:hash): points from a filename to the current newest object id, usually a hash
         self.pointers = pointers
         #:Directory: directory of the current data files
-        self.current = Directory(storage)
+        self.current = Path(storage).expanduser()
         #:Directory: directory for the cache
-        self.cache = Directory(cache)
+        self.cache = Path(cache).expanduser()
         #:dict(fname:hash): hashes of existing files, to avoid recalculation
         self._hashes = {}
 
@@ -79,6 +83,7 @@ class LargeFileStorage:
         fullpath : str
             Absolute path to the datafile
         """
+        key = str(key)
 
         # Step 1: Check if the file is tracked and/or exists in the storage directory
         if key not in self.pointers:
@@ -100,49 +105,50 @@ class LargeFileStorage:
             if key in self._hashes.keys():
                 current_hash = self._hashes[key]
             else:
-                current_hash = self.hash(self.current[key])
+                current_hash = self.hash(self.current / key)
                 self._hashes[key] = current_hash
             if current_hash == newest:
-                return self.current[key]
+                return self.current / key
 
         # Step 4: Otherwise check the cache for the requested version
         if newest in self.cache:
             logging.debug("Using cached version of datafile")
-            self.current[key] = self.cache[newest]
-            return self.current[key]
+            os.symlink(self.cache / newest, self.current / key)
+            return self.current / key
 
         # Step 5: If not in the cache, download from the server
         logging.info("Downloading newest version of the datafile from server")
         self.server.download(newest, self.cache)
-        self.current[key] = self.cache[newest]
-        return self.current[key]
+        os.symlink(self.cache / newest, self.current / key)
+        return self.current / key
 
     def clean_cache(self):
         """ Remove unused cache files (from old versions) """
         used_files = self.pointers.values()
-        for f in os.listdir(self.cache.path):
+        for f in self.cache.iterdir():
             if f not in used_files:
                 os.remove(f)
 
     def generate_pointers(self):
         """ Generate the pointers dictionary from the existing storage directory """
         pointers = {}
-        for name in os.listdir(self.current.path):
-            if os.path.isfile(os.path.join(self.current.path, name)):
-                pointers[name] = self.hash(self.current[name])
+        for path in self.current.iterdir():
+            name = path.stem
+            if not path.is_dir:
+                pointers[name] = self.hash(path)
 
         self.pointers = pointers
         return pointers
 
     def move_to_cache(self):
         """ Move currently used files into cache directory and use symlinks insteadm, just if downloaded from a server """
-        for name in self.current:
-            fullpath = self.current[name]
-            if not isinstance(fullpath, Directory) and not os.path.islink(fullpath):
+        for fullpath in self.current.iterdir():
+            name = fullpath.stem
+            if fullpath.is_file():
                 # Copy file
-                shutil.copy(fullpath, self.cache[self.pointers[name]])
+                shutil.copy(fullpath, self.cache / self.pointers[name])
                 os.remove(fullpath)
-                self.current[name] = self.cache[self.pointers[name]]
+                os.symlink(self.cache / self.pointers[name], self.current / name)
 
     def create_pointer_file(self, filename):
         """ Create/Update the pointer file with new hashes """
@@ -156,40 +162,14 @@ class LargeFileStorage:
             yaml.dump(self.pointers, f)
 
 
-class Directory:
-    """ Interface for a file system directory """
-
-    def __init__(self, path):
-        self.path = os.path.expandvars(os.path.expanduser(path))
-
-    def __contains__(self, key):
-        return key in os.listdir(self.path)
-
-    def __iter__(self):
-        return iter(os.listdir(self.path))
-
-    def __getitem__(self, key):
-        path = os.path.join(self.path, key)
-        if os.path.isdir(path):
-            return Directory(path)
-        else:
-            return path
-
-    def __setitem__(self, key, value):
-        path = os.path.join(self.path, key)
-        os.symlink(value, path)
-
-    def __str__(self):
-        return self.path
-
-
 class Server:
     def __init__(self, url):
         self.url = url
 
     def download(self, fname, location):
-        url = os.path.join(self.url, fname)
-        wget.download(url, out=str(location))
+        url = self.url + "/" + fname
+        loc = str(location)
+        wget.download(url, out=loc)
         print("\n")
 
 

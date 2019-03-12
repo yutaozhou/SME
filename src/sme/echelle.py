@@ -4,8 +4,8 @@ Contains functions to read and modify echelle structures, just as in reduce
 Mostly for compatibility reasons
 """
 
-import numpy as np
 import astropy.io.fits as fits
+import numpy as np
 import scipy.constants
 
 

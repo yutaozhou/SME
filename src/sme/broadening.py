@@ -1,8 +1,8 @@
-import numpy as np
 import logging
 
-from scipy.ndimage.filters import convolve
+import numpy as np
 from scipy.interpolate import interp1d
+from scipy.ndimage.filters import convolve
 
 
 def apply_broadening(ipres, x_seg, y_seg, type="gauss", sme=None):
@@ -165,13 +165,13 @@ def gaussbroad(w, s, hwhm):
     # sqrt(alog(2.0)/pi)=0.46971864 (*1.0000632 to correct for >4 sigma wings)
     if hwhm >= 5 * wrange:
         return np.full(nw, np.sum(s) / nw)
-    nhalf = int(3.3972872 * hwhm / dw)  ## points in half gaussian
+    nhalf = int(3.397_287_2 * hwhm / dw)  ## points in half gaussian
     ng = 2 * nhalf + 1  ## points in gaussian (odd!)
     wg = dw * (
         np.arange(ng, dtype=float) - (ng - 1) / 2
     )  # wavelength scale of gaussian
-    xg = (0.83255461 / hwhm) * wg  # convenient absisca
-    gpro = (0.46974832 * dw / hwhm) * np.exp(-xg * xg)  # unit area gaussian w/ FWHM
+    xg = (0.832_554_61 / hwhm) * wg  # convenient absisca
+    gpro = (0.469_748_32 * dw / hwhm) * np.exp(-xg * xg)  # unit area gaussian w/ FWHM
     gpro = gpro / np.sum(gpro)
 
     # Pad spectrum ends to minimize impact of Fourier ringing.
