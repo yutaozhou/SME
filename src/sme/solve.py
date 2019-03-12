@@ -25,6 +25,8 @@ from .integrate_flux import integrate_flux
 from .nlte import update_nlte_coefficients
 from .util import safe_interpolation
 from .uncertainties import uncertainties
+from .config import Config
+from .large_file_storage import LargeFileStorage
 
 clight = speed_of_light * 1e-3  # km/s
 warnings.filterwarnings("ignore", category=OptimizeWarning)
@@ -39,6 +41,9 @@ def residuals(
     spec,
     uncs,
     mask,
+    config,
+    lfs_atmo,
+    lfs_nlte,
     isJacobian=False,
     fname="sme.npy",
     segments="all",
@@ -98,6 +103,9 @@ def residuals(
             reuse_wavelength_grid=reuse_wavelength_grid,
             segments=segments,
             passLineList=False,
+            config=config,
+            lfs_atmo=lfs_atmo,
+            lfs_nlte=lfs_nlte,
         )
     except AtmosphereError as ae:
         # Something went wrong (left the grid? Don't go there)
@@ -188,7 +196,7 @@ def linelist_errors(dll, wave, spec, linelist):
     return sig_syst
 
 
-def get_bounds(param_names, atmo_file):
+def get_bounds(param_names, atmo_file, lfs_atmo):
     """
     Create Bounds based on atmosphere grid and general rules
 
@@ -219,10 +227,9 @@ def get_bounds(param_names, atmo_file):
 
     # Create bounds based on atmosphere grid
     if "teff" in param_names or "logg" in param_names or "monh" in param_names:
-        folder = os.path.dirname(__file__)
         atmo_file = os.path.basename(atmo_file)
         _, ext = os.path.splitext(atmo_file)
-        atmo_file = os.path.join(folder, "atmospheres", atmo_file)
+        atmo_file = lfs_atmo.get(atmo_file)
 
         if ext == ".sav":
             atmo_grid = readsav(atmo_file)["atmo_grid"]
@@ -290,12 +297,34 @@ def default(name):
     return d[name]
 
 
+def setup_lfs(config, lfs_atmo, lfs_nlte):
+    if config is None:
+        config = Config()
+    if lfs_atmo is None:
+        server = config["data.file_server"]
+        storage = config["data.atmospheres"]
+        cache = config["data.cache.atmospheres"]
+        pointers = config["data.pointers.atmopsheres"]
+        lfs_atmo = LargeFileStorage(server, pointers, storage, cache)
+
+    if lfs_nlte is None:
+        server = config["data.file_server"]
+        storage = config["data.nlte_grids"]
+        cache = config["data.cache.nlte_grids"]
+        pointers = config["data.pointers.nlte_grids"]
+        lfs_nlte = LargeFileStorage(server, pointers, storage, cache)
+    return config, lfs_atmo, lfs_nlte
+
+
 def solve(
     sme,
     param_names=("teff", "logg", "monh"),
     filename="sme.npy",
     fig=None,
     segments="all",
+    config=None,
+    lfs_atmo=None,
+    lfs_nlte=None,
     **kwargs,
 ):
     """
@@ -324,6 +353,8 @@ def solve(
     if "uncs" not in sme:
         sme.uncs = np.ones_like(sme.sob)
         logging.warning("SME Structure has no uncertainties, using all ones instead")
+
+    config, lfs_atmo, lfs_nlte = setup_lfs(config, lfs_atmo, lfs_nlte)
 
     # Sanitize parameter names
     param_names = [p.casefold() for p in param_names]
@@ -355,7 +386,7 @@ def solve(
     nparam = len(param_names)
 
     # Create appropiate bounds
-    bounds = get_bounds(param_names, sme.atmo.source)
+    bounds = get_bounds(param_names, sme.atmo.source, lfs_atmo)
     scales = get_scale(param_names)
 
     # Starting values
@@ -388,7 +419,7 @@ def solve(
         loss="soft_l1",
         method="trf",
         verbose=2,
-        args=(param_names, sme, spec, uncs, mask),
+        args=(param_names, sme, spec, uncs, mask, config, lfs_atmo, lfs_nlte),
         kwargs={"bounds": bounds, "fig": fig, "fname": filename, "segments": segments},
         max_nfev=kwargs.get("maxiter"),
     )
@@ -442,7 +473,7 @@ def solve(
     return sme
 
 
-def get_atmosphere(sme):
+def get_atmosphere(sme, lfs_atmo):
     """
     Return an atmosphere based on specification in an SME structure
 
@@ -478,7 +509,9 @@ def get_atmosphere(sme):
 
     if atmo.method == "grid":
         reload = msdi_save is None or atmo.source != prev_msdi[1]
-        atmo = interp_atmo_grid(sme.teff, sme.logg, sme.monh, sme.atmo, reload=reload)
+        atmo = interp_atmo_grid(
+            sme.teff, sme.logg, sme.monh, sme.atmo, lfs_atmo, reload=reload
+        )
         prev_msdi = [atmo.method, atmo.source, atmo.depth, atmo.interp]
         setattr(self, "prev_msdi", prev_msdi)
         setattr(self, "msdi_save", True)
@@ -557,6 +590,9 @@ def synthesize_spectrum(
     passAtmosphere=True,
     passNLTE=True,
     reuse_wavelength_grid=False,
+    config=None,
+    lfs_atmo=None,
+    lfs_nlte=None,
 ):
     """
     Calculate the synthetic spectrum based on the parameters passed in the SME structure
@@ -586,6 +622,8 @@ def synthesize_spectrum(
     sme : SME_Struct
         same sme structure with synthetic spectrum in sme.smod
     """
+
+    config, lfs_atmo, lfs_nlte = setup_lfs(config, lfs_atmo, lfs_nlte)
 
     # Define constants
     n_segments = sme.nseg
@@ -632,14 +670,14 @@ def synthesize_spectrum(
         dll.SetLibraryPath()
         dll.InputLineList(sme.linelist)
     if passAtmosphere:
-        sme = get_atmosphere(sme)
+        sme = get_atmosphere(sme, lfs_atmo)
         dll.InputModel(sme.teff, sme.logg, sme.vmic, sme.atmo)
         dll.InputAbund(sme.abund)
         dll.Ionization(0)
         dll.SetVWscale(sme.gam6)
         dll.SetH2broad(sme.h2broad)
     if passNLTE:
-        update_nlte_coefficients(sme, dll)
+        update_nlte_coefficients(sme, dll, lfs_nlte)
 
     # Loop over segments
     #   Input Wavelength range and Opacity

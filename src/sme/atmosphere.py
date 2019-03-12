@@ -18,9 +18,8 @@ class AtmosphereError(RuntimeError):
 class sav_file(np.recarray):
     """ IDL savefile atmosphere grid """
 
-    def __new__(cls, filename):
-        prefix = os.path.dirname(__file__)
-        path = os.path.join(prefix, "atmospheres", filename)
+    def __new__(cls, filename, lfs_atmo):
+        path = lfs_atmo.get(filename)
         krz2 = readsav(path)
         atmo_grid = krz2["atmo_grid"]
         atmo_grid_maxdep = krz2["atmo_grid_maxdep"]
@@ -473,7 +472,7 @@ def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
     return atmo
 
 
-def interp_atmo_grid(Teff, logg, MonH, atmo_in, verbose=0, reload=False):
+def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=False):
     """
     General routine to interpolate in 3D grid of model atmospheres
 
@@ -570,7 +569,7 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, verbose=0, reload=False):
     atmo_file = atmo_in.source
     self = interp_atmo_grid
     if not hasattr(self, "atmo_grid"):
-        self.atmo_grid = atmo_grid = sav_file(atmo_file)
+        self.atmo_grid = atmo_grid = sav_file(atmo_file, lfs_atmo)
     else:
         self.atmo_grid = atmo_grid = self.atmo_grid.load(atmo_file, reload=reload)
 

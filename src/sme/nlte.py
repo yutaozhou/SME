@@ -143,7 +143,7 @@ class Grid:
     """NLTE Grid class that handles all NLTE data reading and interpolation    
     """
 
-    def __init__(self, sme, elem):
+    def __init__(self, sme, elem, lfs_nlte):
         #:str: Element of the NLTE grid
         self.elem = elem
         #:LineList: Whole LineList that was passed to the C library
@@ -153,7 +153,7 @@ class Grid:
 
         localdir = os.path.dirname(__file__)
         #:str: complete filename of the NLTE grid data file
-        self.fname = os.path.join(localdir, "nlte_grids", sme.nlte.grids[elem])
+        self.fname = lfs_nlte.get(sme.nlte.grids[elem])
         depth_name = str.lower(sme.atmo.interp)
         #:array(float): depth points of the atmosphere that was passed to the C library (in log10 scale)
         self.target_depth = sme.atmo[depth_name]
@@ -440,7 +440,7 @@ class Grid:
         return subgrid[0]
 
 
-def nlte(sme, dll, elem):
+def nlte(sme, dll, elem, lfs_nlte):
     """ Read and interpolate the NLTE grid for the current element and parameters """
     if sme.nlte.grids[elem] is None:
         raise ValueError(f"Element {elem} has not been prepared for NLTE")
@@ -448,7 +448,7 @@ def nlte(sme, dll, elem):
     if elem in dll._nlte_grids.keys():
         grid = dll._nlte_grids[elem]
     else:
-        grid = Grid(sme, elem)
+        grid = Grid(sme, elem, lfs_nlte)
         dll._nlte_grids[elem] = grid
 
     subgrid = grid.get(sme.abund[elem], sme.teff, sme.logg, sme.monh)
@@ -457,7 +457,7 @@ def nlte(sme, dll, elem):
 
 
 # TODO should this be in sme_synth instead ?
-def update_nlte_coefficients(sme, dll):
+def update_nlte_coefficients(sme, dll, lfs_nlte):
     """ pass departure coefficients to C library """
 
     # Only print "Running in NLTE" message on the first run each time
@@ -500,7 +500,7 @@ def update_nlte_coefficients(sme, dll):
     # Call each element to update and return its set of departure coefficients
     for elem in elements:
         # Call function to retrieve interpolated NLTE departure coefficients
-        bmat, linerefs, lineindices = nlte(sme, dll, elem)
+        bmat, linerefs, lineindices = nlte(sme, dll, elem, lfs_nlte)
 
         if bmat is None or len(linerefs) < 2:
             # no data were returned. Don't bother?

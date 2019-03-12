@@ -13,6 +13,7 @@ import os
 import shutil
 
 import wget
+from ruamel.yaml import YAML
 
 
 class LargeFileStorage:
@@ -45,6 +46,8 @@ class LargeFileStorage:
         self.current = Directory(storage)
         #:Directory: directory for the cache
         self.cache = Directory(cache)
+        #:dict(fname:hash): hashes of existing files, to avoid recalculation
+        self._hashes = {}
 
     def hash(self, filename):
         """ hash a file """
@@ -74,7 +77,11 @@ class LargeFileStorage:
 
         if key in self.current:
             # Step 3: If newest version == storage version, we are all good and can use it
-            current_hash = self.hash(self.current[key])
+            if key in self._hashes.keys():
+                current_hash = self._hashes[key]
+            else:
+                current_hash = self.hash(self.current[key])
+                self._hashes[key] = current_hash
             if current_hash == newest:
                 return self.current[key]
 
@@ -165,7 +172,6 @@ class Server:
 
 if __name__ == "__main__":
     import config
-    from ruamel.yaml import YAML
 
     conf = config.Config()
 
