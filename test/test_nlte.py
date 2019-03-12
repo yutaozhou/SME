@@ -13,7 +13,21 @@ from sme.sme_synth import SME_DLL
 from sme.nlte import nlte
 from sme.solve import get_atmosphere, synthesize_spectrum
 
+from sme.config import Config
+from sme.large_file_storage import LargeFileStorage
+
 cwd = dirname(__file__)
+
+
+@pytest.fixture
+def lfs_nlte():
+    config = Config()
+    server = config["data.file_server"]
+    storage = config["data.nlte_grids"]
+    cache = config["data.cache.nlte_grids"]
+    pointers = config["data.pointers.nlte_grids"]
+    lfs_nlte = LargeFileStorage(server, pointers, storage, cache)
+    return lfs_nlte
 
 
 def make_minimum_structure():
@@ -91,7 +105,7 @@ def test_run_with_nlte():
     assert np.any(sme2.nlte.flags)
 
 
-def test_dll():
+def test_dll(lfs_nlte):
     sme = make_minimum_structure()
     elem = "Ca"
     sme.nlte.set_nlte(elem)
@@ -99,13 +113,13 @@ def test_dll():
     libsme = SME_DLL()
     libsme.ResetNLTE()
 
-    sme = get_atmosphere(sme)
+    sme = get_atmosphere(sme, lfs_nlte)
     libsme.InputLineList(sme.linelist)
     libsme.InputModel(sme.teff, sme.logg, sme.vmic, sme.atmo)
 
     # This is essentially what update_depcoefs does, just for one element
     counter = 0
-    bmat, linerefs, lineindices = nlte(sme, libsme, elem)
+    bmat, linerefs, lineindices = nlte(sme, libsme, elem, lfs_nlte)
     for lr, li in zip(linerefs, lineindices):
         if lr[0] != -1 and lr[1] != -1:
             counter += 1
