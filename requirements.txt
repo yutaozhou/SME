@@ -2,6 +2,7 @@ numpy
 scipy
 pandas
 astropy
+wget
 Ipython
 jupyter
 matplotlib

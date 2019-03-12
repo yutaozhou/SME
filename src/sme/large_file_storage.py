@@ -7,16 +7,38 @@ Pro: Versioning is effectively done by Git
 Con: Need to run server
 """
 
-import os
-import shutil
 import hashlib
 import logging
+import os
+import shutil
+
+import wget
 
 
 class LargeFileStorage:
+    """
+    Download large data files from data server when needed
+    New versions of the datafiles are indicated in a 'pointer' file
+    that includes the hash of the newest version of the files
+
+    Raises
+    ------
+    FileNotFoundError
+        If the datafiles can't be located anywhere
+    """
+
     def __init__(self, server, pointers, storage, cache):
         #:Server: Large File Storage Server address
         self.server = Server(server)
+
+        if isinstance(pointers, str):
+            pointers = os.path.join(os.path.dirname(__file__), pointers)
+            if not os.path.exists(pointers):
+                with open(pointers, "w") as f:
+                    f.writelines("")
+            yaml = YAML(typ="safe")
+            with open(pointers, "r") as f:
+                pointers = yaml.load(f)
         #:dict(fname:hash): points from a filename to the current newest object id, usually a hash
         self.pointers = pointers
         #:Directory: directory of the current data files
@@ -26,13 +48,11 @@ class LargeFileStorage:
 
     def hash(self, filename):
         """ hash a file """
-        hasher = hashlib.sha256()
-        blocksize = 65536
+        hasher = hashlib.sha3_512()
+        blocksize = 8192  # 512 * 16
         with open(filename, "rb") as f:
-            buf = f.read(blocksize)
-            while len(buf) > 0:
-                hasher.update(buf)
-                buf = f.read(blocksize)
+            for chunk in iter(lambda: f.read(blocksize), b""):
+                hasher.update(chunk)
         return hasher.hexdigest()
 
     def get(self, key):
@@ -81,10 +101,32 @@ class LargeFileStorage:
         """ Generate the pointers dictionary from the existing storage directory """
         pointers = {}
         for name in os.listdir(self.current.path):
-            pointers[name] = self.hash(self.current[name])
+            if os.path.isfile(os.path.join(self.current.path, name)):
+                pointers[name] = self.hash(self.current[name])
 
         self.pointers = pointers
         return pointers
+
+    def move_to_cache(self):
+        """ Move currently used files into cache directory and use symlinks insteadm, just if downloaded from a server """
+        for name in self.current:
+            fullpath = self.current[name]
+            if not isinstance(fullpath, Directory) and not os.path.islink(fullpath):
+                # Copy file
+                shutil.copy(fullpath, self.cache[self.pointers[name]])
+                os.remove(fullpath)
+                self.current[name] = self.cache[self.pointers[name]]
+
+    def create_pointer_file(self, filename):
+        """ Create/Update the pointer file with new hashes """
+        if self.pointers is None:
+            raise RuntimeError("Needs pointers")
+
+        yaml = YAML(typ="safe")
+        yaml.default_flow_style = False
+
+        with open(filename, "w") as f:
+            yaml.dump(self.pointers, f)
 
 
 class Directory:
@@ -93,6 +135,9 @@ class Directory:
 
     def __contains__(self, key):
         return key in os.listdir(self.path)
+
+    def __iter__(self):
+        return iter(os.listdir(self.path))
 
     def __getitem__(self, key):
         path = os.path.join(self.path, key)
@@ -105,27 +150,48 @@ class Directory:
         path = os.path.join(self.path, key)
         os.symlink(value, path)
 
+    def __str__(self):
+        return self.path
+
 
 class Server:
     def __init__(self, url):
         self.url = url
 
     def download(self, fname, location):
-        # wget ?
-        pass
+        url = os.path.join(self.url, fname)
+        wget.download(url, out=str(location))
 
 
 if __name__ == "__main__":
-    datafile = "debug.txt"
-    server = "localhost"
-    storage = os.path.expanduser("~/.sme/atmospheres")
-    cache = os.path.expanduser("~/.sme/atmospheres/cache")
+    import config
+    from ruamel.yaml import YAML
 
-    pointers = None
+    conf = config.Config()
+
+    datafile = "atlas12.sav"
+    server = conf["data.file_server"]
+    storage = conf["data.atmospheres"]
+    cache = conf["data.cache.atmospheres"]
+    pointers = conf["data.pointers.atmopsheres"]
 
     lfs = LargeFileStorage(server, pointers, storage, cache)
-    pointers = lfs.generate_pointers()
+
+    lfs.generate_pointers()
+    lfs.move_to_cache()
+    lfs.create_pointer_file(pointers)
 
     location = lfs.get(datafile)
 
     print(location)
+
+    server = conf["data.file_server"]
+    storage = conf["data.nlte_grids"]
+    cache = conf["data.cache.nlte_grids"]
+    pointers = conf["data.pointers.nlte_grids"]
+
+    lfs = LargeFileStorage(server, pointers, storage, cache)
+
+    lfs.generate_pointers()
+    lfs.move_to_cache()
+    lfs.create_pointer_file(pointers)
