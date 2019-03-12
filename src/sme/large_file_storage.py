@@ -59,7 +59,27 @@ class LargeFileStorage:
         return hasher.hexdigest()
 
     def get(self, key):
-        """ make sure to get the latest version of the file """
+        """ 
+        Request a datafile from the LargeFileStorage
+        Assures that tracked files are at the specified version
+        And downloads data from the server if necessary
+
+        Parameters
+        ----------
+        key : str
+            Name of the requested datafile
+
+        Raises
+        ------
+        FileNotFoundError
+            If the requested datafile can not be found anywhere
+
+        Returns
+        -------
+        fullpath : str
+            Absolute path to the datafile
+        """
+
         # Step 1: Check if the file is tracked and/or exists in the storage directory
         if key not in self.pointers:
             if key not in self.current:
@@ -95,7 +115,7 @@ class LargeFileStorage:
         logging.info("Downloading newest version of the datafile from server")
         self.server.download(newest, self.cache)
         self.current[key] = self.cache[newest]
-        return key
+        return self.current[key]
 
     def clean_cache(self):
         """ Remove unused cache files (from old versions) """
@@ -137,6 +157,8 @@ class LargeFileStorage:
 
 
 class Directory:
+    """ Interface for a file system directory """
+
     def __init__(self, path):
         self.path = os.path.expandvars(os.path.expanduser(path))
 
@@ -168,6 +190,7 @@ class Server:
     def download(self, fname, location):
         url = os.path.join(self.url, fname)
         wget.download(url, out=str(location))
+        print("\n")
 
 
 if __name__ == "__main__":
