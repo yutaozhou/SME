@@ -159,7 +159,9 @@ def idl_call_external(funcname, *args, restype="str", type=None):
                 )
                 staying_alive[i] = args[i].ctypes
                 args[i] = staying_alive[i].data
-            elif np.issubdtype(args[i].dtype, np.str_):
+            elif np.issubdtype(args[i].dtype, np.str_) or np.issubdtype(
+                args[i].dtype, np.bytes_
+            ):
                 args[i] = args[i].astype("S")
                 staying_alive.append(args[i])
                 length = [len(a) for a in args[i]]
@@ -174,6 +176,10 @@ def idl_call_external(funcname, *args, restype="str", type=None):
 
                 staying_alive[i] = strarr
                 args[i] = ct.addressof(strarr)
+            else:
+                raise TypeError("Array datatype not understood")
+        else:
+            raise TypeError("Argument type not understood")
 
     # Load function and define parameters
     func = getattr(idl_call_external.lib, funcname)

@@ -89,6 +89,8 @@ def residuals(
     update = not isJacobian
     save = not isJacobian
     reuse_wavelength_grid = isJacobian
+    # TODO: Set to true if one of the fit parameters affects the linelist
+    updateLineList = False
 
     # change parameters
     for name, value in zip(names, param):
@@ -100,13 +102,14 @@ def residuals(
             reuse_wavelength_grid=reuse_wavelength_grid,
             segments=segments,
             passLineList=False,
+            updateLineList=updateLineList,
             config=config,
             lfs_atmo=lfs_atmo,
             lfs_nlte=lfs_nlte,
         )
     except AtmosphereError as ae:
         # Something went wrong (left the grid? Don't go there)
-        # If returned value is not finite it will be ignored?
+        # If returned value is not finite, the fit algorithm will not go there
         logging.debug(ae)
         return np.inf
 
@@ -586,6 +589,7 @@ def synthesize_spectrum(
     passLineList=True,
     passAtmosphere=True,
     passNLTE=True,
+    updateLineList=False,
     reuse_wavelength_grid=False,
     config=None,
     lfs_atmo=None,
@@ -663,9 +667,12 @@ def synthesize_spectrum(
         wind = [0, *np.diff(sme.wind)]
 
     # Input Model data to C library
+    dll.SetLibraryPath()
     if passLineList:
-        dll.SetLibraryPath()
         dll.InputLineList(sme.linelist)
+    if updateLineList:
+        # TODO Currently Updates the whole linelist, could be improved to only change affected lines
+        dll.UpdateLineList(sme.atomic, sme.species, np.arange(len(sme.linelist)))
     if passAtmosphere:
         sme = get_atmosphere(sme, lfs_atmo)
         dll.InputModel(sme.teff, sme.logg, sme.vmic, sme.atmo)

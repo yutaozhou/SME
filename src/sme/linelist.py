@@ -201,7 +201,7 @@ class LineList:
     @property
     def species(self):
         """list(str) of size (nlines,): Species name of each line """
-        return self._lines["species"].values
+        return self._lines["species"].values.astype("U")
 
     @property
     def lulande(self):
