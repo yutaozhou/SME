@@ -30,7 +30,7 @@ if __name__ == "__main__":
 
     # Load files
     sme = SME.SME_Struct.load(in_file)
-    sme.save("test.npz", compressed=False, foridl=True)
+    sme.save("test.npz", compressed=False, for_idl=True)
 
     if vald_file is not None:
         vald = ValdFile(vald_file)

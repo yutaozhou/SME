@@ -1035,7 +1035,7 @@ class SME_Struct(Param):
 
         return s
 
-    def save(self, filename="sme.npz", compressed=False, foridl=False):
+    def save(self, filename="sme.npz", compressed=False, for_idl=False):
         """
         Save SME data to disk (compressed)
 
@@ -1053,7 +1053,7 @@ class SME_Struct(Param):
         else:
             save_func = np.savez
 
-        if foridl:
+        if for_idl:
             vrad_flag_dict = {"none": -2, "whole": -1, "each": 0}
             cscale_flag_dict = {
                 "none": -3,
@@ -1111,7 +1111,9 @@ class SME_Struct(Param):
             fields["atmo_logg"] = self.atmo.logg
 
             # Linelist
-            fields["short_line_format"] = {"short": 1, "long": 2}[self.linelist.lineformat]
+            fields["short_line_format"] = {"short": 1, "long": 2}[
+                self.linelist.lineformat
+            ]
             fields["lande"] = self.linelist.lande
             fields["atomic"] = self.linelist.atomic.T
             fields["species"] = self.linelist.species.astype("S")
@@ -1123,7 +1125,7 @@ class SME_Struct(Param):
                 fields["line_term_low"] = self.linelist.term_lower.astype("S")
                 fields["line_term_upp"] = self.linelist.term_upper.astype("S")
         else:
-            fields = {"sme":self}
+            fields = {"sme": self}
 
         save_func(filename, **fields)
 
