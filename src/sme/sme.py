@@ -1115,7 +1115,7 @@ class SME_Struct(Param):
                 self.linelist.lineformat
             ]
             fields["lande"] = self.linelist.lande
-            fields["atomic"] = self.linelist.atomic.T
+            fields["atomic"] = self.linelist.atomic
             fields["species"] = self.linelist.species.astype("S")
             fields["lineref"] = self.linelist.reference.astype("S")
 
