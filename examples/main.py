@@ -30,6 +30,7 @@ if __name__ == "__main__":
 
     # Load files
     sme = SME.SME_Struct.load(in_file)
+    sme.save("test.npz", compressed=False, foridl=True)
 
     if vald_file is not None:
         vald = ValdFile(vald_file)
@@ -47,8 +48,12 @@ if __name__ == "__main__":
         else:
             fitparameters = ["teff", "logg", "monh"]
 
-    # fitparameters = ["teff", "logg", "monh"]
+    fitparameters = ["linelist 10 gflog"]
     sme.nlte.set_nlte("Ca")
+
+    print(sme["linelist 10 gflog"])
+    sme["linelist 10 gflog"] = -1.5
+    print(sme["linelist 10 gflog"])
 
     # Start SME solver
     # sme = synthesize_spectrum(sme, segments=[0])

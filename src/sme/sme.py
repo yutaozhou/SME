@@ -490,7 +490,7 @@ class SME_Struct(Param):
         glob_free = kwargs.pop("glob_free", [])
         ab_free = kwargs.pop("ab_free", [])
         if len(ab_free) != 0:
-            ab_free = [f"{el} ABUND" for i, el in zip(ab_free, Abund._elem) if i == 1]
+            ab_free = [f"abund {el}" for i, el in zip(ab_free, Abund._elem) if i == 1]
         fitparameters = np.concatenate((pname, glob_free, ab_free)).astype("U")
         #:array of size (nfree): Names of the free parameters
         self.fitparameters = np.unique(fitparameters)
@@ -922,19 +922,30 @@ class SME_Struct(Param):
     def __getitem__(self, key):
         assert isinstance(key, str), "Key must be of type string"
 
-        if key[-5:].casefold() == "abund":
-            element = key.split(" ", 1)[0]
+        if key[:5].casefold() == "abund":
+            element = key[5:].strip()
             element = element.capitalize()
             return self.abund[element]
+        if key[:8].casefold() == "linelist":
+            _, idx, field = key[8:].split(" ", 2)
+            idx = int(idx)
+            field = field.casefold()
+            return self.linelist[field][idx]
         return super().__getitem__(key)
 
     def __setitem__(self, key, value):
         assert isinstance(key, str), "Key must be of type string"
 
-        if key[-5:].casefold() == "abund":
-            element = key.split(" ", 1)[0]
+        if key[:5].casefold() == "abund":
+            element = key[5:].strip()
             element = element.capitalize()
             self.abund.update_pattern({element: value})
+            return
+        if key[:8].casefold() == "linelist":
+            _, idx, field = key[8:].split(" ", 2)
+            idx = int(idx)
+            field = field.casefold()
+            self.linelist[field][idx] = value
             return
         return super().__setitem__(key, value)
 
@@ -1024,7 +1035,7 @@ class SME_Struct(Param):
 
         return s
 
-    def save(self, filename="sme.npz", overwrite=False):
+    def save(self, filename="sme.npz", compressed=False, foridl=False):
         """
         Save SME data to disk (compressed)
 
@@ -1037,7 +1048,84 @@ class SME_Struct(Param):
             if True will log the event
         """
         # logging.info("Saving SME structure %s", filename)
-        np.savez_compressed(filename, sme=self)
+        if compressed:
+            save_func = np.savez_compressed
+        else:
+            save_func = np.savez
+
+        if foridl:
+            vrad_flag_dict = {"none": -2, "whole": -1, "each": 0}
+            cscale_flag_dict = {
+                "none": -3,
+                "fix": -2,
+                "constant": 0,
+                "linear": 1,
+                "quadratic": 2,
+            }
+
+            fields = {
+                "version": self.version,
+                "id": bytes(self.id, "ascii"),
+                "teff": self.teff,
+                "grav": self.logg,
+                "feh": self.monh,
+                "vmic": self.vmic,
+                "vmac": self.vmac,
+                "vsini": self.vsini,
+                "vrad": self.vrad,
+                "vrad_flag": vrad_flag_dict[self.vrad_flag],
+                "cscale": self.cscale,
+                "cscale_flag": cscale_flag_dict[self.cscale_flag],
+                "gam6": self.gam6,
+                "h2broad": int(self.h2broad),
+                "accwi": self.accwi,
+                "accrt": self.accrt,
+                "nmu": self.nmu,
+                "nseg": self.nseg,
+                "abund": self.abund.get_pattern("sme", raw=True),
+                "wran": self.wran,
+                "mu": self.mu,
+                "wave": self.wob,
+                "wind": self.wind[1:],  # ignore the 0 as the first element
+                "sob": self.sob,
+                "uob": self.uob,
+                "mob": self.mob,
+                "iptype": bytes(self.iptype, "ascii"),
+                "ipres": self.ipres,
+                "smod": self.smod,
+            }
+
+            # Atmo
+            fields["depth"] = bytes(self.atmo.depth, "ascii")
+            fields["atmo_method"] = bytes(self.atmo.method, "ascii")
+            fields["atmo_source"] = bytes(self.atmo.source, "ascii")
+            fields["atmo_depth"] = bytes(self.atmo.depth, "ascii")
+            fields["atmo_interp"] = bytes(self.atmo.interp, "ascii")
+            fields["atmo_geom"] = bytes(self.atmo.geom, "ascii")
+            fields["atmo_rhox"] = self.atmo.rhox
+            fields["atmo_temp"] = self.atmo.temp
+            fields["atmo_xne"] = self.atmo.xne
+            fields["atmo_xna"] = self.atmo.xna
+            fields["atmo_rho"] = self.atmo.rho
+            fields["atmo_teff"] = self.atmo.teff
+            fields["atmo_logg"] = self.atmo.logg
+
+            # Linelist
+            fields["short_line_format"] = {"short": 1, "long": 2}[self.linelist.lineformat]
+            fields["lande"] = self.linelist.lande
+            fields["atomic"] = self.linelist.atomic.T
+            fields["species"] = self.linelist.species.astype("S")
+            fields["lineref"] = self.linelist.reference.astype("S")
+
+            if self.linelist.lineformat == "long":
+                fields["line_extra"] = self.linelist.extra
+                fields["line_lulande"] = self.linelist.lulande
+                fields["line_term_low"] = self.linelist.term_lower.astype("S")
+                fields["line_term_upp"] = self.linelist.term_upper.astype("S")
+        else:
+            fields = {"sme":self}
+
+        save_func(filename, **fields)
 
 
 if __name__ == "__main__":
