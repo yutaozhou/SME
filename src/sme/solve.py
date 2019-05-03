@@ -358,7 +358,7 @@ def solve(
 
     # Sanitize parameter names
     param_names = [p.casefold() for p in param_names]
-    param_names = [p.capitalize() if p[-5:] == "abund" else p for p in param_names]
+    param_names = [p.capitalize() if p[:5] == "abund" else p for p in param_names]
 
     param_names = [p if p != "grav" else "logg" for p in param_names]
     param_names = [p if p != "feh" else "monh" for p in param_names]
