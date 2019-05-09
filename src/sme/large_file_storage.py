@@ -170,7 +170,6 @@ class Server:
         url = self.url + "/" + fname
         loc = str(location)
         wget.download(url, out=loc)
-        print("\n")
 
 
 if __name__ == "__main__":
