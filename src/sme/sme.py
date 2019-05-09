@@ -1086,13 +1086,15 @@ class SME_Struct(Param):
                 "wran": self.wran,
                 "mu": self.mu,
                 "wave": self.wob,
-                "wind": self.wind[1:],  # ignore the 0 as the first element
+                "wind": self.wind[1:]
+                - 1,  # ignore the 0 as the first element, and fix indices
                 "sob": self.sob,
                 "uob": self.uob,
                 "mob": self.mob,
                 "iptype": bytes(self.iptype, "ascii"),
                 "ipres": self.ipres,
                 "smod": self.smod,
+                "glob_free": self.fitparameters,
             }
 
             # Atmo
@@ -1109,6 +1111,19 @@ class SME_Struct(Param):
             fields["atmo_rho"] = self.atmo.rho
             fields["atmo_teff"] = self.atmo.teff
             fields["atmo_logg"] = self.atmo.logg
+
+            # NLTE
+            fields["nlte_pro"] = b"sme_nlte"
+            element_flags = [1 if a in self.nlte.elements else 0 for a in Abund._elem]
+            element_flags = np.array(element_flags).astype("b")
+            fields["nlte_elem_flags"] = element_flags
+            fields["nlte_subgrid_size"] = self.nlte.subgrid_size
+            grids = [
+                self.nlte.grids[a] if a in self.nlte.elements else ""
+                for a in Abund._elem
+            ]
+            grids = np.array(grids).astype("S")
+            fields["nlte_grids"] = grids
 
             # Linelist
             fields["short_line_format"] = {"short": 1, "long": 2}[
