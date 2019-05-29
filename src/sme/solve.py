@@ -495,7 +495,7 @@ def setup_lfs(config=None, lfs_atmo=None, lfs_nlte=None):
         server = config["data.file_server"]
         storage = config["data.atmospheres"]
         cache = config["data.cache.atmospheres"]
-        pointers = config["data.pointers.atmopsheres"]
+        pointers = config["data.pointers.atmospheres"]
         lfs_atmo = LargeFileStorage(server, pointers, storage, cache)
 
     if lfs_nlte is None:
