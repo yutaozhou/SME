@@ -168,7 +168,7 @@ class Grid:
         self._grid = None
         self._points = None
 
-        #:list(int): number of points in the grid to cache for each parameter, order: abund, teff, logg, monh
+        #:list(int): number of points in the grid to cache for each parameter, order; abund, teff, logg, monh
         self.subgrid_size = sme.nlte.subgrid_size
         #:float: Solar Abundance of the element
         self.solar = Abund.solar()[self.elem]

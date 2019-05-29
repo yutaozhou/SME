@@ -4,26 +4,26 @@ src.gui package
 Submodules
 ----------
 
-src.gui.plot\_colors module
+gui.plot\_colors module
 ---------------------------
 
-.. automodule:: src.gui.plot_colors
+.. automodule:: gui.plot_colors
     :members:
     :undoc-members:
     :show-inheritance:
 
-src.gui.plot\_plotly module
+gui.plot\_plotly module
 ----------------------------
 
-.. automodule:: src.gui.plot_plotly
+.. automodule:: gui.plot_plotly
     :members:
     :undoc-members:
     :show-inheritance:
 
-src.gui.plot\_pyplot module
+gui.plot\_pyplot module
 ---------------------------
 
-.. automodule:: src.gui.plot_pyplot
+.. automodule:: gui.plot_pyplot
     :members:
     :undoc-members:
     :show-inheritance:

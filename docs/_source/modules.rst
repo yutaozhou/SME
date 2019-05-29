@@ -4,6 +4,5 @@ SME
 .. toctree::
    :maxdepth: 4
 
-   main
-   src
-   util
+   sme
+   gui
