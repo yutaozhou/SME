@@ -109,18 +109,11 @@ venv.bak/
 
 # Mac folder attributes
 .DS_Store
-src/sme/dll/sme_synth.so.linux.x86_64.64
-src/sme/dll/sme_synth.so.linux.x86_64.64i
 src/sme/**/*.pro
-src/sme/dll/*.INTEL*
-src/sme/dll/vcsbalmer.dat
 __cache__/**
 src/sme/uioenvfile.txt
 *.npy
 dump.bin
-src/sme/dll/sme_synth.so.*
-src/sme/dll/intel64_lin/*
-src/sme/dll/idl_test.*
 fisher1.dat
 *.cprof
 /*.sav
