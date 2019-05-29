@@ -56,7 +56,7 @@ def test_empty_structure():
     assert empty.atomic is None
 
     assert empty.monh is None
-    assert np.isnan(empty["Fe Abund"])
+    assert np.isnan(empty["abund Fe"])
     assert np.isnan(empty.abund["H"])
     assert np.isnan(empty.abund()["Mg"])
 
