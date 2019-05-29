@@ -14,7 +14,7 @@ if __name__ == "__main__":
     # Put your input structure here!
     os.chdir(os.path.dirname(__file__))
     in_file = "sun_6440_grid.inp"
-    
+
     sme = SME.SME_Struct.load(in_file)
     fitparameters = ["teff", "logg", "monh"]
 

@@ -1002,10 +1002,10 @@ class SME_Struct(Param):
         ext = Path(filename).suffix
         if ext == ".npy":
             # Numpy Save file
-            s = np.load(filename)
+            s = np.load(filename, allow_pickle=True)
             s = np.atleast_1d(s)[0]
         elif ext == ".npz":
-            s = np.load(filename)
+            s = np.load(filename, allow_pickle=True)
             s = s["sme"][()]
         elif ext in [".sav", ".out", ".inp"]:
             # IDL save file (from SME)

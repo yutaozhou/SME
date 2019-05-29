@@ -28,155 +28,414 @@ from .util import safe_interpolation
 clight = speed_of_light * 1e-3  # km/s
 warnings.filterwarnings("ignore", category=OptimizeWarning)
 
-dll = SME_DLL()
 
+class SME_Solver:
+    def __init__(self, filename=None):
+        self.dll = SME_DLL()
+        self.config, self.lfs_atmo, self.lfs_nlte = setup_lfs()
 
-def residuals(
-    param,
-    names,
-    sme,
-    spec,
-    uncs,
-    mask,
-    config,
-    lfs_atmo,
-    lfs_nlte,
-    isJacobian=False,
-    fname="sme.npy",
-    segments="all",
-    fig=None,
-    **_,
-):
-    """
-    Calculates the synthetic spectrum with sme_func and
-    returns the residuals between observation and synthetic spectrum
-
-    residual = (obs - synth) / uncs
-
-    Parameters
-    ----------
-    param : list(float) of size (n,)
-        parameter values to use for synthetic spectrum, order is the same as names
-    names : list(str) of size (n,)
-        names of the parameters to set, as defined by SME_Struct
-    sme : SME_Struct
-        sme structure holding all relevant information for the synthetic spectrum generation
-    spec : array(float) of size (m,)
-        observed spectrum
-    uncs : array(float) of size (m,)
-        uncertainties of the observed spectrum
-    mask : array(bool) of size (k,)
-        mask to apply to the synthetic spectrum to select the same points as spec
-        The size of the synthetic spectrum is given by sme.wave
-        then mask must have the same size, with m True values
-    isJacobian : bool, optional
-        Flag to use when within the calculation of the Jacobian (default: False)
-    fname : str, optional
-        filename of the intermediary product (default: "sme.npy")
-    fig : Figure, optional
-        plotting interface, fig.add(x, y, title) will be called each non jacobian iteration
-
-    Returns
-    -------
-    resid : array(float) of size (m,)
-        residuals of the synthetic spectrum
-    """
-
-    self = residuals
-    if not hasattr(self, "iteration"):
+        self.filename = filename
         self.iteration = 0
+        self.fig = None
 
-    update = not isJacobian
-    save = not isJacobian
-    reuse_wavelength_grid = isJacobian
-    # TODO: Set to true if one of the fit parameters affects the linelist
-    updateLineList = False
+        self.parameter_names = []
 
-    # change parameters
-    for name, value in zip(names, param):
-        sme[name] = value
-    # run spectral synthesis
-    try:
-        sme2 = synthesize_spectrum(
-            sme,
-            reuse_wavelength_grid=reuse_wavelength_grid,
-            segments=segments,
-            passLineList=False,
-            updateLineList=updateLineList,
-            config=config,
-            lfs_atmo=lfs_atmo,
-            lfs_nlte=lfs_nlte,
+        self.update_linelist = False
+
+        self._latest_residual = None
+
+    @property
+    def nparam(self):
+        return len(self.parameter_names)
+
+    def __residuals(
+        self, param, sme, spec, uncs, mask, segments="all", isJacobian=False, **_
+    ):
+        """
+        Calculates the synthetic spectrum with sme_func and
+        returns the residuals between observation and synthetic spectrum
+
+        residual = (obs - synth) / uncs
+
+        Parameters
+        ----------
+        param : list(float) of size (n,)
+            parameter values to use for synthetic spectrum, order is the same as names
+        names : list(str) of size (n,)
+            names of the parameters to set, as defined by SME_Struct
+        sme : SME_Struct
+            sme structure holding all relevant information for the synthetic spectrum generation
+        spec : array(float) of size (m,)
+            observed spectrum
+        uncs : array(float) of size (m,)
+            uncertainties of the observed spectrum
+        mask : array(bool) of size (k,)
+            mask to apply to the synthetic spectrum to select the same points as spec
+            The size of the synthetic spectrum is given by sme.wave
+            then mask must have the same size, with m True values
+        isJacobian : bool, optional
+            Flag to use when within the calculation of the Jacobian (default: False)
+        fname : str, optional
+            filename of the intermediary product (default: "sme.npy")
+        fig : Figure, optional
+            plotting interface, fig.add(x, y, title) will be called each non jacobian iteration
+
+        Returns
+        -------
+        resid : array(float) of size (m,)
+            residuals of the synthetic spectrum
+        """
+        update = not isJacobian
+        save = not isJacobian
+        reuse_wavelength_grid = isJacobian
+        # TODO: Set to true if one of the fit parameters affects the linelist
+
+        # change parameters
+        for name, value in zip(self.parameter_names, param):
+            sme[name] = value
+        # run spectral synthesis
+        try:
+            sme2 = synthesize_spectrum(
+                sme,
+                reuse_wavelength_grid=reuse_wavelength_grid,
+                segments=segments,
+                passLineList=False,
+                updateLineList=self.update_linelist,
+                config=self.config,
+                lfs_atmo=self.lfs_atmo,
+                lfs_nlte=self.lfs_nlte,
+                dll=self.dll,
+            )
+        except AtmosphereError as ae:
+            # Something went wrong (left the grid? Don't go there)
+            # If returned value is not finite, the fit algorithm will not go there
+            logging.debug(ae)
+            return np.inf
+
+        # Return values by reference to sme
+        if update:
+            sme.wave = sme2.wave
+            sme.smod = sme2.smod
+            sme.vrad = sme2.vrad
+            sme.cscale = sme2.cscale
+
+        # Also save intermediary results, because we can
+        if save and self.filename is not None:
+            if self.filename.endswith(".npz"):
+                fname = self.filename[:-4]
+            else:
+                fname = self.filename
+            fname = f"{fname}_tmp.npz"
+            sme2.save(fname)
+
+        if segments == "all":
+            segments = range(sme.nseg)
+
+        synth = sme2.synth[segments]
+        if mask is not None:
+            synth = synth[mask]
+        else:
+            synth = synth.ravel()
+
+        # TODO: update based on lineranges
+        uncs_linelist = 0
+
+        resid = (synth - spec) / (uncs + uncs_linelist)
+        resid = np.nan_to_num(resid, copy=False)
+
+        if not isJacobian:
+            # Save result for jacobian
+            self._latest_residual = resid
+            self.iteration += 1
+            logging.debug("%s", {n: v for n, v in zip(self.parameter_names, param)})
+            # Plot
+            # if fig is not None:
+            #     wave = sme2.wave
+            #     try:
+            #         fig.add(wave, synth, f"Iteration {self.iteration}")
+            #     except AttributeError:
+            #         warnings.warn(f"Figure {repr(fig)} doesn't have a 'add' method")
+            #     except Exception as e:
+            #         warnings.warn(f"Error during Plotting: {e.message}")
+
+        return resid
+
+    def __jacobian(self, param, *args, bounds=None, segments="all", **_):
+        """
+        Approximate the jacobian numerically
+        The calculation is the same as "3-point"
+        but we can tell residuals that we are within a jacobian
+        """
+        return approx_derivative(
+            self.__residuals,
+            param,
+            method="3-point",
+            # This feels pretty bad, passing the latest synthetic spectrum
+            # by reference as a parameter of the residuals function object
+            f0=self._latest_residual,
+            bounds=bounds,
+            args=args,
+            kwargs={"isJacobian": True, "segments": segments},
         )
-    except AtmosphereError as ae:
-        # Something went wrong (left the grid? Don't go there)
-        # If returned value is not finite, the fit algorithm will not go there
-        logging.debug(ae)
-        return np.inf
 
-    # Return values by reference to sme
-    if update:
-        sme.wave = sme2.wave
-        sme.smod = sme2.smod
-        sme.vrad = sme2.vrad
-        sme.cscale = sme2.cscale
+    def __get_bounds(self, atmo_file):
+        """
+        Create Bounds based on atmosphere grid and general rules
 
-    # Also save intermediary results, because we can
-    if save:
-        if fname.endswith(".npz"):
-            fname = fname[:-4]
-        fname = f"{fname}_tmp.npz"
-        sme2.save(fname, overwrite=True)
+        Note that bounds define by definition a cube in the parameter space,
+        but the grid might not be a cube. I.e. Not all combinations of teff, logg, monh are valid
+        This method will choose the outerbounds of that space as the boundary, which means that
+        we can still run into problems when interpolating the atmospheres
 
-    if segments == "all":
-        segments = range(sme.nseg)
+        Parameters
+        ----------
+        param_names : array(str)
+            names of the parameters to vary
+        atmo_file : str
+            filename of the atmosphere grid
 
-    synth = sme2.synth[segments]
-    if mask is not None:
-        synth = synth[mask]
-    else:
-        synth = synth.ravel()
+        Raises
+        ------
+        IOError
+            If the atmosphere file can't be read, allowed types are IDL savefiles (.sav), and .krz files
 
-    # TODO: update based on lineranges
-    uncs_linelist = 0
+        Returns
+        -------
+        bounds : dict
+            Bounds for the given parameters
+        """
 
-    resid = (synth - spec) / (uncs + uncs_linelist)
-    resid = np.nan_to_num(resid, copy=False)
+        bounds = {}
 
-    if not isJacobian:
-        # Save result for jacobian
-        self.resid = resid
-        self.iteration += 1
-        logging.debug("%s", {n: v for n, v in zip(names, param)})
-        # Plot
-        if fig is not None:
-            wave = sme2.wave
-            try:
-                fig.add(wave, synth, f"Iteration {self.iteration}")
-            except AttributeError:
-                warnings.warn(f"Figure {repr(fig)} doesn't have a 'add' method")
-            except Exception as e:
-                warnings.warn(f"Error during Plotting: {e.message}")
+        # Create bounds based on atmosphere grid
+        if (
+            "teff" in self.parameter_names
+            or "logg" in self.parameter_names
+            or "monh" in self.parameter_names
+        ):
+            atmo_file = Path(atmo_file)
+            ext = atmo_file.suffix
+            atmo_file = self.lfs_atmo.get(atmo_file)
 
-    return resid
+            if ext == ".sav":
+                atmo_grid = readsav(atmo_file)["atmo_grid"]
+
+                teff = np.unique(atmo_grid.teff)
+                teff = np.min(teff), np.max(teff)
+                bounds["teff"] = teff
+
+                logg = np.unique(atmo_grid.logg)
+                logg = np.min(logg), np.max(logg)
+                bounds["logg"] = logg
+
+                monh = np.unique(atmo_grid.monh)
+                monh = np.min(monh), np.max(monh)
+                bounds["monh"] = monh
+            elif ext == ".krz":
+                # krz atmospheres are fixed to one parameter set
+                # allow just "small" area around that
+                atmo = krz_file(atmo_file)
+                bounds["teff"] = atmo.teff - 500, atmo.teff + 500
+                bounds["logg"] = atmo.logg - 1, atmo.logg + 1
+                bounds["monh"] = atmo.monh - 1, atmo.monh + 1
+            else:
+                raise IOError(f"File extension {ext} not recognized")
+
+        # Add generic bounds
+        bounds.update({"vmic": [0, np.inf], "vmac": [0, np.inf], "vsini": [0, np.inf]})
+        # bounds.update({"abund %s" % el: [-10, 11] for el in Abund._elem})
+
+        result = np.array([[-np.inf, np.inf]] * self.nparam)
+
+        for i, name in enumerate(self.parameter_names):
+            if name[:5] == "abund":
+                result[i] = [-10, 11]
+            elif name[:8] == "linelist":
+                pass
+            else:
+                result[i] = bounds[name]
+
+        result = result.T
+        return result
+
+    def __get_scale(self):
+        """
+        Returns scales for each parameter so that values are on order ~1
+
+        Parameters
+        ----------
+        param_names : list(str)
+            names of the parameters
+
+        Returns
+        -------
+        scales : list(float)
+            scales of the parameters in the same order as input array
+        """
+
+        # The only parameter we want to scale right now is temperature,
+        # as it is orders of magnitude larger than all others
+        scales = {"teff": 1000}
+        scales = [
+            scales[name] if name in scales.keys() else 1
+            for name in self.parameter_names
+        ]
+        return scales
+
+    def __get_default_values(self, sme):
+        """ Default parameter values for each name """
+        d = {"teff": 5778, "logg": 4.4, "monh": 0, "vmac": 1, "vmic": 1}
+        d.update({f"{el} abund": v for el, v in Abund.solar()().items()})
+
+        def default(name):
+            logging.info("No value for %s set, using default value %s", name, d[name])
+            return d[name]
+
+        return [
+            sme[s] if sme[s] is not None else default(s) for s in self.parameter_names
+        ]
+
+    def __update_fitresults(self, sme, result):
+        # SME structure is updated inside synthetize_spectrum to contain the results of the calculation
+        # If for some reason that should not work, one can load the intermediary "sme.npy" file
+        # sme = SME.SME_Struct.load("sme.npy")
+        for i, name in enumerate(self.parameter_names):
+            sme[name] = result.x[i]
+
+        # Update SME structure
+        popt = result.x
+        sme.pfree = np.atleast_2d(popt)  # 2d for compatibility
+        sme.fitparameters = self.parameter_names
+
+        for i, name in enumerate(self.parameter_names):
+            sme[name] = popt[i]
+
+        # Determine the covariance
+        # hessian == fisher information matrix
+        fisher = result.jac.T.dot(result.jac)
+        covar = np.linalg.pinv(fisher)
+        sig = np.sqrt(covar.diagonal())
+
+        # Update fitresults
+        sme.fitresults.clear()
+        sme.fitresults.covar = covar
+        sme.fitresults.grad = result.grad
+        sme.fitresults.pder = result.jac
+        sme.fitresults.resid = result.fun
+        sme.fitresults.chisq = (
+            result.cost * 2 / (sme.spec.size - len(self.parameter_names))
+        )
+
+        sme.fitresults.punc = {}
+        sme.fitresults.punc2 = {}
+        for i in range(len(self.parameter_names)):
+            # Errors based on covariance matrix
+            sme.fitresults.punc[self.parameter_names[i]] = sig[i]
+            # Errors based on ad-hoc metric
+            tmp = np.abs(result.fun) / np.clip(
+                np.median(np.abs(result.jac[:, i])), 1e-5, None
+            )
+            sme.fitresults.punc2[self.parameter_names[i]] = np.median(tmp)
+
+        # punc3 = uncertainties(res.jac, res.fun, uncs, param_names, plot=False)
+        return sme
+
+    def solve(self, sme, param_names=("teff", "logg", "monh"), segments="all"):
+        """
+        Find the least squares fit parameters to an observed spectrum
+
+        NOTE: intermediary results will be saved in filename ("sme.npy")
+
+        Parameters
+        ----------
+        sme : SME_Struct
+            sme struct containing all input (and output) parameters
+        param_names : list, optional
+            the names of the parameters to fit (default: ["teff", "logg", "monh"])
+        filename : str, optional
+            the sme structure will be saved to this file, use None to suppress this behaviour (default: "sme.npy")
+
+        Returns
+        -------
+        sme : SME_Struct
+            same sme structure with fit results in sme.fitresults, and best fit spectrum in sme.smod
+        """
+        assert "wave" in sme, "SME Structure has no wavelength"
+        assert "spec" in sme, "SME Structure has no observation"
+
+        if "uncs" not in sme:
+            sme.uncs = np.ones_like(sme.sob)
+            logging.warning(
+                "SME Structure has no uncertainties, using all ones instead"
+            )
+
+        if segments == "all":
+            segments = range(sme.nseg)
+
+        # Clean parameter values
+        self.parameter_names = sanitize_parameter_names(sme, param_names)
+
+        self.update_linelist = False
+        for name in self.parameter_names:
+            if name[:8] == "linelist":
+                self.update_linelist = True
+                break
+
+        # Create appropiate bounds
+        bounds = self.__get_bounds(sme.atmo.source)
+        scales = self.__get_scale()
+        # Starting values
+        p0 = self.__get_default_values(sme)
+
+        # Get constant data from sme structure
+        mask = sme.mask_good[segments]
+        spec = sme.spec[segments][mask]
+        uncs = sme.uncs[segments][mask]
+
+        # Divide the uncertainties by the spectrum, to improve the fit in the continuum
+        # Just as in IDL SME, this increases the relative error for points inside lines
+        uncs /= spec
+
+        logging.info(
+            "Fitting Spectrum with Parameters " + "%s, " * self.nparam, *param_names
+        )
+
+        # Setup LineList only once
+        self.dll.SetLibraryPath()
+        self.dll.InputLineList(sme.linelist)
+
+        # Do the heavy lifting
+        res = least_squares(
+            self.__residuals,
+            x0=p0,
+            jac=self.__jacobian,
+            bounds=bounds,
+            x_scale=scales,
+            loss="soft_l1",
+            method="trf",
+            verbose=2,
+            args=(sme, spec, uncs, mask),
+            kwargs={"bounds": bounds, "segments": segments},
+        )
+
+        # Save the results in the sme structure
+        sme = self.__update_fitresults(sme, res)
+
+        if self.filename is not None:
+            sme.save(self.filename)
+
+        logging.debug("Reduced chi square: %.3f", sme.fitresults.chisq)
+        for name, value, unc in zip(
+            self.parameter_names, res.x, sme.fitresults.punc.values()
+        ):
+            logging.info("%s\t%.5f +- %.5g", name.ljust(10), value, unc)
+
+        return sme
 
 
-def jacobian(param, *args, bounds=None, segments="all", **_):
-    """
-    Approximate the jacobian numerically
-    The calculation is the same as "3-point"
-    but we can tell residuals that we are within a jacobian
-    """
-    return approx_derivative(
-        residuals,
-        param,
-        method="3-point",
-        # This feels pretty bad, passing the latest synthetic spectrum
-        # by reference as a parameter of the residuals function object
-        f0=residuals.resid,
-        bounds=bounds,
-        args=args,
-        kwargs={"isJacobian": True, "segments": segments},
-    )
+def solve(sme, param_names=("teff", "logg", "monh"), segments="all", filename=None):
+    solver = SME_Solver(filename=filename)
+    return solver.solve(sme, param_names, segments)
 
 
 def linelist_errors(dll, wave, spec, linelist):
@@ -196,166 +455,7 @@ def linelist_errors(dll, wave, spec, linelist):
     return sig_syst
 
 
-def get_bounds(param_names, atmo_file, lfs_atmo):
-    """
-    Create Bounds based on atmosphere grid and general rules
-
-    Note that bounds define by definition a cube in the parameter space,
-    but the grid might not be a cube. I.e. Not all combinations of teff, logg, monh are valid
-    This method will choose the outerbounds of that space as the boundary, which means that
-    we can still run into problems when interpolating the atmospheres
-
-    Parameters
-    ----------
-    param_names : array(str)
-        names of the parameters to vary
-    atmo_file : str
-        filename of the atmosphere grid
-
-    Raises
-    ------
-    IOError
-        If the atmosphere file can't be read, allowed types are IDL savefiles (.sav), and .krz files
-
-    Returns
-    -------
-    bounds : dict
-        Bounds for the given parameters
-    """
-
-    bounds = {}
-
-    # Create bounds based on atmosphere grid
-    if "teff" in param_names or "logg" in param_names or "monh" in param_names:
-        atmo_file = Path(atmo_file)
-        ext = atmo_file.suffix
-        atmo_file = lfs_atmo.get(atmo_file)
-
-        if ext == ".sav":
-            atmo_grid = readsav(atmo_file)["atmo_grid"]
-
-            teff = np.unique(atmo_grid.teff)
-            teff = np.min(teff), np.max(teff)
-            bounds["teff"] = teff
-
-            logg = np.unique(atmo_grid.logg)
-            logg = np.min(logg), np.max(logg)
-            bounds["logg"] = logg
-
-            monh = np.unique(atmo_grid.monh)
-            monh = np.min(monh), np.max(monh)
-            bounds["monh"] = monh
-        elif ext == ".krz":
-            # krz atmospheres are fixed to one parameter set
-            # allow just "small" area around that
-            atmo = krz_file(atmo_file)
-            bounds["teff"] = atmo.teff - 500, atmo.teff + 500
-            bounds["logg"] = atmo.logg - 1, atmo.logg + 1
-            bounds["monh"] = atmo.monh - 1, atmo.monh + 1
-        else:
-            raise IOError(f"File extension {ext} not recognized")
-
-    # Add generic bounds
-    bounds.update({"vmic": [0, np.inf], "vmac": [0, np.inf], "vsini": [0, np.inf]})
-    bounds.update({"%s abund" % el: [-10, 11] for el in Abund._elem})
-
-    # Select bounds requested
-    bounds = np.array([bounds[s] for s in param_names]).T
-
-    return bounds
-
-
-def get_scale(param_names):
-    """
-    Returns scales for each parameter so that values are on order ~1
-
-    Parameters
-    ----------
-    param_names : list(str)
-        names of the parameters
-
-    Returns
-    -------
-    scales : list(float)
-        scales of the parameters in the same order as input array
-    """
-
-    # The only parameter we want to scale right now is temperature,
-    # as it is orders of magnitude larger than all others
-    scales = {"teff": 1000}
-    scales = [scales[name] if name in scales.keys() else 1 for name in param_names]
-    return scales
-
-
-def default(name):
-    """ Default parameter values for each name """
-    d = {"teff": 5778, "logg": 4.4, "monh": 0, "vmac": 1, "vmic": 1}
-    d.update({f"{el} abund": v for el, v in Abund.solar()().items()})
-
-    logging.info("No value for %s set, using default value %s", name, d[name])
-
-    return d[name]
-
-
-def setup_lfs(config, lfs_atmo, lfs_nlte):
-    if config is None:
-        config = Config()
-    if lfs_atmo is None:
-        server = config["data.file_server"]
-        storage = config["data.atmospheres"]
-        cache = config["data.cache.atmospheres"]
-        pointers = config["data.pointers.atmopsheres"]
-        lfs_atmo = LargeFileStorage(server, pointers, storage, cache)
-
-    if lfs_nlte is None:
-        server = config["data.file_server"]
-        storage = config["data.nlte_grids"]
-        cache = config["data.cache.nlte_grids"]
-        pointers = config["data.pointers.nlte_grids"]
-        lfs_nlte = LargeFileStorage(server, pointers, storage, cache)
-    return config, lfs_atmo, lfs_nlte
-
-
-def solve(
-    sme,
-    param_names=("teff", "logg", "monh"),
-    filename="sme.npy",
-    fig=None,
-    segments="all",
-    config=None,
-    lfs_atmo=None,
-    lfs_nlte=None,
-    **kwargs,
-):
-    """
-    Find the least squares fit parameters to an observed spectrum
-
-    NOTE: intermediary results will be saved in filename ("sme.npy")
-
-    Parameters
-    ----------
-    sme : SME_Struct
-        sme struct containing all input (and output) parameters
-    param_names : list, optional
-        the names of the parameters to fit (default: ["teff", "logg", "monh"])
-    filename : str, optional
-        the sme structure will be saved to this file, use None to suppress this behaviour (default: "sme.npy")
-
-    Returns
-    -------
-    sme : SME_Struct
-        same sme structure with fit results in sme.fitresults, and best fit spectrum in sme.smod
-    """
-
-    assert "wave" in sme, "SME Structure has no wavelength"
-    assert "spec" in sme, "SME Structure has no observation"
-
-    if "uncs" not in sme:
-        sme.uncs = np.ones_like(sme.sob)
-        logging.warning("SME Structure has no uncertainties, using all ones instead")
-
-    config, lfs_atmo, lfs_nlte = setup_lfs(config, lfs_atmo, lfs_nlte)
-
+def sanitize_parameter_names(sme, param_names):
     # Sanitize parameter names
     param_names = [p.casefold() for p in param_names]
     param_names = [p.capitalize() if p[:5] == "abund" else p for p in param_names]
@@ -382,95 +482,29 @@ def solve(
         logging.info(
             "Removed fit parameter 'cont', instead set continuum flag to 'linear'"
         )
+    return param_names
 
-    nparam = len(param_names)
 
-    # Create appropiate bounds
-    bounds = get_bounds(param_names, sme.atmo.source, lfs_atmo)
-    scales = get_scale(param_names)
+# region synthethize
 
-    # Starting values
-    p0 = [sme[s] if sme[s] is not None else default(s) for s in param_names]
 
-    # Get constant data from sme structure
-    if segments == "all":
-        segments = range(sme.nseg)
-    mask = sme.mask_good[segments]
-    spec = sme.spec[segments][mask]
-    uncs = sme.uncs[segments][mask]
+def setup_lfs(config=None, lfs_atmo=None, lfs_nlte=None):
+    if config is None:
+        config = Config()
+    if lfs_atmo is None:
+        server = config["data.file_server"]
+        storage = config["data.atmospheres"]
+        cache = config["data.cache.atmospheres"]
+        pointers = config["data.pointers.atmopsheres"]
+        lfs_atmo = LargeFileStorage(server, pointers, storage, cache)
 
-    # Divide the uncertainties by the spectrum, to improve the fit in the continuum
-    # Just as in IDL SME
-    uncs /= spec
-
-    logging.info("Fitting Spectrum with Parameters " + "%s, " * nparam, *param_names)
-
-    # Setup LineList only once
-    dll.SetLibraryPath()
-    dll.InputLineList(sme.linelist)
-
-    # Do the heavy lifting
-    res = least_squares(
-        residuals,
-        x0=p0,
-        jac=jacobian,
-        bounds=bounds,
-        x_scale=scales,
-        loss="soft_l1",
-        method="trf",
-        verbose=2,
-        args=(param_names, sme, spec, uncs, mask, config, lfs_atmo, lfs_nlte),
-        kwargs={"bounds": bounds, "fig": fig, "fname": filename, "segments": segments},
-        max_nfev=kwargs.get("maxiter"),
-    )
-
-    # SME structure is updated inside synthetize_spectrum to contain the results of the calculation
-    # If for some reason that should not work, one can load the intermediary "sme.npy" file
-    # sme = SME.SME_Struct.load("sme.npy")
-    for i, name in enumerate(param_names):
-        sme[name] = res.x[i]
-
-    # Update SME structure
-    popt = res.x
-    sme.pfree = np.atleast_2d(popt)  # 2d for compatibility
-    sme.fitparameters = param_names
-
-    for i, name in enumerate(param_names):
-        sme[name] = popt[i]
-
-    # Determine the covariance
-    # hessian == fisher information matrix
-    fisher = res.jac.T.dot(res.jac)
-    covar = np.linalg.pinv(fisher)
-    sig = np.sqrt(covar.diagonal())
-
-    # Update fitresults
-    sme.fitresults.clear()
-    sme.fitresults.covar = covar
-    sme.fitresults.grad = res.grad
-    sme.fitresults.pder = res.jac
-    sme.fitresults.resid = res.fun
-    sme.fitresults.chisq = res.cost * 2 / (sme.spec.size - nparam)
-
-    sme.fitresults.punc = {}
-    sme.fitresults.punc2 = {}
-    for i in range(nparam):
-        # Errors based on covariance matrix
-        sme.fitresults.punc[param_names[i]] = sig[i]
-        # Errors based on ad-hoc metric
-        tmp = np.abs(res.fun) / np.clip(np.median(np.abs(res.jac[:, i])), 1e-5, None)
-        sme.fitresults.punc2[param_names[i]] = np.median(tmp)
-
-    # punc3 = uncertainties(res.jac, res.fun, uncs, param_names, plot=False)
-
-    if filename is not None:
-        sme.save(filename)
-
-    logging.debug("Reduced chi square: %.3f", sme.fitresults.chisq)
-    for name, value, unc in zip(param_names, popt, sme.fitresults.punc.values()):
-        logging.info("%s\t%.5f +- %.5g", name.ljust(10), value, unc)
-
-    return sme
+    if lfs_nlte is None:
+        server = config["data.file_server"]
+        storage = config["data.nlte_grids"]
+        cache = config["data.cache.nlte_grids"]
+        pointers = config["data.pointers.nlte_grids"]
+        lfs_nlte = LargeFileStorage(server, pointers, storage, cache)
+    return config, lfs_atmo, lfs_nlte
 
 
 def get_atmosphere(sme, lfs_atmo):
@@ -594,6 +628,7 @@ def synthesize_spectrum(
     config=None,
     lfs_atmo=None,
     lfs_nlte=None,
+    dll=None,
 ):
     """
     Calculate the synthetic spectrum based on the parameters passed in the SME structure
@@ -624,6 +659,8 @@ def synthesize_spectrum(
         same sme structure with synthetic spectrum in sme.smod
     """
 
+    if dll is None:
+        dll = SME_DLL()
     config, lfs_atmo, lfs_nlte = setup_lfs(config, lfs_atmo, lfs_nlte)
 
     # Define constants

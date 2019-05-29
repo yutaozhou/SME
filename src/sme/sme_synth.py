@@ -1,6 +1,7 @@
 """ Wrapper for sme_synth.so C library """
 import os
 import warnings
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -710,6 +711,9 @@ class SME_DLL:
         nlines = self.nlines
         nlte_flags = np.zeros(nlines, dtype=np.int16)
 
-        check_error("GetNLTEflags", nlte_flags, nlines, type=("short", "int"))
+        try:
+            check_error("GetNLTEflags", nlte_flags, nlines, type=("short", "int"))
+        except AttributeError:
+            logging.warning("Using deprecated SME C library")
 
         return nlte_flags.astype(bool)

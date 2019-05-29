@@ -1,43 +1,16 @@
-language: c
+language: python
+python:
+  - "3.6"
 
-os:
-  - linux
-  - osx
+dist: xenial
 
-sudo: required
-
-before_install:
 
 install:
-  - |
-    case $TRAVIS_OS_NAME in
-      "linux" )
-        MINICONDA_REPO="https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh"
-        export LD_LIBRARY_PATH=/home/travis/miniconda/envs/sme/lib/python3.6/site-packages/sme-0.0-py3.6.egg/sme/dll/intel64_lin${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
-        sudo apt-get update
-        ;;
-      "osx" )
-        MINICONDA_REPO="https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh"
-        brew update
-        ;;
-    esac
-  - wget $MINICONDA_REPO -O miniconda.sh
-  - bash miniconda.sh -b -p $HOME/miniconda
-  - export PATH="$HOME/miniconda/bin:$PATH"
-  - hash -r
-  - conda config --set always_yes yes --set changeps1 no
-  - conda update -q conda
-  - conda info -a
-  - conda create -q -n sme python=3.6 pytest
-  - source activate sme
-  - echo $LD_LIBRARY_PATH
-  - python setup.py install
+  - pip install -r requirements.txt
+  - pip install -e .
 
 script:
   - pytest
 
-# https://conda.io/docs/user-guide/tasks/use-conda-with-travis-ci.html
-# https://www.jeffgeerling.com/blog/2017/bash-logic-structures-and-conditionals-if-case-loops-etc-travis-ci
-# https://docs.travis-ci.com/user/installing-dependencies/#Installing-Dependencies-on-Multiple-Operating-Systems
-# https://github.com/travis-ci/travis-ci/issues/9454
-# https://github.com/travis-ci/travis-ci/issues/9815
+cache:
+  - pip

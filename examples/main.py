@@ -11,7 +11,7 @@ from gui import plot_plotly, plot_pyplot
 from sme import sme as SME
 from sme import util
 from sme.abund import Abund
-from sme.solve import solve, synthesize_spectrum
+from sme.solve import synthesize_spectrum, SME_Solver
 from sme.vald import ValdFile
 
 if __name__ == "__main__":
@@ -30,7 +30,9 @@ if __name__ == "__main__":
 
     # Load files
     sme = SME.SME_Struct.load(in_file)
-    sme.save("test.npz", compressed=False, for_idl=True)
+    sme.nlte.set_nlte("Ca")
+
+    # sme.save("test.npz", compressed=False, for_idl=True)
 
     if vald_file is not None:
         vald = ValdFile(vald_file)
@@ -42,22 +44,19 @@ if __name__ == "__main__":
 
     # Choose free parameters, i.e. sme.pname
     if len(fitparameters) == 0:
-        # ["teff", "logg", "monh", "Mg Abund", "Y Abund"]
+        # ["teff", "logg", "monh", "abund Mg", "abund Y"]
         if sme.fitparameters is not None and len(sme.fitparameters) != 0:
             fitparameters = sme.fitparameters
         else:
             fitparameters = ["teff", "logg", "monh"]
 
-    fitparameters = ["linelist 10 gflog"]
+    fitparameters = ["teff"]
     sme.nlte.set_nlte("Ca")
-
-    print(sme["linelist 10 gflog"])
-    sme["linelist 10 gflog"] = -1.5
-    print(sme["linelist 10 gflog"])
 
     # Start SME solver
     # sme = synthesize_spectrum(sme, segments=[0])
-    sme = solve(sme, fitparameters, filename=f"{target}.npz", segments=[0])
+    solver = SME_Solver(filename=f"{target}.npz")
+    sme = solver.solve(sme, fitparameters, segments=[0])
 
     try:
         # Calculate stellar age based on abundances
