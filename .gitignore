@@ -151,3 +151,6 @@ src/sme/atmospheres/*
 src/sme/nlte_grids/*
 
 examples/*.tmp
+EOS/*
+dll_source/*
+wheelhouse/*

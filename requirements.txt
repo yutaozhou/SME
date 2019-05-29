@@ -2,10 +2,11 @@ numpy
 scipy
 pandas
 astropy
+ruamel.yaml
 wget
-Ipython
-jupyter
 matplotlib
+Ipython
+ipywidgets
+jupyter
 plotly
 pytest
-ruamel.yaml

@@ -2,7 +2,6 @@
 Provide Plotting utility for Jupyter Notebook using Plot.ly
 Can also be used just for Plot.ly, which will then generated html files
 """
-import ipywidgets as widgets
 import numpy as np
 import plotly.offline as py
 import plotly.graph_objs as go
@@ -11,6 +10,7 @@ from scipy.constants import speed_of_light
 from .plot_colors import PlotColors
 
 try:
+    import ipywidgets as widgets
     from IPython import get_ipython
     from IPython.display import display
 
@@ -97,17 +97,17 @@ class FinalPlot:
         self.fig.data[0].on_selection(self.selection_fn)
 
         # Add button to save figure
-        self.button_save = widgets.Button(description="Save")
-        self.button_save.on_click(self.save)
-
-        # Add buttons for Mask selection
-        self.button_mask = widgets.ToggleButtons(
-            options=["Good", "Bad", "Continuum", "Line"], description="Mask"
-        )
-        self.button_mask.observe(self.on_toggle_click, "value")
-
-        self.widget = widgets.VBox([self.button_mask, self.button_save, self.fig])
         if in_notebook:
+            self.button_save = widgets.Button(description="Save")
+            self.button_save.on_click(self.save)
+
+            # Add buttons for Mask selection
+            self.button_mask = widgets.ToggleButtons(
+                options=["Good", "Bad", "Continuum", "Line"], description="Mask"
+            )
+            self.button_mask.observe(self.on_toggle_click, "value")
+
+            self.widget = widgets.VBox([self.button_mask, self.button_save, self.fig])
             display(self.widget)
 
     def save(self, _=None, filename="SME.html"):
