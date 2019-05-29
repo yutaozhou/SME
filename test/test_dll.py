@@ -12,30 +12,81 @@ from sme.nlte import nlte
 
 # Create Objects to pass to library
 # Their functionality is tested in other test files, so we assume it works
-cwd = dirname(__file__)
-libsme = SME_DLL()
-
-teff = 5000
-grav = 4.2
-vturb = 0.1
-wfirst, wlast = 5500, 5600
-vw_scale = 2.5
-
-mu = [1]
-accrt = 0.1
-accwt = 0.1
-
-linelist = LineList()
-linelist.add("Fe 1", 5502.9931, 0.9582, -3.047, 7.19, -6.22, 239.249)
-linelist.add("Cr 2", 5503.5955, 4.1682, -2.117, 8.37, -6.49, 195.248)
-linelist.add("Mn 1", 5504.0000, 2.0000, -3.000, 8.00, -6.50, 200.247)
-
-atmo = krz_file(cwd + "/testatmo1.krz")
-
-abund = Abund(0, "Asplund2009")
+@pytest.fixture
+def cwd():
+    return dirname(__file__)
 
 
-def test_basic():
+@pytest.fixture
+def libsme():
+    return SME_DLL()
+
+
+@pytest.fixture
+def teff():
+    return 5000
+
+
+@pytest.fixture
+def grav():
+    return 4.2
+
+
+@pytest.fixture
+def vturb():
+    return 0.1
+
+
+@pytest.fixture
+def wfirst():
+    return 5500
+
+
+@pytest.fixture
+def wlast():
+    return 5600
+
+
+@pytest.fixture
+def vw_scale():
+    return 2.5
+
+
+@pytest.fixture
+def mu():
+    return [1]
+
+
+@pytest.fixture
+def accrt():
+    return 0.1
+
+
+@pytest.fixture
+def accwt():
+    return 0.1
+
+
+@pytest.fixture
+def linelist():
+    linelist = LineList()
+    linelist.add("Fe 1", 5502.9931, 0.9582, -3.047, 7.19, -6.22, 239.249)
+    linelist.add("Cr 2", 5503.5955, 4.1682, -2.117, 8.37, -6.49, 195.248)
+    linelist.add("Mn 1", 5504.0000, 2.0000, -3.000, 8.00, -6.50, 200.247)
+    return linelist
+
+
+@pytest.fixture
+def atmo(cwd):
+    return krz_file(cwd + "/testatmo1.krz")
+
+
+@pytest.fixture
+def abund():
+    return Abund(0, "Asplund2009")
+
+
+def test_basic(libsme, wfirst, wlast, vw_scale):
     """ Test instantiation of library object and some basic functions """
     print(libsme.SMELibraryVersion())
     libsme.InputWaveRange(wfirst, wlast)
@@ -51,7 +102,7 @@ def test_basic():
     assert libsme.H2broad
 
 
-def test_linelist():
+def test_linelist(libsme, linelist):
     """ Test linelist behaviour """
     libsme.InputLineList(linelist)
     outlist = libsme.OutputLineList()
@@ -70,7 +121,7 @@ def test_linelist():
         libsme.InputLineList(None)
 
 
-def test_atmosphere():
+def test_atmosphere(libsme, atmo, teff, grav, vturb):
     """ Test atmosphere behaviour """
 
     libsme.InputModel(teff, grav, vturb, atmo)
@@ -92,7 +143,7 @@ def test_atmosphere():
         libsme.InputModel(teff, grav, vturb, None)
 
 
-def test_abund():
+def test_abund(libsme, abund):
     """ Test abundance behaviour """
     libsme.InputAbund(abund)
 
@@ -105,7 +156,21 @@ def test_abund():
         libsme.InputAbund(None)
 
 
-def test_transf():
+def test_transf(
+    libsme,
+    linelist,
+    teff,
+    grav,
+    vturb,
+    atmo,
+    abund,
+    vw_scale,
+    wfirst,
+    wlast,
+    mu,
+    accrt,
+    accwt,
+):
     """ Test radiative transfer """
     libsme.SetLibraryPath()
 
