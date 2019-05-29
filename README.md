@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/AWehrhahn/SME.svg?branch=master)](https://travis-ci.org/AWehrhahn/SME)
+
 # SME
 Spectroscopy Made Easy (SME) is a software tool that fits an observed
 spectrum of a star with a model spectrum. Since its initial release in
