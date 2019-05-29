@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
 import os
+from setuptools import setup
+
 from pathlib import Path
 from ruamel.yaml import YAML
-from setuptools import setup
 
 # Create folder structure
 directory = Path("~/.sme/").expanduser()
@@ -13,11 +14,11 @@ nlte = directory / "nlte_grids"
 cache_atmo = atmo / "cache"
 cache_nlte = nlte / "cache"
 
-directory.makedir(exist_ok=True)
-atmo.makedir(exist_ok=True)
-nlte.makedir(exist_ok=True)
-cache_atmo.makedir(exist_ok=True)
-cache_nlte.makedir(exist_ok=True)
+directory.mkdir(exist_ok=True)
+atmo.mkdir(exist_ok=True)
+nlte.mkdir(exist_ok=True)
+cache_atmo.mkdir(exist_ok=True)
+cache_nlte.mkdir(exist_ok=True)
 
 
 # Create config file if it does not exist
@@ -42,12 +43,21 @@ if not conf.exists():
 
 # Setup package
 setup(
-    name="sme",
-    version="0.0",
+    name="pysme-astro",
+    version="0.01",
     description="Spectroscopy Made Easy",
-    author="Jeff A. Valenti",
-    author_email="valenti@stsci.edu",
+    author="Ansgar Wehrhahn, Jeff A. Valenti",
+    author_email="ansgar.wehrhahn@physics.uu.se, valenti@stsci.edu",
     packages=["sme", "gui"],
     package_dir={"": "src"},
-    package_data={"sme": ["dll/sme_synth.so.*", "dll/intel64_lin/*"]},
+    include_package_data=True,
+    install_requires=[
+        "numpy",
+        "scipy",
+        "matplotlib",
+        "plotly",
+        "pandas",
+        "wget",
+        "ruamel.yaml",
+    ],
 )
