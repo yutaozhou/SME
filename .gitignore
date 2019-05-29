@@ -119,7 +119,6 @@ fisher1.dat
 /*.sav
 uioenvfile.txt
 *.lin
-*.inp
 test.html
 beta.png
 *.out
@@ -147,3 +146,5 @@ examples/*.tmp
 EOS/*
 dll_source/*
 wheelhouse/*
+
+examples/*.inp

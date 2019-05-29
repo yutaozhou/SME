@@ -213,7 +213,7 @@ class LineList:
 
             # additional data arrays for sme
         names = ["lande_lower", "lande_upper"]
-        return self._lines[names].values
+        return self._lines.reindex(columns=names).values
 
     @property
     def extra(self):
@@ -221,7 +221,7 @@ class LineList:
         if self.lineformat == "short":
             raise AttributeError("Extra is only available in the long line format")
         names = ["j_lo", "e_upp", "j_up"]
-        return self._lines[names].values
+        return self._lines.reindex(columns=names).values
 
     @property
     def atomic(self):
@@ -237,7 +237,7 @@ class LineList:
             "gamvw",
         ]
         # Select fields
-        return self._lines[names].values
+        return self._lines.reindex(columns=names).values
 
     def sort(self, field="wlcent", ascending=True):
         """Sort the linelist
