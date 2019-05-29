@@ -2,7 +2,7 @@ Quickstart
 ==========
 
 The first step in each SME project is to create an SME structure
-    >>> from PySME.src.sme.sme import SME_Struct
+    >>> from sme.sme import SME_Struct
 
 This can be done in done in a few different ways:
     * load an existing SME save file (from Python or IDL)
@@ -14,13 +14,13 @@ This can be done in done in a few different ways:
 
 Either way one has to make sure that a few essential properties are set in the object, those are:
     * Stellar parameters (teff, logg, monh, abund)
-        >>> from PySME.src.sme.abund import Abund
+        >>> from sme.abund import Abund
         >>> sme.teff, sme.logg, sme.monh = 5700, 4.4, -0.1
         >>> sme.abund = Abund.solar()
     * Wavelength range(s) in Ångstrom
         >>> sme.wran = [[4500, 4600], [5200, 5400]]
     * LineList (linelist), e.g. from VALD
-        >>> from PySME.src.sme.vald import ValdFile
+        >>> from sme.vald import ValdFile
         >>> vald = ValdFile("linelist.lin")
         >>> sme.linelist = vald.linelist
     * Atmosphere (atmo), the file has to be in PySME/src/sme/atmospheres
@@ -52,15 +52,15 @@ Optionally the following can be set:
 
 Once the SME structure is prepared, SME can be run in one of its two modes:
     1. Synthesize a spectrum
-        >>> from PySME.src.sme.solve import synthesize_spectrum
+        >>> from sme.solve import synthesize_spectrum
         >>> sme = synthesize_spectrum(sme)
     2. Finding the best fit (least squares) solution
-        >>> from PySME.src.sme.solve import solve
+        >>> from sme.solve import solve
         >>> fitparameters = ["teff", "logg", "monh", "Mg Abund"]
         >>> sme = solve(sme, fitparameters)
 
 The results will be contained in the output sme structure. These can for example be plotted using the gui module.
-    >>> from PySME.src.gui import plot_plotly
+    >>> from gui import plot_plotly
     >>> fig = plot_plotly.FinalPlot(sme)
     >>> fig.save(filename="sme.html")
 
