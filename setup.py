@@ -22,23 +22,23 @@ cache_nlte.mkdir(exist_ok=True)
 
 
 # Create config file if it does not exist
-if not conf.exists():
-    # Hardcode default settings?
-    defaults = {
-        "data.file_server": "https://sme.astro.uu.se/atmos",
-        "data.atmospheres": "~/.sme/atmospheres",
-        "data.nlte_grids": "~/.sme/nlte_grids",
-        "data.cache.atmospheres": "~/.sme/atmospheres/cache",
-        "data.cache.nlte_grids": "~/.sme/nlte_grids/cache",
-        "data.pointers.atmospheres": "datafiles_atmospheres.yaml",
-        "data.pointers.nlte_grids": "datafiles_nlte.yaml",
-    }
+# if not conf.exists():
+# Hardcode default settings?
+defaults = {
+    "data.file_server": "https://sme.astro.uu.se/atmos",
+    "data.atmospheres": "~/.sme/atmospheres",
+    "data.nlte_grids": "~/.sme/nlte_grids",
+    "data.cache.atmospheres": "~/.sme/atmospheres/cache",
+    "data.cache.nlte_grids": "~/.sme/nlte_grids/cache",
+    "data.pointers.atmospheres": "datafiles_atmospheres.yaml",
+    "data.pointers.nlte_grids": "datafiles_nlte.yaml",
+}
 
-    # Save file to disk
-    yaml = YAML(typ="safe")
-    yaml.default_flow_style = False
-    with conf.open("w") as f:
-        yaml.dump(defaults, f)
+# Save file to disk
+yaml = YAML(typ="safe")
+yaml.default_flow_style = False
+with conf.open("w") as f:
+    yaml.dump(defaults, f)
 
 
 # Setup package
