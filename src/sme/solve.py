@@ -115,7 +115,7 @@ class SME_Solver:
         # Return values by reference to sme
         if update:
             sme.wave = sme2.wave
-            sme.smod = sme2.smod
+            sme.synth = sme2.synth
             sme.vrad = sme2.vrad
             sme.cscale = sme2.cscale
 
@@ -821,7 +821,7 @@ def synthesize_spectrum(
         sme.wave[s] = wave[s]
         sme.synth[s] = smod[s]
 
-    if sme.cscale_flag != "fix":
+    if sme.cscale_flag not in ["fix", "none"]:
         for s in segments:
             sme.cscale[s] = cscale[s]
 

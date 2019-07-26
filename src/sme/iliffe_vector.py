@@ -80,6 +80,14 @@ class Iliffe_vector:
 
         if isinstance(index, str):
             self._values[index] = value
+            return
+
+        if isinstance(index, Iliffe_vector):
+            if not self.__equal_size__(index):
+                raise ValueError("Index vector has a different shape")
+            for i, ind in enumerate(index):
+                self._values[i][ind] = value
+            return
 
         if len(index) == 0:
             self._values = value

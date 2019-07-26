@@ -622,12 +622,14 @@ class SME_Struct(Param):
             else:
                 values = np.full(self.wob.shape, value)
                 value = Iliffe_vector(values=values, index=self.wind)
-        elif isinstance(value, (list, np.ndarray)):
+        elif isinstance(value, np.ndarray):
             value = np.require(value, requirements="W")
             if value.ndim == 1:
                 value = Iliffe_vector(values=value, index=self.wind)
             else:
                 value = Iliffe_vector(nseg=len(value), values=value)
+        elif isinstance(value, list):
+            value = Iliffe_vector(nseg=len(value), values=value)
         elif isinstance(value, Iliffe_vector):
             pass
         else:
@@ -1016,13 +1018,20 @@ class SME_Struct(Param):
             # Echelle file (from REDUCE)
             ech = echelle.read(filename)
             s = SME_Struct()
-            if hasattr(ech, "columns"):
-                s.wind = np.cumsum([0, *np.diff(ech.columns, axis=1).ravel()])
-            s.wave = np.ma.compressed(ech.wave)
-            s.spec = np.ma.compressed(ech.spec)
-            s.uncs = np.ma.compressed(ech.sig)
-            s.mask = np.full(s.sob.size, 1)
+            s.wave = [np.ma.compressed(w) for w in ech.wave]
+            s.spec = [np.ma.compressed(s) for s in ech.spec]
+            s.uncs = [np.ma.compressed(s) for s in ech.sig]
+
+            for i, w in enumerate(s.wave):
+                sort = np.argsort(w)
+                s.wave[i] = w[sort]
+                s.spec[i] = s.spec[i][sort]
+                s.uncs[i] = s.uncs[i][sort]
+
+            s.mask = [np.full(i.size, 1) for i in s.spec] 
+            s.mask[s.spec == 0] = SME_Struct.mask_values["bad"] 
             s.wran = [[w[0], w[-1]] for w in s.wave]
+            s.abund = Abund.solar()
             try:
                 s.object = ech.head["OBJECT"]
             except KeyError:

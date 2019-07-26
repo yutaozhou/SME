@@ -118,8 +118,17 @@ class LargeFileStorage:
 
         # Step 5: If not in the cache, download from the server
         logging.info("Downloading newest version of the datafile from server")
-        self.server.download(newest, self.cache)
-        os.symlink(self.cache / newest, self.current / key)
+        try:
+            self.server.download(newest, self.cache)
+            os.symlink(self.cache / newest, self.current / key)
+        except TimeoutError:
+            logging.warning("Server connection timed out.")
+            if key in self.current:
+                logging.warning("Using obsolete, but existing version")
+            else:
+                logging.warning("No data available for use")
+                raise FileNotFoundError("No data could be found for the requested file")
+
         return self.current / key
 
     def clean_cache(self):

@@ -147,7 +147,10 @@ def start_logging(log_file="log.log"):
     dll = SME_DLL()
     logging.debug("----------------------")
     logging.debug("Python version: %s", python_version())
-    logging.debug("SME CLib version: %s", dll.SMELibraryVersion())
+    try:
+        logging.debug("SME CLib version: %s", dll.SMELibraryVersion())
+    except OSError:
+        logging.debug("SME CLib version: ???")
     logging.debug("PySME version: %s", smeversion.full_version)
     logging.debug("Numpy version: %s", npversion)
     logging.debug("Scipy version: %s", spversion)

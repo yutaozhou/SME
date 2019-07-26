@@ -15,23 +15,21 @@ from sme.solve import synthesize_spectrum, SME_Solver
 from sme.vald import ValdFile
 
 if __name__ == "__main__":
-    target = "debug"
+    target = "k2-3"
     util.start_logging(f"{target}.log")
 
     # Get input files
     if len(sys.argv) > 1:
         in_file, vald_file, fitparameters = util.parse_args()
     else:
-        os.chdir(os.path.dirname(__file__))
-        in_file = "sun_6440_grid.inp"
-        vald_file = "sun.lin"
-        atmo_file = None
+        examples_dir = "/DATA/ESO_Archive/HARPS/K2-3/"
+        in_file = os.path.join(examples_dir, "K2-3_red_c.ech")
+        vald_file = os.path.expanduser("~/Documents/IDL/SME/harps_red.lin")
+        atmo_file = "marcs2012p_t2.0.sav"
         fitparameters = []
 
     # Load files
     sme = SME.SME_Struct.load(in_file)
-    sme.nlte.set_nlte("Ca")
-
     # sme.save("test.npz", compressed=False, for_idl=True)
 
     if vald_file is not None:
@@ -50,13 +48,22 @@ if __name__ == "__main__":
         else:
             fitparameters = ["teff", "logg", "monh"]
 
-    fitparameters = ["teff"]
-    sme.nlte.set_nlte("Ca")
+    sme.teff = 3800
+    sme.logg = 4.7
+    sme.monh = -0.4
+    sme.vsini = 1
+    sme.vmic = 1
+    sme.vmac = 1
+
+    sme.cscale_flag = "none"
+    sme.cscale = 1
+    sme.vrad_flag = "whole"
+    sme.vrad = 30.75
 
     # Start SME solver
     # sme = synthesize_spectrum(sme, segments=[0])
     solver = SME_Solver(filename=f"{target}.npz")
-    sme = solver.solve(sme, fitparameters, segments=[0])
+    sme = solver.solve(sme, fitparameters)
 
     try:
         # Calculate stellar age based on abundances

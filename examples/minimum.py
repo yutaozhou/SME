@@ -10,12 +10,14 @@ from sme import util
 from sme.solve import solve, synthesize_spectrum
 
 if __name__ == "__main__":
-    target = "sun"
+    target = "k2_3"
     util.start_logging(f"{target}.log")
 
     # Put your input structure here!
-    examples_dir = os.path.dirname(os.path.realpath(__file__))
-    in_file = os.path.join(examples_dir, "sun_6440_grid.inp")
+    examples_dir = "/DATA/ESO_Archive/HARPS/K2-3/"
+    in_file = os.path.join(examples_dir, "K2-3_red_c.ech")
+
+    linelist = os.path.expanduser("~/Documents/IDL/SME/harps_blue.lin")
 
     sme = SME.SME_Struct.load(in_file)
     fitparameters = ["teff", "logg", "monh"]
