@@ -24,7 +24,7 @@ Prerequisites:
         - atmospheres
             - everything from SME/atmospheres
         - nlte_grids
-            - *.grd from SME/NLTE
+            - \*.grd from SME/NLTE
 
 3. Run SME
     - python minimum.py

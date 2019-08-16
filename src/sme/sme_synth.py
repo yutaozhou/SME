@@ -358,17 +358,29 @@ class SME_DLL:
 
     def GetOpacity(self, switch, species=None, key=None):
         """
-        Returns specific cont. opacity
+        Returns specific cont. opacity, different output depending on the input
 
         Parameters
         ----------
         switch : int
-            | -3: COPSTD, -2: COPRED, -1: COPBLU, 0: AHYD,
-            | 1: AH2P, 2: AHMIN, 3: SIGH, 4: AHE1, 5: AHE2,
-            | 6: AHEMIN, 7: SIGHE,
-            | 8: ACOOL, continuous opacity C1, Mg1, Al1, Si1, Fe1, CH, NH, OH,
-            | 9: ALUKE, continuous opacity N1, O1, Mg2, Si2, Ca2,
-            | 10: AHOT, 11: SIGEL, 12: SIGH2
+
+            :-3: COPSTD
+            :-2: COPRED
+            :-1: COPBLU
+            :0: AHYD,
+            :1: AH2P
+            :2: AHMIN
+            :3: SIGH
+            :4: AHE1
+            :5: AHE2,
+            :6: AHEMIN
+            :7: SIGHE,
+            :8: ACOOL, continuous opacity C1, Mg1, Al1, Si1, Fe1, CH, NH, OH,
+            :9: ALUKE, continuous opacity N1, O1, Mg2, Si2, Ca2,
+            :10: AHOT
+            :11: SIGEL
+            :12: SIGH2
+
         """
         length = self.nmu
         result = np.ones(length)
@@ -396,11 +408,11 @@ class SME_DLL:
         """
         Calculate ionization balance for current atmosphere and abundances.
         Ionization state is stored in the external library.
-        Set adopt_eos bit mask to 7 = 1 + 2 + 4 to:
+        Ion is a bit flag with values (add them together to use multiple):
 
-        1: adopt particle number densities from EOS
-        2: adopt electron number densities from EOS
-        4: and adopt gas densities (g/cm^3) from EOS
+        :1: adopt particle number densities from EOS
+        :2: adopt electron number densities from EOS
+        :4: adopt gas densities (g/cm^3) from EOS
 
         instead of using values from model atmosphere. Different abundance patterns
         in the model atmosphere (usually scaled solar) and SME (may be non-solar)
@@ -447,7 +459,7 @@ class SME_DLL:
 
     def GetNelec(self):
         """
-        Get XNE
+        Get XNE (Electron number density) for each layer in the atmosphere
 
         Returns
         -------
@@ -472,9 +484,12 @@ class SME_DLL:
         """
         Radiative Transfer Calculation
 
+        Perform the radiative transfer calculation thorugh the atmosphere
+        Requires that all parameters have been set beforehand
+
         Parameters
         ---------
-        mu : array
+        mu : array of shape (nmu,)
             mu angles (1 - cos(phi)) of different limb points along the stellar surface
         accrt : float
             accuracy of the radiative transfer integration
@@ -494,12 +509,13 @@ class SME_DLL:
         -------
         nw : int
             number of actual wavelength points, i.e. size of wint_seg
-        wint_seg : array[nw]
-            wavelength grid
-        sint_seg : array[nw]
-            spectrum
-        cint_seg : array[nw]
-            continuum
+        wint_seg : array of shape (nwave,)
+            wavelength grid, the number of wavelengthpoints is equal to the number of lines * 2 - 1
+            One point in the center of each line + plus one between the next line
+        sint_seg : array of shape (nmu, nwave)
+            spectrum for each mu point
+        cint_seg : array of shape (nmu, nwave)
+            continuum for each mu point
         """
         keep_lineop = 1 if keep_lineop else 0
         long_continuum = 1 if long_continuum else 0
@@ -637,7 +653,7 @@ class SME_DLL:
 
         Parameters
         ----------
-        bmat : array of size (2, ndepth,)
+        bmat : array of size (2, ndepth)
             departure coefficient matrix
         lineindex : float
             index of the line in the linelist
