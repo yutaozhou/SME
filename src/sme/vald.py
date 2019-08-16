@@ -61,14 +61,19 @@ class ValdFile:
         # TODO how to recognise extended format
         fmt = "long" if lines[4][:2] == "' " else "short"
 
-        if fmt == "long":
-            linedata = lines[3 : 3 + self.n * 4]
-            atmodata = lines[3 + self.n * 4]
-            abunddata = lines[4 + self.n * 4 : 22 + self.n * 4]
-        elif fmt == "short":
-            linedata = lines[3 : 3 + self.n]
-            atmodata = lines[3 + self.n]
-            abunddata = lines[4 + self.n : 22 + self.n]
+        try:
+            if fmt == "long":
+                linedata = lines[3 : 3 + self.n * 4]
+                atmodata = lines[3 + self.n * 4]
+                abunddata = lines[4 + self.n * 4 : 22 + self.n * 4]
+            elif fmt == "short":
+                linedata = lines[3 : 3 + self.n]
+                atmodata = lines[3 + self.n]
+                abunddata = lines[4 + self.n : 22 + self.n]
+        except IndexError:
+            msg = "Linelist file is shorter than it should be according to the number of lines. Is it incomplete?"
+            logging.error(msg)
+            raise IOError(msg)
 
         self._linelist = self.parse_linedata(linedata, fmt=fmt)
         self._valdatmo = self.parse_valdatmo(atmodata)
