@@ -553,7 +553,7 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
         new continuum coefficients
     """
     if sme.cscale_flag == "none" and sme.vrad_flag == "none":
-        return [1 for _ in range(sme.nseg)], [0 for _ in range(sme.nseg)]
+        return [[1] for _ in range(sme.nseg)], [0 for _ in range(sme.nseg)]
 
     rvel = [None for _ in range(sme.nseg)]
     cscale = [None for _ in range(sme.nseg)]
