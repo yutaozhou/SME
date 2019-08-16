@@ -1,4 +1,8 @@
-""" VALD data handling module """
+"""
+Module for handling linelist data from the VALD3 database (http://vald.astro.uu.se/).
+
+
+"""
 import logging
 from io import StringIO
 
@@ -19,43 +23,60 @@ class ValdFile:
 
     def __init__(self, filename):
         self._filename = filename
-        self.read(filename)
+        self._wavelo = None
+        self._wavehi = None
+        self._nlines = None
+        self._nlines_proc = None
+        self._vmicro = None
+        self._read(filename)
 
     @property
     def filename(self):
-        """ Source filename """
+        """str: Source filename """
         return self._filename
 
     @property
     def n(self):
-        """ number of spectral lines """
+        """int: number of spectral lines """
         return self._nlines
 
     @property
     def linelist(self):
-        """ LineList data """
+        """LineList: LineList data """
         return self._linelist
 
     @property
     def valdatmo(self):
-        """ Atmopshere used by Vald """
+        """str: Atmopshere used by Vald """
         return self._valdatmo
 
     @property
     def abund(self):
-        """ Elemental abundances used by Vald """
+        """Abund: Elemental abundances used by Vald """
         return self._abund
 
-    def read(self, filename):
-        """Read line data file from the VALD extract stellar service.
+    @staticmethod
+    def read(filename):
         """
+        Read line data file from the VALD extract stellar service
+
+        Parameters
+        ----------
+        filename : str
+            Name of the VALD linelist file to read
+
+        Returns
+        -------
+        vald : ValdFile
+            Parsed vald file
+        """
+        return ValdFile(filename)
+
+    def _read(self, filename):
         logging.info("Loading VALD file %s", filename)
 
-        try:
-            with open(filename, "r") as file:
-                lines = file.readlines()
-        except Exception as ex:
-            raise ValdError(str(ex))
+        with open(filename, "r") as file:
+            lines = file.readlines()
 
         self.parse_header(lines[0])
         # TODO how to recognise extended format
@@ -80,19 +101,49 @@ class ValdFile:
         self._abund = self.parse_abund(abunddata)
 
     def parse_header(self, line):
-        """Parse header line from a VALD line data file.
+        """
+        Parse header line from a VALD line data file
+        and sets the internal parameters
+        
+        Parameters
+        ----------
+        line : str
+            header line of a vald file
+        
+        Raises
+        ------
+        ValdError
+            If the header is not understood
         """
         words = [w.strip() for w in line.split(",")]
         if len(words) < 5 or words[5] != "Wavelength region":
             raise ValdError(f"{self._filename} is not a VALD line data file")
-        self._wavelo = float(words[0])
-        self._wavehi = float(words[1])
-        self._nlines = int(words[2])
-        self._nlines_proc = int(words[3])
-        self._vmicro = float(words[4])
+        try:
+            self._wavelo = float(words[0])
+            self._wavehi = float(words[1])
+            self._nlines = int(words[2])
+            self._nlines_proc = int(words[3])
+            self._vmicro = float(words[4])
+        except:
+            raise ValdError(f"{self._filename} is not a VALD line data file")
 
     def parse_linedata(self, lines, fmt="short"):
-        """Parse line data from a VALD line data file.
+        """Parse line data from a VALD line data file
+
+        Parameters
+        ----------
+        lines : list of str
+            lines of the input data file
+        fmt : {"short", "long"}, optional
+            linelist format, short format has one
+            line of data per spectral line, while the
+            long format uses four lines per spectral line.
+            The default is "short"
+
+        Returns
+        -------
+        linelist : LineList
+            the parsed linelist
         """
 
         if fmt == "short":
@@ -171,20 +222,50 @@ class ValdFile:
         return linelist
 
     def parse_valdatmo(self, line):
-        """Parse VALD model atmosphere line from a VALD line data file.
+        """Parse VALD model atmosphere line from a VALD line data file
+
+        Parameters
+        ----------
+        line : str
+            line form the model atmosphere
+
+        Returns
+        -------
+        atmo : str
+            Name of the model atmosphere
+
+        Raises
+        ------
+        ValdError
+            If the line is not from a model atmosphere
         """
         lstr = line.strip()
         if lstr[0] != "'" or lstr[-2:] != "',":
-            raise FileError(f"error parsing model atmosphere: {lstr}")
+            raise ValdError(f"error parsing model atmosphere: {lstr}")
         return lstr[1:-2]
 
     def parse_abund(self, lines):
-        """Parse VALD abundance lines from a VALD line data file.
+        """Parse VALD abundance lines from a VALD line data file
+
+        Parameters
+        ----------
+        lines : list of str
+            Lines containing the VALD abundance data
+
+        Returns
+        -------
+        abund : Abund
+            Parsed abundance data
+
+        Raises
+        ------
+        ValdError
+            If the data could not be parsed
         """
         abstr = "".join(["".join(line.split()) for line in lines])
         words = [w[1:-1] for w in abstr.split(",")]
         if len(words) != 100 or words[99] != "END":
-            raise FileError(f"Error parsing abundances: {abstr}")
+            raise ValdError(f"Error parsing abundances: {abstr}")
         pattern = [w.split(":") for w in words[:-1]]
         pattern = {el: float(ab) for el, ab in pattern}
         monh = 0
