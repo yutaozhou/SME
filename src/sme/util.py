@@ -6,6 +6,7 @@ safe interpolation
 
 import argparse
 import logging
+from functools import wraps
 from pathlib import Path
 from platform import python_version
 
@@ -25,6 +26,81 @@ try:
     in_notebook = cfg is not None
 except (AttributeError, ImportError):
     in_notebook = False
+
+
+class checker:
+    def __call__(self, func):
+        @wraps(func)
+        def fset(obj, value):
+            value = self.check(obj, value)
+            func(obj, value)
+
+        return fset
+
+    def check(self, obj, value):
+        raise NotImplementedError
+
+
+class oftype(checker):
+    def __init__(self, _type, allowNone=True, **kwargs):
+        self._type = _type
+        self.allowNone = allowNone
+        self.kwargs = kwargs
+
+    def check(self, obj, value):
+        if self.allowNone and value is None:
+            return value
+        elif value is None:
+            raise TypeError(
+                f"Expected value of type {self._type}, but got None instead"
+            )
+        return self._type(value, **self.kwargs)
+
+
+class oneof(checker):
+    def __init__(self, allowed_values=[]):
+        self.allowed_values = allowed_values
+
+    def check(self, obj, value):
+        if value not in self.allowed_values:
+            raise ValueError(
+                f"Expected one of {self.allowed_values}, but got {value} instead"
+            )
+        return value
+
+
+class ofsize(checker):
+    def __init__(self, shape, allowNone=True):
+        self.shape = shape
+        self.allowNone = allowNone
+        if hasattr(shape, "__len__"):
+            self.ndim = len(shape)
+        else:
+            self.ndim = 1
+            self.shape = (self.shape,)
+
+    def check(self, obj, value):
+        if self.allowNone and value is None:
+            return value
+        if hasattr(value, "shape"):
+            ndim = len(value.shape)
+            shape = value.shape
+        elif hasattr(value, "__len__"):
+            ndim = 1
+            shape = (len(value),)
+        else:
+            ndim = 1
+            shape = (1,)
+
+        if ndim != self.ndim:
+            raise ValueError(
+                f"Expected value with {self.ndim} dimensions, but got {ndim} instead"
+            )
+        elif not all([i == j for i, j in zip(shape, self.shape)]):
+            raise ValueError(
+                f"Expected value of shape {self.shape}, but got {shape} instead"
+            )
+        return value
 
 
 def safe_interpolation(x_old, y_old, x_new=None, fill_value=0):
