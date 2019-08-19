@@ -3,6 +3,7 @@ Elemental abundance data handling module
 """
 
 import numpy as np
+from .util import apply, oftype
 
 
 class Abund:
@@ -302,26 +303,23 @@ class Abund:
 
     @property
     def monh(self):
-        """ Metallicity """
+        """float: Metallicity, the logarithmic offset added to
+        the abundance pattern for all elements except hydrogen and helium."""
         return self._monh
 
     @monh.setter
+    @oftype(float)
     def monh(self, monh):
-        """Set [M/H] metallicity, which is the logarithmic offset added to
-        the abundance pattern for all elements except hydrogen and helium.
-        """
-        if monh is not None:
-            monh = float(monh)
         self._monh = monh
 
     @property
+    @apply(np.copy)
     def pattern(self):
-        """
-        Abundance pattern
+        """array: Abundance pattern
         returns a copy to protect the data
         Use update_pattern if you want to change the values
         """
-        return np.copy(self._pattern)
+        return self._pattern
 
     def set_pattern_by_name(self, pattern_name):
         if pattern_name.lower() == "asplund2009":
