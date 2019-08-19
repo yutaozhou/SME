@@ -19,6 +19,46 @@ from . import echelle
 from .abund import Abund
 from .iliffe_vector import Iliffe_vector
 from .vald import LineList
+from .version import version as __version__
+from .util import (
+    getter,
+    setter,
+    apply,
+    oneof,
+    oftype,
+    ofsize,
+    uppercase,
+    lowercase,
+    absolute,
+)
+
+
+class ravel(apply):
+    def __init__(self):
+        super().__init__(np.ravel)
+
+
+class isVector(setter):
+    def fset(self, obj, value):
+        if value is None:
+            return None
+        elif np.isscalar(value):
+            values = np.full(obj.wob.shape, value)
+            value = Iliffe_vector(values=values, index=obj.wind)
+        elif isinstance(value, np.ndarray):
+            value = np.require(value, requirements="W")
+            if value.ndim == 1:
+                value = Iliffe_vector(values=value, index=obj.wind)
+            else:
+                value = Iliffe_vector(nseg=len(value), values=value)
+        elif isinstance(value, list):
+            value = Iliffe_vector(nseg=len(value), values=value)
+        elif isinstance(value, Iliffe_vector):
+            pass
+        else:
+            raise TypeError("Input value is of the wrong type")
+
+        return value
 
 
 class Collection:
@@ -107,15 +147,11 @@ class Param(Collection):
             kwargs["logg"] = kwargs["grav"]
             kwargs.pop("grav")
 
-        #:float: effective Temperature in K
         self.teff = None
-        #:float: surface gravity in log10(cgs)
         self.logg = None
-
-        self._vsini = None
-        self._vmac = None
-        self._vmic = None
-        self._abund = None
+        self.vsini = None
+        self.vmac = None
+        self.vmic = None
 
         # Helium is also fractional (sometimes?)
         if abund is not None and abund[1] > 0:
@@ -137,6 +173,26 @@ class Param(Collection):
         )
         text += str(self._abund)
         return text
+
+    @property
+    def teff(self):
+        """effective Temperature in K"""
+        return self._teff
+
+    @teff.setter
+    @oftype(float)
+    def teff(self, value):
+        self._teff = value
+
+    @property
+    def logg(self):
+        """float: surface gravity in log10(cgs)"""
+        return self._logg
+
+    @logg.setter
+    @oftype(float)
+    def logg(self, value):
+        self._logg = value
 
     @property
     def monh(self):
@@ -185,8 +241,9 @@ class Param(Collection):
         return self._vmac
 
     @vmac.setter
+    @absolute()
     def vmac(self, value):
-        self._vmac = abs(value)
+        self._vmac = value
 
     @property
     def vmic(self):
@@ -194,8 +251,9 @@ class Param(Collection):
         return self._vmic
 
     @vmic.setter
+    @absolute()
     def vmic(self, value):
-        self._vmic = abs(value)
+        self._vmic = value
 
     @property
     def vsini(self):
@@ -203,8 +261,9 @@ class Param(Collection):
         return self._vsini
 
     @vsini.setter
+    @absolute()
     def vsini(self, value):
-        self._vsini = abs(value)
+        self._vsini = value
 
 
 class NLTE(Collection):
@@ -215,14 +274,9 @@ class NLTE(Collection):
             args = {name.casefold(): args[0][name][0] for name in args[0].dtype.names}
             args.update(kwargs)
             kwargs = args
-        #:str: OBSOLETE name of the nlte function to use
-        self.nlte_pro = kwargs.pop("sme_nlte", None)
-        self.nlte_pro = "nlte"
         elements = kwargs.pop("nlte_elem_flags", [])
         elements = [Abund._elem[i] for i, j in enumerate(elements) if j == 1]
-        #:list(str): NLTE elements in use
         self.elements = elements
-        #:list of size (4,): OBSOLETE defines subgrid size that is kept in memory
         self.subgrid_size = kwargs.pop("nlte_subgrid_size", [2, 2, 2, 2])
 
         grids = kwargs.pop("nlte_grids", {})
@@ -232,7 +286,7 @@ class NLTE(Collection):
                 for i, name in enumerate(grids)
                 if name != ""
             }
-        #:dict(str, str): NLTE grids to use for any given element
+        #:
         self.grids = grids
         self.flags = None
         super().__init__(**kwargs)
@@ -249,6 +303,43 @@ class NLTE(Collection):
         "Si": "marcs2012_SI2016.grd",
         "Ti": "marcs2012s_t2.0_Ti.grd",
     }
+
+    @property
+    def nlte_pro(self):
+        """str: OBSOLETE name of the nlte function to use"""
+        logging.warning("OBSOLETE. This does nothing")
+        return "nlte"
+
+    @property
+    def elements(self):
+        """list(str): NLTE elements in use"""
+        return self._elements
+
+    @elements.setter
+    @oftype(list)
+    def elements(self, value):
+        self._elements = value
+
+    @property
+    def subgrid_size(self):
+        """list of size (4,): OBSOLETE defines subgrid size that is kept in memory"""
+        return self._subgrid_size
+
+    @subgrid_size.setter
+    @oftype(np.asarray, dtype=int)
+    @ofsize(4)
+    def subgrid_size(self, value):
+        self._subgrid_size = value
+
+    @property
+    def grids(self):
+        """dict(str, str): NLTE grids to use for any given element"""
+        return self._grids
+
+    @grids.setter
+    @oftype(dict)
+    def grids(self, value):
+        self._grids = value
 
     def set_nlte(self, element, grid=None):
         """
@@ -357,31 +448,141 @@ class Atmo(Param):
             args = {name.casefold(): args[0][name][0] for name in args[0].dtype.names}
             args.update(kwargs)
             kwargs = args
-        #:array of size (ndepth,): Mass column density, only rhox or tau needs to be specified
         self.rhox = None
-        #:array of size (ndepth,): Continuum optical depth, only rhox or tau needs to be specified
         self.tau = None
-        #:array of size (ndepth,): Temperatures in K of each layer
         self.temp = None
-        #:array of size (ndepth,): Number density of atoms in 1/cm**3
         self.xna = None
-        #:array of size (ndepth,): Number density of electrons in 1/cm**3
         self.xne = None
-        #:float: Turbulence velocity in km/s
         self.vturb = None
-        #:float: ???
         self.lonh = None
-        #:str: Method to use for interpolating atmospheres. Valid values "grid", "embedded"
-        self.method = None
-        #:str: filename of the atmosphere grid
         self.source = None
-        #:str: Flag that determines wether to use RHOX or TAU for calculations. Values are "RHOX", "TAU"
         self.depth = None
-        #:str: Flag that determines wether RHOX or TAU are used for interpolation. Values are "RHOX", "TAU"
         self.interp = None
-        #:str: Flag that describes the geometry of the atmosphere model. Values are "PP" Plane Parallel, "SPH" Spherical
         self.geom = None
         super().__init__(**kwargs)
+
+    @property
+    def rhox(self):
+        """Mass column density, only rhox or tau needs to be specified"""
+        return self._rhox
+
+    @rhox.setter
+    @oftype(np.asarray, dtype="f8")
+    def rhox(self, value):
+        self._rhox = value
+
+    @property
+    def tau(self):
+        """Continuum optical depth, only rhox or tau needs to be specified"""
+        return self._tau
+
+    @tau.setter
+    @oftype(np.asarray, dtype="f8")
+    def tau(self, value):
+        self._tau = value
+
+    @property
+    def temp(self):
+        """Temperatures in K of each layer"""
+        return self._temp
+
+    @temp.setter
+    @oftype(np.asarray, dtype="f8")
+    def temp(self, value):
+        self._temp = value
+
+    @property
+    def xna(self):
+        """Number density of atoms in 1/cm**3"""
+        return self._xna
+
+    @xna.setter
+    @oftype(np.asarray, dtype="f8")
+    def xna(self, value):
+        self._xna = value
+
+    @property
+    def xne(self):
+        """array of shape (ndepth,): Number density of electrons in 1/cm**3"""
+        return self._xne
+
+    @xne.setter
+    @oftype(np.asarray, dtype="f8")
+    def xne(self, value):
+        self._xne = value
+
+    @property
+    def vturb(self):
+        """float: Turbulence velocity in km/s"""
+        return self._vturb
+
+    @vturb.setter
+    @oftype(float)
+    def vturb(self, value):
+        self._vturb = value
+
+    @property
+    def lonh(self):
+        return self._lonh
+
+    @lonh.setter
+    @oftype(float)
+    def lonh(self, value):
+        self._lonh = value
+
+    @property
+    def source(self):
+        """str: filename of the atmosphere grid"""
+        return self._source
+
+    @source.setter
+    @oftype(str)
+    def source(self, value):
+        self._source = value
+
+    @property
+    def depth(self):
+        """str: Flag that determines whether to use RHOX or TAU for calculations"""
+        return self._depth
+
+    @depth.setter
+    @uppercase()
+    @oneof([None, "RHOX", "TAU"])
+    def depth(self, value):
+        self._depth = value
+
+    @property
+    def interp(self):
+        """str: Flag that determines whether to use RHOX or TAU for interpolation"""
+        return self._interp
+
+    @interp.setter
+    @uppercase()
+    @oneof([None, "RHOX", "TAU"])
+    def interp(self, value):
+        self._interp = value
+
+    @property
+    def geom(self):
+        """str: Flag that describes the geometry of the atmosphere model. Values are "PP" Plane Parallel, "SPH" Spherical"""
+        return self._geom
+
+    @geom.setter
+    @uppercase()
+    @oneof([None, "PP", "SPH"])
+    def geom(self, value):
+        self._geom = value
+
+    @property
+    def method(self):
+        """Method to use for interpolating atmospheres"""
+        return self._method
+
+    @method.setter
+    @lowercase()
+    @oneof(["grid", "embedded"])
+    def method(self, value):
+        self._method = value
 
 
 class Fitresults(Collection):
@@ -445,7 +646,7 @@ class SME_Struct(Param):
         #:str: Name of the observation target
         self.object = kwargs.pop("obs_name", None)
         #:str: Version of SME used to create this structure
-        self.version = "5.1"
+        self.version = __version__
         #:str: DateTime when this structure was created
         self.id = str(dt.now())
 
@@ -455,18 +656,14 @@ class SME_Struct(Param):
         self.cscale = 1
         self.cscale_flag = "none"
 
-        #:float: van der Waals scaling factor
         self.gam6 = 1
-        #:bool: flag determing wether to use H2 broadening or not
         self.h2broad = False
-        #:float: Minimum accuracy for linear spectrum interpolation vs. wavelength. Values below 1e-4 are not meaningful.
         self.accwi = 0.003
-        #:float: Minimum accuracy for synthethized spectrum at wavelength grid points in sme.wint. Values below 1e-4 are not meaningful.
         self.accrt = 0.001
         self.mu = 1
-        # linelist
+        #:LineList: spectral line information
+        self.linelist = None
         try:
-            #:LineList: spectral line information
             self.linelist = LineList(
                 species=kwargs.pop("species"),
                 atomic=kwargs.pop("atomic"),
@@ -480,9 +677,8 @@ class SME_Struct(Param):
                 line_term_upp=kwargs.pop("line_term_upp", None),
             )
         except KeyError:
-            # some data is unavailable
             logging.warning("No or incomplete linelist data present")
-            self.linelist = None
+
         # free parameters
         #:list of float: values of free parameters
         self.pfree = []
@@ -524,6 +720,14 @@ class SME_Struct(Param):
         #:list of arrays: calculated adaptive wavelength grids
         self.wint = None
         self.smod = None
+        # Substructures
+        #:Version: System information
+        self.idlver = Version(idlver)
+        #:Atmo: Stellar atmosphere
+        self.atmo = Atmo(atmo)
+        #:NLTE: NLTE settings
+        self.nlte = NLTE(nlte)
+
         # remove old keywords
         _ = kwargs.pop("smod_orig", None)
         _ = kwargs.pop("cmod_orig", None)
@@ -544,19 +748,51 @@ class SME_Struct(Param):
         _ = kwargs.pop("nmu", None)
         _ = kwargs.pop("nseg", None)
         _ = kwargs.pop("md5", None)
-
-        # Substructures
-        #:Version: System information
-        self.idlver = Version(idlver)
-        #:Atmo: Stellar atmosphere
-        self.atmo = Atmo(atmo)
-        #:NLTE: NLTE settings
-        self.nlte = NLTE(nlte)
         super().__init__(**kwargs)
 
         # Apply final conversions from IDL to Python version
         if "wave" in self:
             self.__convert_cscale__()
+
+    @property
+    def gam6(self):
+        """float: van der Waals scaling factor"""
+        return self._gam6
+
+    @gam6.setter
+    @oftype(float)
+    def gam6(self, value):
+        self._gam6 = value
+
+    @property
+    def h2broad(self):
+        """bool: flag determing wether to use H2 broadening or not"""
+        return self._h2broad
+
+    @h2broad.setter
+    @oftype(bool)
+    def h2broad(self, value):
+        self._h2broad = value
+
+    @property
+    def accwi(self):
+        """float: Minimum accuracy for linear spectrum interpolation vs. wavelength. Values below 1e-4 are not meaningful."""
+        return self._accwi
+
+    @accwi.setter
+    @oftype(float)
+    def accwi(self, value):
+        self._accwi = value
+
+    @property
+    def accrt(self):
+        """float: Minimum accuracy for synthethized spectrum at wavelength grid points in sme.wint. Values below 1e-4 are not meaningful."""
+        return self._accrt
+
+    @accrt.setter
+    @oftype(float)
+    def accrt(self, value):
+        self._accrt = value
 
     @property
     def atomic(self):
@@ -638,49 +874,54 @@ class SME_Struct(Param):
         setattr(self, ref, value)
 
     @property
+    @ravel()
     def wob(self):
         """array: Wavelength array """
-        return self._getter("_wob")
+        return self.wave
 
     @wob.setter
     def wob(self, value):
-        self._setter("_wob", value)
+        self.wave = value
 
     @property
+    @ravel()
     def sob(self):
         """array: Observed spectrum """
-        return self._getter("_sob")
+        return self.spec
 
     @sob.setter
     def sob(self, value):
-        self._setter("_sob", value)
+        self.spec = value
 
     @property
+    @ravel()
     def uob(self):
         """array: Uncertainties of the observed spectrum """
-        return self._getter("_uob")
+        return self.uncs
 
     @uob.setter
     def uob(self, value):
-        self._setter("_uob", value)
+        self.uncs = value
 
     @property
+    @ravel()
     def mob(self):
         """array: bad/good/line/continuum Mask to apply to observations """
-        return self._getter("_mob")
+        return self.mask
 
     @mob.setter
     def mob(self, value):
-        self._setter("_mob", value)
+        self.mask = value
 
     @property
+    @ravel()
     def smod(self):
         """array: Synthetic spectrum """
-        return self._getter("_smod")
+        return self.synth
 
     @smod.setter
     def smod(self, value):
-        self._setter("_smod", value)
+        self.synth = value
 
     @property
     def wran(self):
@@ -705,9 +946,10 @@ class SME_Struct(Param):
         return self._mu
 
     @mu.setter
+    @oftype(np.asarray, dtype=float)
     def mu(self, value):
-        if value is not None:
-            value = np.atleast_1d(value)
+        if np.any((value > 1) | (value < 0)):
+            raise ValueError("Mu values must be between 1 and 0")
         self._mu = value
 
     @property
@@ -730,9 +972,8 @@ class SME_Struct(Param):
         return self._vrad
 
     @vrad.setter
+    @oftype(np.asarray, dtype=float)
     def vrad(self, value):
-        if value is not None:
-            value = np.atleast_1d(value)
         self._vrad = value
 
     @property
@@ -767,9 +1008,9 @@ class SME_Struct(Param):
         return cs
 
     @cscale.setter
+    @oftype(np.asarray, dtype=float)
+    @oftype(np.atleast_2d)
     def cscale(self, value):
-        if value is not None:
-            value = np.atleast_2d(value)
         self._cscale = value
 
     @property
@@ -786,6 +1027,7 @@ class SME_Struct(Param):
         return self._cscale_flag
 
     @cscale_flag.setter
+    @oneof([-3, -2, -1, 0, 1, 2, "none", "fix", "constant", "linear", "quadratic"])
     def cscale_flag(self, value):
         if isinstance(value, (int, np.integer)):
             value = {
@@ -796,10 +1038,6 @@ class SME_Struct(Param):
                 1: "linear",
                 2: "quadratic",
             }[value]
-
-        options = ["none", "fix", "constant", "linear", "quadratic"]
-        if value not in options:
-            raise ValueError(f"Expected one of {options} got {value}")
 
         self._cscale_flag = value
 
@@ -814,9 +1052,9 @@ class SME_Struct(Param):
             return 2
         if self.cscale_flag == "fix":
             return self._cscale.shape[1] - 1
-
-        # "none"
-        return 0
+        if self.cscale_flag == "none":
+            return 0
+        raise ValueError("This should never happen")
 
     @property
     def vrad_flag(self):
@@ -830,6 +1068,7 @@ class SME_Struct(Param):
         return self._vrad_flag
 
     @vrad_flag.setter
+    @oneof([-2, -1, 0, "none", "whole", "each"])
     def vrad_flag(self, value):
         if isinstance(value, (int, np.integer)):
             value = {-2: "none", -1: "whole", 0: "each"}[value]
@@ -851,47 +1090,52 @@ class SME_Struct(Param):
     @property
     def wave(self):
         """Iliffe_vector of shape (nseg, ...): Wavelength """
-        return self._wob
+        return self._wave
 
     @wave.setter
+    @isVector()
     def wave(self, value):
-        self.wob = value
+        self._wave = value
 
     @property
     def spec(self):
         """Iliffe_vector of shape (nseg, ...): Observed Spectrum """
-        return self._sob
+        return self._spec
 
     @spec.setter
+    @isVector()
     def spec(self, value):
-        self.sob = value
+        self._spec = value
 
     @property
     def uncs(self):
         """Iliffe_vector of shape (nseg, ...): Uncertainties of the observed spectrum """
-        return self._uob
+        return self._uncs
 
     @uncs.setter
+    @isVector()
     def uncs(self, value):
-        self.uob = value
+        self._uncs = value
 
     @property
     def synth(self):
         """Iliffe_vector of shape (nseg, ...): Synthetic Spectrum """
-        return self._smod
+        return self._synth
 
     @synth.setter
+    @isVector()
     def synth(self, value):
-        self.smod = value
+        self._synth = value
 
     @property
     def mask(self):
         """Iliffe_vector of shape (nseg, ...): Line and Continuum Mask """
-        return self._mob
+        return self._mask
 
     @mask.setter
+    @isVector()
     def mask(self, value):
-        self.mob = value
+        self._mask = value
 
     @property
     def mask_line(self):
@@ -1028,8 +1272,8 @@ class SME_Struct(Param):
                 s.spec[i] = s.spec[i][sort]
                 s.uncs[i] = s.uncs[i][sort]
 
-            s.mask = [np.full(i.size, 1) for i in s.spec] 
-            s.mask[s.spec == 0] = SME_Struct.mask_values["bad"] 
+            s.mask = [np.full(i.size, 1) for i in s.spec]
+            s.mask[s.spec == 0] = SME_Struct.mask_values["bad"]
             s.wran = [[w[0], w[-1]] for w in s.wave]
             s.abund = Abund.solar()
             try:

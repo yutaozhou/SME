@@ -28,26 +28,68 @@ except (AttributeError, ImportError):
     in_notebook = False
 
 
-class checker:
+class simple_property(property):
+    def __init__(self, name, *args, doc=""):
+        self.name = f"_{name}"
+        for arg in args:
+            self.fset = arg(self.fset)
+
+        super().__init__(self.fget, self.fset, self.fdel, doc)
+
+    def fget(self, obj):
+        return getattr(obj, self.name)
+
+    def fset(self, obj, value):
+        setattr(obj, self.name, value)
+
+    def fdel(self, obj):
+        delattr(obj, self.name)
+
+
+class getter:
+    def __call__(self, func):
+        @wraps(func)
+        def fget(obj):
+            value = func(obj)
+            return self.fget(obj, value)
+
+        return fget
+
+    def fget(self, obj, value):
+        raise NotImplementedError
+
+
+class apply(getter):
+    def __init__(self, app, allowNone=True):
+        self.app = app
+        self.allowNone = allowNone
+
+    def fget(self, obj, value):
+        if self.allowNone and value is None:
+            return value
+        return self.app(value)
+
+
+class setter:
     def __call__(self, func):
         @wraps(func)
         def fset(obj, value):
-            value = self.check(obj, value)
+            value = self.fset(obj, value)
             func(obj, value)
 
         return fset
 
-    def check(self, obj, value):
+    def fset(self, obj, value):
         raise NotImplementedError
 
 
-class oftype(checker):
+class oftype(setter):
     def __init__(self, _type, allowNone=True, **kwargs):
         self._type = _type
         self.allowNone = allowNone
         self.kwargs = kwargs
 
-    def check(self, obj, value):
+    def fset(self, obj, value):
         if self.allowNone and value is None:
             return value
         elif value is None:
@@ -57,11 +99,11 @@ class oftype(checker):
         return self._type(value, **self.kwargs)
 
 
-class oneof(checker):
+class oneof(setter):
     def __init__(self, allowed_values=[]):
         self.allowed_values = allowed_values
 
-    def check(self, obj, value):
+    def fset(self, obj, value):
         if value not in self.allowed_values:
             raise ValueError(
                 f"Expected one of {self.allowed_values}, but got {value} instead"
@@ -69,7 +111,7 @@ class oneof(checker):
         return value
 
 
-class ofsize(checker):
+class ofsize(setter):
     def __init__(self, shape, allowNone=True):
         self.shape = shape
         self.allowNone = allowNone
@@ -79,7 +121,7 @@ class ofsize(checker):
             self.ndim = 1
             self.shape = (self.shape,)
 
-    def check(self, obj, value):
+    def fset(self, obj, value):
         if self.allowNone and value is None:
             return value
         if hasattr(value, "shape"):
@@ -101,6 +143,50 @@ class ofsize(checker):
                 f"Expected value of shape {self.shape}, but got {shape} instead"
             )
         return value
+
+
+class absolute(oftype):
+    def __init__(self):
+        super().__init__(float)
+
+    def fset(self, obj, value):
+        value = super().check(obj, value)
+        if value is not None:
+            value = abs(value)
+        return value
+
+
+class uppercase(oftype):
+    def __init__(self):
+        super().__init__(str)
+
+    def fset(self, obj, value):
+        value = super().check(obj, value)
+        if value is not None:
+            value = value.upper()
+        return value
+
+
+class lowercase(oftype):
+    def __init__(self):
+        super().__init__(str)
+
+    def fset(self, obj, value):
+        value = super().check(obj, value)
+        if value is not None:
+            value = value.lower()
+        return value
+
+
+# class test:
+#     def __init__(self):
+#         self.test = "BLA"
+
+#     test = simple_property("test", lowercase())
+
+
+# t = test()
+# print(t.test)
 
 
 def safe_interpolation(x_old, y_old, x_new=None, fill_value=0):
