@@ -1,6 +1,6 @@
 numpy
 scipy
-pandas
+pandas==0.25.0
 astropy
 ruamel.yaml
 wget
