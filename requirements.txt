@@ -4,6 +4,7 @@ pandas
 astropy
 ruamel.yaml
 wget
+requests
 matplotlib
 Ipython
 ipywidgets

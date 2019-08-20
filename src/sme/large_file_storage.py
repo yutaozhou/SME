@@ -14,6 +14,7 @@ import shutil
 from pathlib import Path
 
 import wget
+import requests
 from ruamel.yaml import YAML
 
 # We are lazy and want a simple check if a file is in the Path
@@ -179,6 +180,10 @@ class Server:
         url = self.url + "/" + fname
         loc = str(location)
         wget.download(url, out=loc)
+
+    def isUp(self):
+        r = requests.head(self.url)
+        return r.status_code == 200
 
 
 if __name__ == "__main__":

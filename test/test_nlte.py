@@ -14,20 +14,10 @@ from sme.nlte import nlte
 from sme.solve import get_atmosphere, synthesize_spectrum
 
 from sme.config import Config
-from sme.large_file_storage import LargeFileStorage
+
+from .test_largefilestorage import skipif_lfs, lfs_nlte
 
 cwd = dirname(__file__)
-
-
-@pytest.fixture
-def lfs_nlte():
-    config = Config()
-    server = config["data.file_server"]
-    storage = config["data.nlte_grids"]
-    cache = config["data.cache.nlte_grids"]
-    pointers = config["data.pointers.nlte_grids"]
-    lfs_nlte = LargeFileStorage(server, pointers, storage, cache)
-    return lfs_nlte
 
 
 def make_minimum_structure():
@@ -92,6 +82,7 @@ def test_activate_nlte():
     assert sme.nlte.grids["U"] == "test_grid.grd"
 
 
+@skipif_lfs
 def test_run_with_nlte():
     # NOTE sme structure must have long format for NLTE
     sme = make_minimum_structure()
@@ -105,6 +96,8 @@ def test_run_with_nlte():
     assert np.any(sme2.nlte.flags)
 
 
+@skipif_lfs
+@pytest.mark.usefixtures("lfs_nlte")
 def test_dll(lfs_nlte):
     sme = make_minimum_structure()
     elem = "Ca"
@@ -151,4 +144,3 @@ def test_dll(lfs_nlte):
 
     with pytest.raises(ValueError):
         libsme.InputNLTE(bmat[:, [0, 1]].T, -10)
-
