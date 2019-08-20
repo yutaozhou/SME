@@ -28,24 +28,6 @@ except (AttributeError, ImportError):
     in_notebook = False
 
 
-class simple_property(property):
-    def __init__(self, name, *args, doc=""):
-        self.name = f"_{name}"
-        for arg in args:
-            self.fset = arg(self.fset)
-
-        super().__init__(self.fget, self.fset, self.fdel, doc)
-
-    def fget(self, obj):
-        return getattr(obj, self.name)
-
-    def fset(self, obj, value):
-        setattr(obj, self.name, value)
-
-    def fdel(self, obj):
-        delattr(obj, self.name)
-
-
 class getter:
     def __call__(self, func):
         @wraps(func)
@@ -116,7 +98,7 @@ class ofarray(setter):
 
 
 class oneof(setter):
-    def __init__(self, allowed_values=[]):
+    def __init__(self, allowed_values=()):
         self.allowed_values = allowed_values
 
     def fset(self, obj, value):
@@ -192,17 +174,6 @@ class lowercase(oftype):
         if value is not None:
             value = value.lower()
         return value
-
-
-# class test:
-#     def __init__(self):
-#         self.test = "BLA"
-
-#     test = simple_property("test", lowercase())
-
-
-# t = test()
-# print(t.test)
 
 
 def safe_interpolation(x_old, y_old, x_new=None, fill_value=0):

@@ -18,6 +18,7 @@ class sav_file(np.recarray):
     """ IDL savefile atmosphere grid """
 
     def __new__(cls, filename, lfs_atmo):
+        cls.lfs_atmo = lfs_atmo
         path = lfs_atmo.get(filename)
         krz2 = readsav(path)
         atmo_grid = krz2["atmo_grid"]
@@ -47,7 +48,7 @@ class sav_file(np.recarray):
         """ load a new file if necessary """
         changed = filename != self.file
         if reload or changed:
-            new = sav_file(filename)
+            new = sav_file(filename, self.lfs_atmo)
         else:
             new = self
         return new
