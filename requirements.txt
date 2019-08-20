@@ -8,6 +8,6 @@ requests
 matplotlib
 Ipython
 ipywidgets
-jupyter
+jupyter==1.0.0
 plotly
 pytest
