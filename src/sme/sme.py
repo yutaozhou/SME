@@ -26,6 +26,7 @@ from .util import (
     apply,
     oneof,
     oftype,
+    ofarray,
     ofsize,
     uppercase,
     lowercase,
@@ -326,7 +327,7 @@ class NLTE(Collection):
         return self._subgrid_size
 
     @subgrid_size.setter
-    @oftype(np.asarray, dtype=int)
+    @ofarray(int)
     @ofsize(4)
     def subgrid_size(self, value):
         self._subgrid_size = value
@@ -459,6 +460,7 @@ class Atmo(Param):
         self.depth = None
         self.interp = None
         self.geom = None
+        self.method = None
         super().__init__(**kwargs)
 
     @property
@@ -467,7 +469,7 @@ class Atmo(Param):
         return self._rhox
 
     @rhox.setter
-    @oftype(np.asarray, dtype="f8")
+    @ofarray("f8")
     def rhox(self, value):
         self._rhox = value
 
@@ -477,7 +479,7 @@ class Atmo(Param):
         return self._tau
 
     @tau.setter
-    @oftype(np.asarray, dtype="f8")
+    @ofarray("f8")
     def tau(self, value):
         self._tau = value
 
@@ -487,7 +489,7 @@ class Atmo(Param):
         return self._temp
 
     @temp.setter
-    @oftype(np.asarray, dtype="f8")
+    @ofarray("f8")
     def temp(self, value):
         self._temp = value
 
@@ -497,7 +499,7 @@ class Atmo(Param):
         return self._xna
 
     @xna.setter
-    @oftype(np.asarray, dtype="f8")
+    @ofarray("f8")
     def xna(self, value):
         self._xna = value
 
@@ -507,7 +509,7 @@ class Atmo(Param):
         return self._xne
 
     @xne.setter
-    @oftype(np.asarray, dtype="f8")
+    @ofarray("f8")
     def xne(self, value):
         self._xne = value
 
@@ -580,7 +582,7 @@ class Atmo(Param):
 
     @method.setter
     @lowercase()
-    @oneof(["grid", "embedded"])
+    @oneof([None, "grid", "embedded"])
     def method(self, value):
         self._method = value
 
@@ -926,7 +928,7 @@ class SME_Struct(Param):
     @property
     def wran(self):
         """array of size (nseg, 2): Beginning and end Wavelength points of each segment"""
-        if self._wran is None and self._wob is not None:
+        if self._wran is None and self.wob is not None:
             # Default to just one wavelength range with all points if not specified
             return [self.wob[[0, -1]]]
         return self._wran
@@ -946,7 +948,7 @@ class SME_Struct(Param):
         return self._mu
 
     @mu.setter
-    @oftype(np.asarray, dtype=float)
+    @ofarray(float)
     def mu(self, value):
         if np.any((value > 1) | (value < 0)):
             raise ValueError("Mu values must be between 1 and 0")
@@ -972,7 +974,7 @@ class SME_Struct(Param):
         return self._vrad
 
     @vrad.setter
-    @oftype(np.asarray, dtype=float)
+    @ofarray(float)
     def vrad(self, value):
         self._vrad = value
 
@@ -1008,7 +1010,7 @@ class SME_Struct(Param):
         return cs
 
     @cscale.setter
-    @oftype(np.asarray, dtype=float)
+    @ofarray(float)
     @oftype(np.atleast_2d)
     def cscale(self, value):
         self._cscale = value
@@ -1078,9 +1080,9 @@ class SME_Struct(Param):
     def wind(self):
         """array of shape (nseg + 1,): Indices of the wavelength segments in the overall arrays """
         if self._wind is None:
-            if self.wob is None:
+            if self.wave is None:
                 return None
-            return [0, *self._wob.sizes]
+            return [0, *self.wave.sizes]
         return self._wind
 
     @wind.setter

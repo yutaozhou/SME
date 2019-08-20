@@ -1,17 +1,35 @@
 import pytest
 
-from os.path import dirname
+from os.path import dirname, join
+from scipy.constants import speed_of_light
 
 # TODO create various kinds of default sme structures
 # then run test on all of the relevant ones
 from sme.sme import SME_Struct
 from sme.vald import ValdFile
+from sme.solve import synthesize_spectrum
 
 
 @pytest.fixture
 def sme_empty():
     sme = SME_Struct()
     return sme
+
+
+@pytest.fixture
+def testcase1():
+    c_light = speed_of_light * 1e-3
+
+    # TODO get better test case for this
+    cwd = dirname(__file__)
+    fname = join(cwd, "testcase1.inp")
+    sme = SME_Struct.load(fname)
+    sme = synthesize_spectrum(sme)
+
+    rv = 10
+    x_syn = sme.wave[0] * (1 - rv / c_light)
+    y_syn = sme.synth[0]
+    return sme, x_syn, y_syn, rv
 
 
 @pytest.fixture

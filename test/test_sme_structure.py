@@ -22,7 +22,7 @@ def test_empty_structure():
     """ Test that all properties behave well when nothing is set """
     empty = SME_Struct()
 
-    assert empty.version == "5.1"
+    assert isinstance(empty.version, str)
     assert empty.teff is None
     assert empty.logg is None
     assert empty.vmic is None

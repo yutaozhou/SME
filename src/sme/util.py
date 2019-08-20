@@ -99,6 +99,22 @@ class oftype(setter):
         return self._type(value, **self.kwargs)
 
 
+class ofarray(setter):
+    def __init__(self, dtype=float, allowNone=True):
+        self.dtype = dtype
+        self.allowNone = allowNone
+
+    def fset(self, obj, value):
+        if self.allowNone and value is None:
+            return value
+        elif value is None:
+            raise TypeError(
+                f"Expected value of type {self.dtype}, but got {value} instead"
+            )
+        arr = np.asarray(value, dtype=self.dtype)
+        return np.atleast_1d(arr)
+
+
 class oneof(setter):
     def __init__(self, allowed_values=[]):
         self.allowed_values = allowed_values
@@ -150,7 +166,7 @@ class absolute(oftype):
         super().__init__(float)
 
     def fset(self, obj, value):
-        value = super().check(obj, value)
+        value = super().fset(obj, value)
         if value is not None:
             value = abs(value)
         return value
@@ -161,7 +177,7 @@ class uppercase(oftype):
         super().__init__(str)
 
     def fset(self, obj, value):
-        value = super().check(obj, value)
+        value = super().fset(obj, value)
         if value is not None:
             value = value.upper()
         return value
@@ -172,7 +188,7 @@ class lowercase(oftype):
         super().__init__(str)
 
     def fset(self, obj, value):
-        value = super().check(obj, value)
+        value = super().fset(obj, value)
         if value is not None:
             value = value.lower()
         return value

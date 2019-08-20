@@ -5,26 +5,8 @@ from os.path import dirname
 import pytest
 import numpy as np
 
-from scipy.constants import speed_of_light
-
-from sme.solve import synthesize_spectrum
 from sme.sme import SME_Struct
 from sme.continuum_and_radial_velocity import determine_rv_and_cont
-
-
-@pytest.fixture
-def testcase1():
-    c_light = speed_of_light * 1e-3
-
-    # TODO get better test case for this
-    cwd = dirname(__file__)
-    sme = SME_Struct.load(cwd + "/testcase1.inp")
-    sme = synthesize_spectrum(sme)
-
-    rv = 10
-    x_syn = sme.wave[0] * (1 - rv / c_light)
-    y_syn = sme.synth[0]
-    return sme, x_syn, y_syn, rv
 
 
 def test_match_both(testcase1):

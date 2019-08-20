@@ -343,7 +343,7 @@ class Iliffe_vector:
         raveled: array
             1d array of the contained values
         """
-        # TODO
+        # TODO somehow avaoid making a copy?
         return self.flatten()
 
     def copy(self):

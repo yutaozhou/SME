@@ -6,3 +6,8 @@ include src/sme/dll/bpo_self.grid.INTEL
 
 include src/sme/datafiles_atmospheres.yaml
 include src/sme/datafiles_nlte.yaml
+
+include test/testatmo1.krz
+include test/testcase1.bib
+include test/testcase1.inp
+include test/testcase1.lin

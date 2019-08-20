@@ -1,4 +1,5 @@
 from pathlib import Path
+from os.path import dirname, join
 from sme.linelist import LineList
 from sme.vald import ValdFile, ValdError
 from sme.abund import Abund
@@ -68,8 +69,8 @@ def test_linelist_properties():
 def test_valdfile():
     """Test class to read a VALD line data file.
     """
-    testdir = Path(__file__).parent
-    vf = ValdFile(testdir / "testcase1.lin")
+    testdir = dirname(__file__)
+    vf = ValdFile(join(testdir, "testcase1.lin"))
 
     linelist = vf.linelist
 
@@ -77,8 +78,8 @@ def test_valdfile():
     assert linelist.lineformat == "short"
     assert linelist[0].species == "V 1"
 
-    with pytest.raises(ValdError):
-        vf = ValdFile(testdir / "testcase1.npy")
+    with pytest.raises(IOError):
+        vf = ValdFile(join(testdir, "testcase1.npy"))
 
 
 def test_short_format():
