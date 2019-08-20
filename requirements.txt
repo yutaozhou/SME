@@ -1,5 +1,5 @@
-numpy
 scipy==1.3.1
+numpy==1.17.0
 pandas
 astropy
 ruamel.yaml
@@ -7,7 +7,8 @@ wget
 requests
 matplotlib
 Ipython
+ipywidgets==7.5.1
 ipywidgets
-jupyter
-plotly
-pytest
+jupyter==1.0.0
+plotly==4.1.0
+pytest==5.1.0
