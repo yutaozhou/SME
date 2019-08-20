@@ -11,3 +11,5 @@ include test/testatmo1.krz
 include test/testcase1.bib
 include test/testcase1.inp
 include test/testcase1.lin
+include versioneer.py
+include src/sme/_version.py

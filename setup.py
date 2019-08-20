@@ -3,8 +3,10 @@
 import os
 from setuptools import setup
 
+import versioneer
 from pathlib import Path
 from ruamel.yaml import YAML
+
 
 # Create folder structure
 directory = Path("~/.sme/").expanduser()
@@ -44,7 +46,8 @@ if not conf.exists():
 # Setup package
 setup(
     name="pysme-astro",
-    version="0.01",
+    version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass(),
     description="Spectroscopy Made Easy",
     author="Ansgar Wehrhahn, Jeff A. Valenti",
     author_email="ansgar.wehrhahn@physics.uu.se, valenti@stsci.edu",
