@@ -63,7 +63,7 @@ class LargeFileStorage:
         return hasher.hexdigest()
 
     def get(self, key):
-        """ 
+        """
         Request a datafile from the LargeFileStorage
         Assures that tracked files are at the specified version
         And downloads data from the server if necessary
