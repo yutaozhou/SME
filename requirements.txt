@@ -6,7 +6,7 @@ ruamel.yaml
 wget
 requests
 matplotlib
-Ipython
+Ipython==7.7.0
 ipywidgets
 jupyter
 plotly
