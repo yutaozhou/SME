@@ -3,7 +3,7 @@ scipy
 pandas
 astropy
 ruamel.yaml
-wget
+wget==3.2
 requests
 matplotlib
 Ipython
