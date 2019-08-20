@@ -17,7 +17,7 @@ import wget
 from ruamel.yaml import YAML
 
 # We are lazy and want a simple check if a file is in the Path
-Path.__contains__ = lambda self, key: len(list(self.glob(key))) != 0
+Path.__contains__ = lambda self, key: (self / key).exists()
 
 
 class LargeFileStorage:

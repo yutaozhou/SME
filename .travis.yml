@@ -6,9 +6,10 @@ addons:
   apt:
     packages:
     - libgfortran3
-install:
+before_install:
   - mkdir --parents ~/.sme/atmospheres/
   - mv atmospheres/* ~/.sme/atmospheres/
+install:
   - pip install -r requirements.txt
   - pip install -e .
 script:
