@@ -4,7 +4,7 @@ pandas
 astropy
 ruamel.yaml
 wget
-requests
+requests==2.22.0
 matplotlib
 Ipython
 ipywidgets
