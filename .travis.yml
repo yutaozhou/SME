@@ -6,13 +6,19 @@ addons:
   apt:
     packages:
     - libgfortran3
+before_install:
+  - mkdir /home/travis/.sme/
+  - mkdir /home/travis/.sme/atmospheres/
+  - mv atmospheres/* /home/travis/.sme/atmospheres/
 install:
-- pip install -r requirements.txt
-- pip install -e .
+  - pip install -r requirements.txt
+  - pip install -e .
 script:
-- pytest
+  - pytest
 cache:
-- pip
+  - pip
+  - directories:
+    - /home/travis/.sme/
 
 
 deploy:
