@@ -10,4 +10,4 @@ Ipython
 ipywidgets
 jupyter
 plotly==4.1.0
-pytest
+pytest==5.1.0
