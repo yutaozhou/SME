@@ -2,7 +2,7 @@ numpy
 scipy
 pandas
 astropy
-ruamel.yaml
+ruamel.yaml==0.16.5
 wget
 requests
 matplotlib
