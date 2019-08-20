@@ -4,7 +4,7 @@ scipy==1.3.1
 numpy==1.17.0
 astropy==3.2.1
 wget
-requests
+requests==2.22.0
 matplotlib
 Ipython==7.7.0
 ipywidgets==7.5.1
