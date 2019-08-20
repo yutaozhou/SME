@@ -182,8 +182,11 @@ class Server:
         wget.download(url, out=loc)
 
     def isUp(self):
-        r = requests.head(self.url)
-        return r.status_code == 200
+        try:
+            r = requests.head(self.url)
+            return r.status_code == 200
+        except Exception:
+            return False
 
 
 if __name__ == "__main__":
