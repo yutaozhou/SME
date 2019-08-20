@@ -49,7 +49,10 @@ class apply(getter):
     def fget(self, obj, value):
         if self.allowNone and value is None:
             return value
-        return self.app(value)
+        if isinstance(self.app, str):
+            return getattr(value, self.app)()
+        else:
+            return self.app(value)
 
 
 class setter:

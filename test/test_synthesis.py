@@ -19,6 +19,7 @@ def test_synthesis_simple(sme_2segments):
     assert sme.wave is not None
     assert isinstance(sme2.wave, Iliffe_vector)
     assert isinstance(sme2.wob, np.ndarray)
+    assert np.issubdtype(sme2.wob.dtype, np.floating)
     assert np.all(sme2.wob != 0)
 
     assert sme.spec is None

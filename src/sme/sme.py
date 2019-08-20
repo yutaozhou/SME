@@ -33,12 +33,6 @@ from .util import (
     absolute,
 )
 
-
-class ravel(apply):
-    def __init__(self):
-        super().__init__(np.ravel)
-
-
 class isVector(setter):
     def fset(self, obj, value):
         if value is None:
@@ -876,7 +870,7 @@ class SME_Struct(Param):
         setattr(self, ref, value)
 
     @property
-    @ravel()
+    @apply("ravel")
     def wob(self):
         """array: Wavelength array """
         return self.wave
@@ -886,7 +880,7 @@ class SME_Struct(Param):
         self.wave = value
 
     @property
-    @ravel()
+    @apply("ravel")
     def sob(self):
         """array: Observed spectrum """
         return self.spec
@@ -896,7 +890,7 @@ class SME_Struct(Param):
         self.spec = value
 
     @property
-    @ravel()
+    @apply("ravel")
     def uob(self):
         """array: Uncertainties of the observed spectrum """
         return self.uncs
@@ -906,7 +900,7 @@ class SME_Struct(Param):
         self.uncs = value
 
     @property
-    @ravel()
+    @apply("ravel")
     def mob(self):
         """array: bad/good/line/continuum Mask to apply to observations """
         return self.mask
@@ -916,7 +910,7 @@ class SME_Struct(Param):
         self.mask = value
 
     @property
-    @ravel()
+    @apply("ravel")
     def smod(self):
         """array: Synthetic spectrum """
         return self.synth
