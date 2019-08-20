@@ -1,7 +1,7 @@
 numpy
 scipy
 pandas
-astropy
+astropy==3.2.1
 ruamel.yaml
 wget
 requests
