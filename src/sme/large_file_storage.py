@@ -187,36 +187,3 @@ class Server:
             return r.status_code == 200
         except Exception:
             return False
-
-
-if __name__ == "__main__":
-    import config
-
-    conf = config.Config()
-
-    datafile = "atlas12.sav"
-    server = conf["data.file_server"]
-    storage = conf["data.atmospheres"]
-    cache = conf["data.cache.atmospheres"]
-    pointers = conf["data.pointers.atmopsheres"]
-
-    lfs = LargeFileStorage(server, pointers, storage, cache)
-
-    lfs.generate_pointers()
-    lfs.move_to_cache()
-    lfs.create_pointer_file(pointers)
-
-    location = lfs.get(datafile)
-
-    print(location)
-
-    server = conf["data.file_server"]
-    storage = conf["data.nlte_grids"]
-    cache = conf["data.cache.nlte_grids"]
-    pointers = conf["data.pointers.nlte_grids"]
-
-    lfs = LargeFileStorage(server, pointers, storage, cache)
-
-    lfs.generate_pointers()
-    lfs.move_to_cache()
-    lfs.create_pointer_file(pointers)

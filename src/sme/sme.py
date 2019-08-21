@@ -1392,19 +1392,3 @@ class SME_Struct(Param):
             fields = {"sme": self}
 
         save_func(filename, **fields)
-
-
-if __name__ == "__main__":
-    filename = "/home/ansgar/Documents/IDL/SME/wasp21_20d.out"
-    test = SME_Struct.load(filename)
-    w, s = test.spectrum()
-    test.teff = 2
-    test["logg"] = 3
-    test.idlver.update()
-
-    test.save("test.npy")
-    test = SME_Struct.load("test.npy")
-
-    print("Teff", test.teff)
-    print("logg", test["LOGG"])
-    print("Py_version", test.system)
