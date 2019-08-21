@@ -48,9 +48,9 @@ class LargeFileStorage:
         #:dict(fname:hash): points from a filename to the current newest object id, usually a hash
         self.pointers = pointers
         #:Directory: directory of the current data files
-        self.current = Path(storage).expanduser()
+        self.current = Path(storage).expanduser().absolute()
         #:Directory: directory for the cache
-        self.cache = Path(cache).expanduser()
+        self.cache = Path(cache).expanduser().absolute()
         #:dict(fname:hash): hashes of existing files, to avoid recalculation
         self._hashes = {}
 
@@ -185,5 +185,6 @@ class Server:
         try:
             r = requests.head(self.url)
             return r.status_code == 200
-        except Exception:
+        except:
             return False
+        return False
