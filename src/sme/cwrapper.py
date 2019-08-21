@@ -226,7 +226,3 @@ def idl_call_external(funcname, *args, restype="str", type=None):
                     )
 
     return res
-
-
-if __name__ == "__main__":
-    print(idl_call_external("IDLtest"))

@@ -259,16 +259,3 @@ def save(fname, header, **kwargs):
 
     hdulist = fits.HDUList(hdus=[primary, table])
     hdulist.writeto(fname, overwrite=True)
-
-
-if __name__ == "__main__":
-    import os
-    import matplotlib.pyplot as plt
-
-    folder = "./reduce/"
-    file = folder + [f for f in os.listdir(folder) if f[-5:] == "c.ech"][0]
-    ech = read(file)
-
-    for i in range(25):
-        plt.plot(ech.wave[i], ech.spec[i])
-    plt.show()
