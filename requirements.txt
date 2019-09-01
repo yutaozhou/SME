@@ -11,4 +11,4 @@ Ipython==7.8.0
 ipywidgets==7.5.1
 jupyter==1.0.0
 plotly==4.1.0
-pytest==5.1.0
+pytest==5.1.2
