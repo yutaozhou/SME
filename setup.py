@@ -27,7 +27,7 @@ cache_nlte.mkdir(exist_ok=True)
 if not conf.exists():
     # Hardcode default settings?
     defaults = {
-        "data.file_server": "https://sme.astro.uu.se/atmos",
+        "data.file_server": "http://sme.astro.uu.se/atmos",
         "data.atmospheres": "~/.sme/atmospheres",
         "data.nlte_grids": "~/.sme/nlte_grids",
         "data.cache.atmospheres": "~/.sme/atmospheres/cache",
