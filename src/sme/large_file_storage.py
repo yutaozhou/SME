@@ -177,7 +177,7 @@ class Server:
         self.url = url
 
     def download(self, fname, location):
-        url = self.url + "/" + fname
+        url = self.url + "/" + fname + ".tar.gz"
         loc = str(location)
         wget.download(url, out=loc)
 
