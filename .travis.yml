@@ -1,11 +1,11 @@
 language: python
 python:
-- '3.6'
+  - "3.6"
 dist: xenial
 addons:
   apt:
     packages:
-    - libgfortran3
+      - libgfortran3
 before_install:
   - mkdir --parents ~/.sme/atmospheres/
   - mv atmospheres/* ~/.sme/atmospheres/
@@ -16,9 +16,6 @@ script:
   - pytest
 cache:
   - pip
-  - directories:
-    - ~/.sme/
-
 
 deploy:
   provider: pypi
