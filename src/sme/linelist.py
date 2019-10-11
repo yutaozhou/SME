@@ -4,6 +4,9 @@ Implementation of a specific source (e.g. Vald) should be in its own file
 
 Uses a pandas dataframe under the hood to handle the data
 """
+import io
+import json
+
 import numpy as np
 import pandas as pd
 
@@ -295,3 +298,20 @@ class LineList:
             "gamvw": gamvw,
         }
         self._lines = self._lines.append([linedata])
+
+    def save(self, file, folder="linelist"):
+        if folder != "" and folder[-1] != "/":
+            folder = folder + "/"
+
+        info = {"format": self.lineformat}
+        file.writestr(f"{folder}info.json", json.dumps(info))
+
+        record = self._lines.to_records()
+        b = io.BytesIO()
+        np.save(b, record)
+
+        file.writestr(f"{folder}data.npy", b.getvalue())
+
+    @staticmethod
+    def load():
+        raise NotImplementedError

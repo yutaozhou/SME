@@ -1,6 +1,8 @@
 """
 Elemental abundance data handling module
 """
+import io
+import json
 
 import numpy as np
 from .util import apply, oftype
@@ -35,6 +37,8 @@ class Abund:
 
     def __init__(self, monh, pattern, type=None):
         self.monh = monh
+        # The internal type is fixed to this value
+        self._type = "H=12"
         if isinstance(pattern, str):
             self.set_pattern_by_name(pattern)
         else:
@@ -364,8 +368,25 @@ class Abund:
         """
         return np.full(len(self._elem), np.nan)
 
+    def save(self, file, folder="abund"):
+        if folder != "" or folder[-1] != "/":
+            folder += "/"
+
+        monh = float(self.monh) if self.monh is not None else None
+        info = {"format": str(self._type), "monh": monh}
+        file.writestr(f"{folder}info.json", json.dumps(info))
+
+        b = io.BytesIO()
+        np.save(b, self._pattern)
+        file.writestr(f"{folder}pattern.npy", b.getvalue())
+
+    @staticmethod
+    def load(file):
+        raise NotImplementedError
+
     @staticmethod
     def solar():
         """ Return solar abundances """
         solar = Abund(0, "asplund2009")
         return solar
+

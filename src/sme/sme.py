@@ -5,6 +5,9 @@ Notably all SME objects will be Collections, which can accessed both by attribut
 
 
 import hashlib
+import zipfile
+import json
+import io
 import inspect
 import logging
 import platform
@@ -32,6 +35,24 @@ from .util import (
     lowercase,
     absolute,
 )
+
+
+def toBaseType(value):
+    if value is None:
+        return value
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, np.integer):
+        return int(value)
+    if isinstance(value, np.floating):
+        return float(value)
+    if isinstance(value, np.bool_):
+        return bool(value)
+    if isinstance(value, np.str):
+        return str(value)
+
+    return value
+
 
 class isVector(setter):
     def fset(self, obj, value):
@@ -106,7 +127,7 @@ class Collection:
 
     @property
     def dtype(self):
-        """:obj: emulate numpt recarray dtype names """
+        """:obj: emulate numpy recarray dtype names """
         dummy = lambda: None
         dummy.names = [s.upper() for s in self.names]
         return dummy
@@ -264,6 +285,8 @@ class Param(Collection):
 class NLTE(Collection):
     """ NLTE data """
 
+    _names = ["elements", "subgrid_size", "grids"]
+
     def __init__(self, *args, **kwargs):
         if len(args) != 0 and args[0] is not None:
             args = {name.casefold(): args[0][name][0] for name in args[0].dtype.names}
@@ -382,9 +405,31 @@ class NLTE(Collection):
         self.elements.remove(element)
         self.grids.pop(element)
 
+    def save(self, file, folder="nlte"):
+        if folder != "" and folder[-1] != "/":
+            folder = folder + "/"
+        info = {n: toBaseType(getattr(self, n)) for n in self._names}
+        file.writestr(f"{folder}info.json", json.dumps(info))
+
+        b = io.BytesIO()
+        np.save(b, self.flags)
+        file.writestr(f"{folder}flags.npy", b.getvalue())
+
 
 class Version(Collection):
     """ Describes the Python version and information about the computer host """
+
+    _names = [
+        "arch",
+        "os",
+        "os_family",
+        "os_name",
+        "release",
+        "build_date",
+        "memory_bits",
+        "file_offset_bits",
+        "host",
+    ]
 
     def __init__(self, *args, **kwargs):
         if len(args) != 0 and args[0] is not None:
@@ -429,6 +474,14 @@ class Version(Collection):
     def __str__(self):
         return "%s %s" % (self.os_name, self.release)
 
+    def save(self, file, folder="version"):
+        info = {n: toBaseType(getattr(self, n)) for n in self._names}
+        file.writestr(f"{folder}.json", json.dumps(info))
+
+    @staticmethod
+    def load():
+        raise NotImplementedError
+
 
 class Atmo(Param):
     """
@@ -437,6 +490,21 @@ class Atmo(Param):
     i.e. temperature etc in the different layers
     as well as stellar parameters and abundances
     """
+
+    _names = [
+        "vturb",
+        "lonh",
+        "source",
+        "depth",
+        "interp",
+        "geom",
+        "method",
+        "teff",
+        "logg",
+        "vsini",
+        "vmac",
+        "vmic",
+    ]
 
     def __init__(self, *args, **kwargs):
         if len(args) != 0 and args[0] is not None:
@@ -579,6 +647,25 @@ class Atmo(Param):
     @oneof([None, "grid", "embedded"])
     def method(self, value):
         self._method = value
+
+    def save(self, file, folder="atmo"):
+        if folder != "" and folder[-1] != "/":
+            folder = folder + "/"
+
+        info = {n: toBaseType(getattr(self, n)) for n in self._names}
+        file.writestr(f"{folder}info.json", json.dumps(info))
+
+        b = io.BytesIO()
+        np.savez(
+            b, rhox=self.rhox, tau=self.tau, temp=self.temp, xna=self.xna, xne=self.xne
+        )
+        file.writestr(f"{folder}data.npz", b.getvalue())
+
+        self.abund.save(file, "atmo/abund")
+
+    @staticmethod
+    def load():
+        raise NotImplementedError
 
 
 class Fitresults(Collection):
@@ -749,6 +836,15 @@ class SME_Struct(Param):
         # Apply final conversions from IDL to Python version
         if "wave" in self:
             self.__convert_cscale__()
+
+    @property
+    def version(self):
+        return self._version
+
+    @version.setter
+    @oftype(str)
+    def version(self, value):
+        self._version = value
 
     @property
     def gam6(self):
@@ -1388,7 +1484,55 @@ class SME_Struct(Param):
                 fields["line_lulande"] = self.linelist.lulande
                 fields["line_term_low"] = self.linelist.term_lower.astype("S")
                 fields["line_term_upp"] = self.linelist.term_upper.astype("S")
-        else:
-            fields = {"sme": self}
 
-        save_func(filename, **fields)
+            save_func(filename, **fields)
+
+        else:
+            # Create a (temporary) folder structure
+            # Add .json and .npy and .npz files with the correct names
+            # And subfolders for more complicated objects
+            # with the same layout
+            # Each class should have a save and a load method
+            # which can be used for this purpose
+
+            with zipfile.ZipFile(filename, mode="w") as file:
+                parameters = [
+                    "version",
+                    "id",
+                    "teff",
+                    "logg",
+                    "vmic",
+                    "vmac",
+                    "vsini",
+                    "vrad",
+                    "vrad_flag",
+                    "cscale",
+                    "cscale_flag",
+                    "gam6",
+                    "h2broad",
+                    "accwi",
+                    "accrt",
+                    "iptype",
+                    "ipres",
+                    "mu",
+                    "wran",
+                    "fitparameters",
+                ]
+                parameters = {p: toBaseType(getattr(self, p)) for p in parameters}
+                file.writestr("parameters.json", json.dumps(parameters))
+
+                if self.spec is not None:
+                    self.spec.save(file, "spec")
+                if self.synth is not None:
+                    self.synth.save(file, "synth")
+                if self.wave is not None:
+                    self.wave.save(file, "wave")
+                if self.mask is not None:
+                    self.mask.save(file, "mask")
+                if self.abund is not None:
+                    self.abund.save(file, "abund")
+
+                self.idlver.save(file, "idlversion")
+                self.atmo.save(file, "atmo")
+                self.nlte.save(file, "nlte")
+                self.linelist.save(file, "linelist")

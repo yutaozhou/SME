@@ -1,3 +1,4 @@
+import io
 import numpy as np
 
 
@@ -364,3 +365,20 @@ class Iliffe_vector:
         This creates new memory arrays for the values and the index
         """
         self._values.append(other)
+
+    def save(self, file, folder=""):
+        """
+        Creates a npz structure, representing the vector
+
+        Returns
+        -------
+        data : bytes
+            data to use
+        """
+        b = io.BytesIO()
+        np.savez(b, *self._values)
+        file.writestr(f"{folder}.npz", b.getvalue())
+
+    @staticmethod
+    def load(file, folder=""):
+        raise NotImplementedError
