@@ -24,6 +24,7 @@ from .nlte import update_nlte_coefficients
 from .sme_synth import SME_DLL
 from .uncertainties import uncertainties
 from .util import safe_interpolation
+from . import __file_ending__
 
 clight = speed_of_light * 1e-3  # km/s
 warnings.filterwarnings("ignore", category=OptimizeWarning)
@@ -121,11 +122,11 @@ class SME_Solver:
 
         # Also save intermediary results, because we can
         if save and self.filename is not None:
-            if self.filename.endswith(".npz"):
+            if self.filename.endswith(__file_ending__):
                 fname = self.filename[:-4]
             else:
                 fname = self.filename
-            fname = f"{fname}_tmp.npz"
+            fname = f"{fname}_tmp{__file_ending__}"
             sme2.save(fname)
 
         if segments == "all":

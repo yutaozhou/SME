@@ -36,7 +36,7 @@ from .util import (
     absolute,
 )
 from .persistence import toBaseType
-
+from . import __file_ending__
 
 class isVector(setter):
     def fset(self, obj, value):
@@ -1387,7 +1387,7 @@ class SME_Struct(Param):
 
         return s
 
-    def save(self, filename="sme.npz", compressed=False, for_idl=False):
+    def save(self, filename="data.sme", compressed=False, for_idl=False):
         """
         Save SME data to disk (compressed)
 
@@ -1495,4 +1495,6 @@ class SME_Struct(Param):
             save_func(filename, **fields)
 
         else:
+            if not filename.endswith(__file_ending__):
+                filename = filename + __file_ending__
             persistence.save(filename, self)

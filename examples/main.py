@@ -62,7 +62,7 @@ if __name__ == "__main__":
 
     # Start SME solver
     # sme = synthesize_spectrum(sme, segments=[0])
-    solver = SME_Solver(filename=f"{target}.npz")
+    solver = SME_Solver(filename=f"{target}.sme")
     sme = solver.solve(sme, fitparameters)
 
     try:
