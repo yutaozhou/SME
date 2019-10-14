@@ -393,8 +393,8 @@ class Abund:
                 monh = info["monh"]
 
             elif name.endswith("pattern.npy"):
-                with file.open(name, "r") as npfile:
-                    pattern = np.load(npfile)
+                b = io.BytesIO(file.read(name))
+                pattern = np.load(b)
 
         return Abund(monh, pattern, abund_format)
 

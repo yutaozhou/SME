@@ -105,8 +105,8 @@ def loads(file, data, names=None, folder=""):
             for key, value in info.items():
                 data[key] = value
         elif name.endswith(".npy") or name.endswith(".npz"):
-            with file.open(name, "r") as npfile:
-                data[name[:-4]] = np.load(npfile)
+            b = io.BytesIO(file.read(name))
+            data[name[:-4]] = np.load(b)
 
     for key, value in subdirs.items():
         data[key] = data[key].load(file, value, folder=folder + key)
