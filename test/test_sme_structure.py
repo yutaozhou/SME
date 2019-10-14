@@ -14,7 +14,7 @@ def cwd():
 
 @pytest.fixture
 def filename(cwd):
-    filename = f"{cwd}/__test.npz"
+    filename = f"{cwd}/__test.sme"
     return filename
 
 
@@ -51,13 +51,14 @@ def test_empty_structure():
 
     assert empty.md5 is not None
 
-    assert empty.linelist is None
-    assert empty.species is None
-    assert empty.atomic is None
+    assert empty.linelist is not None
+    assert empty.species is not None
+    assert len(empty.species) == 0
+    assert empty.atomic is not None
 
     assert empty.monh is None
     assert np.isnan(empty["abund Fe"])
-    assert np.isnan(empty.abund["H"])
+    assert empty.abund["H"] == 0
     assert np.isnan(empty.abund()["Mg"])
 
     assert empty.idlver is not None
@@ -80,6 +81,7 @@ def test_save_and_load_structure(filename):
 
     sme.teff = 5000
     sme.save(filename)
+    del sme
     sme = SME_Struct.load(filename)
     remove(filename)
     assert sme.teff == 5000

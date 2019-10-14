@@ -306,7 +306,7 @@ class LineList:
         info = {"format": self.lineformat}
         file.writestr(f"{folder}info.json", json.dumps(info))
 
-        record = self._lines.to_records()
+        record = self._lines.to_records(index=False)
         b = io.BytesIO()
         np.save(b, record)
 

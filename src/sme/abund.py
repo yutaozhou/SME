@@ -366,7 +366,9 @@ class Abund:
     def empty_pattern(self):
         """Return an abundance pattern with value None for all elements.
         """
-        return np.full(len(self._elem), np.nan)
+        pattern = np.full(len(self._elem), np.nan)
+        pattern[0] = 0
+        return pattern
 
     def save(self, file, folder="abund"):
         if folder != "" or folder[-1] != "/":
