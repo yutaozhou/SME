@@ -320,8 +320,8 @@ class LineList:
                 info = json.loads(info)
                 lineformat = info["format"]
             elif name.endswith("data.npy"):
-                with file.open(name, "r") as npfile:
-                    linedata = np.load(npfile)
+                b = io.BytesIO(file.read(name))
+                linedata = np.load(b)
 
         linedata = pd.DataFrame.from_records(linedata)
 
