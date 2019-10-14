@@ -1,6 +1,7 @@
 """
 Integrate flux profile over the stellar disk
 """
+import logging
 
 import numpy as np
 from scipy.interpolate import interp1d
@@ -119,9 +120,10 @@ def integrate_flux(mu, inten, deltav, vsini, vrt, osamp=1):
     nmu = np.size(mu)  # number of radii
     if nmu == 1:
         if vsini != 0:
-            logging.warning("Vsini is non-zero, but only one projected radius (mu value) is set. No rotational broadening will be performed.")
+            logging.warning(
+                "Vsini is non-zero, but only one projected radius (mu value) is set. No rotational broadening will be performed."
+            )
             vsini = 0  # ignore vsini if only 1 mu
-        
 
     # Calculate projected radii for boundaries of disk integration annuli.  The n+1
     # boundaries are selected such that r(i+1) exactly bisects the area between
