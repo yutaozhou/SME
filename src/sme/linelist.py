@@ -306,11 +306,11 @@ class LineList:
         info = {"format": self.lineformat}
         file.writestr(f"{folder}info.json", json.dumps(info))
 
-        record = self._lines.to_records(index=False)
+        lines = self._lines.reset_index()
         b = io.BytesIO()
-        np.save(b, record)
+        lines.to_feather(b)
 
-        file.writestr(f"{folder}data.npy", b.getvalue())
+        file.writestr(f"{folder}data.feather", b.getvalue())
 
     @staticmethod
     def load(file, names, folder=""):
@@ -319,10 +319,8 @@ class LineList:
                 info = file.read(name)
                 info = json.loads(info)
                 lineformat = info["format"]
-            elif name.endswith("data.npy"):
+            elif name.endswith("data.feather"):
                 b = io.BytesIO(file.read(name))
-                linedata = np.load(b)
-
-        linedata = pd.DataFrame.from_records(linedata)
+                linedata = pd.read_feather(b)
 
         return LineList(linedata, lineformat=lineformat)
