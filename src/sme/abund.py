@@ -381,8 +381,20 @@ class Abund:
         file.writestr(f"{folder}pattern.npy", b.getvalue())
 
     @staticmethod
-    def load(file):
-        raise NotImplementedError
+    def load(file, names, folder=""):
+        for name in names:
+            if name.endswith("info.json"):
+                info = file.read(name)
+                info = json.loads(info)
+
+                abund_format = info["format"]
+                monh = info["monh"]
+
+            elif name.endswith("pattern.npy"):
+                with file.open(name, "r") as npfile:
+                    pattern = np.load(npfile)
+
+        return Abund(monh, pattern, abund_format)
 
     @staticmethod
     def solar():

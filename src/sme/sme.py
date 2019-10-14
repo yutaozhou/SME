@@ -18,7 +18,7 @@ from pathlib import Path
 import numpy as np
 from scipy.io import readsav
 
-from . import echelle
+from . import echelle, persistence
 from .abund import Abund
 from .iliffe_vector import Iliffe_vector
 from .vald import LineList
@@ -35,23 +35,7 @@ from .util import (
     lowercase,
     absolute,
 )
-
-
-def toBaseType(value):
-    if value is None:
-        return value
-    if isinstance(value, np.ndarray):
-        return value.tolist()
-    if isinstance(value, np.integer):
-        return int(value)
-    if isinstance(value, np.floating):
-        return float(value)
-    if isinstance(value, np.bool_):
-        return bool(value)
-    if isinstance(value, np.str):
-        return str(value)
-
-    return value
+from .persistence import toBaseType
 
 
 class isVector(setter):
@@ -71,6 +55,8 @@ class isVector(setter):
             value = Iliffe_vector(nseg=len(value), values=value)
         elif isinstance(value, Iliffe_vector):
             pass
+        elif isinstance(value, np.lib.npyio.NpzFile):
+            value = Iliffe_vector.load(value)
         else:
             raise TypeError("Input value is of the wrong type")
 
@@ -152,6 +138,21 @@ class Collection:
         else:
             return alt
 
+    def save(self, file, folder=""):
+        if isinstance(file, str):
+            persistence.save(file, self, folder)
+        else:
+            persistence.saves(file, self, folder)
+
+    @classmethod
+    def load(cls, file, names, folder=""):
+        data = cls()
+        if isinstance(file, str):
+            data = persistence.load(file, data)
+        else:
+            data = persistence.loads(file, data, names, folder)
+        return data
+
 
 class Param(Collection):
     """ Handle model parameters for a Spectroscopy Made Easy (SME) job. """
@@ -160,8 +161,7 @@ class Param(Collection):
         if monh is None:
             monh = kwargs.pop("feh", None)
         if "grav" in kwargs.keys():
-            kwargs["logg"] = kwargs["grav"]
-            kwargs.pop("grav")
+            kwargs["logg"] = kwargs.pop("grav")
 
         self.teff = None
         self.logg = None
@@ -285,7 +285,7 @@ class Param(Collection):
 class NLTE(Collection):
     """ NLTE data """
 
-    _names = ["elements", "subgrid_size", "grids"]
+    _names = ["elements", "subgrid_size", "grids", "flags"]
 
     def __init__(self, *args, **kwargs):
         if len(args) != 0 and args[0] is not None:
@@ -405,16 +405,6 @@ class NLTE(Collection):
         self.elements.remove(element)
         self.grids.pop(element)
 
-    def save(self, file, folder="nlte"):
-        if folder != "" and folder[-1] != "/":
-            folder = folder + "/"
-        info = {n: toBaseType(getattr(self, n)) for n in self._names}
-        file.writestr(f"{folder}info.json", json.dumps(info))
-
-        b = io.BytesIO()
-        np.save(b, self.flags)
-        file.writestr(f"{folder}flags.npy", b.getvalue())
-
 
 class Version(Collection):
     """ Describes the Python version and information about the computer host """
@@ -474,14 +464,6 @@ class Version(Collection):
     def __str__(self):
         return "%s %s" % (self.os_name, self.release)
 
-    def save(self, file, folder="version"):
-        info = {n: toBaseType(getattr(self, n)) for n in self._names}
-        file.writestr(f"{folder}.json", json.dumps(info))
-
-    @staticmethod
-    def load():
-        raise NotImplementedError
-
 
 class Atmo(Param):
     """
@@ -504,6 +486,12 @@ class Atmo(Param):
         "vsini",
         "vmac",
         "vmic",
+        "rhox",
+        "tau",
+        "temp",
+        "xna",
+        "xne",
+        "abund",
     ]
 
     def __init__(self, *args, **kwargs):
@@ -648,25 +636,6 @@ class Atmo(Param):
     def method(self, value):
         self._method = value
 
-    def save(self, file, folder="atmo"):
-        if folder != "" and folder[-1] != "/":
-            folder = folder + "/"
-
-        info = {n: toBaseType(getattr(self, n)) for n in self._names}
-        file.writestr(f"{folder}info.json", json.dumps(info))
-
-        b = io.BytesIO()
-        np.savez(
-            b, rhox=self.rhox, tau=self.tau, temp=self.temp, xna=self.xna, xne=self.xne
-        )
-        file.writestr(f"{folder}data.npz", b.getvalue())
-
-        self.abund.save(file, "atmo/abund")
-
-    @staticmethod
-    def load():
-        raise NotImplementedError
-
 
 class Fitresults(Collection):
     """
@@ -675,6 +644,8 @@ class Fitresults(Collection):
     i.e. parameter uncertainties
     and Goodness of Fit parameters
     """
+
+    _names = ["maxiter", "chisq", "punc", "covar"]
 
     def __init__(self, **kwargs):
         #:int: Maximum number of iterations in the solver
@@ -704,6 +675,39 @@ class SME_Struct(Param):
 
     #:dict(str, int): Mask value specifier used in mob
     mask_values = {"bad": 0, "line": 1, "continuum": 2}
+
+    _names = [
+        "version",
+        "id",
+        "teff",
+        "logg",
+        "vmic",
+        "vmac",
+        "vsini",
+        "vrad",
+        "vrad_flag",
+        "cscale",
+        "cscale_flag",
+        "gam6",
+        "h2broad",
+        "accwi",
+        "accrt",
+        "iptype",
+        "ipres",
+        "mu",
+        "wran",
+        "fitparameters",
+        "spec",
+        "synth",
+        "wave",
+        "mask",
+        "abund",
+        "linelist",
+        "nlte",
+        "atmo",
+        "idlver",
+        "fitresults",
+    ]
 
     def __init__(self, atmo=None, nlte=None, idlver=None, **kwargs):
         """
@@ -760,11 +764,11 @@ class SME_Struct(Param):
                 line_term_upp=kwargs.pop("line_term_upp", None),
             )
         except KeyError:
+            self.linelist = LineList()
             logging.warning("No or incomplete linelist data present")
 
         # free parameters
         #:list of float: values of free parameters
-        self.pfree = []
         pname = kwargs.pop("pname", [])
         glob_free = kwargs.pop("glob_free", [])
         ab_free = kwargs.pop("ab_free", [])
@@ -807,7 +811,7 @@ class SME_Struct(Param):
         #:Version: System information
         self.idlver = Version(idlver)
         #:Atmo: Stellar atmosphere
-        self.atmo = Atmo(atmo)
+        self.atmo = Atmo(atmo, abund=kwargs.get("abund"), monh=kwargs.get("monh", kwargs.get("feh", 0)))
         #:NLTE: NLTE settings
         self.nlte = NLTE(nlte)
 
@@ -1260,11 +1264,11 @@ class SME_Struct(Param):
     def __getitem__(self, key):
         assert isinstance(key, str), "Key must be of type string"
 
-        if key[:5].casefold() == "abund":
+        if len(key) > 5 and key[:5].casefold() == "abund":
             element = key[5:].strip()
             element = element.capitalize()
             return self.abund[element]
-        if key[:8].casefold() == "linelist":
+        if len(key) > 8 and key[:8].casefold() == "linelist":
             _, idx, field = key[8:].split(" ", 2)
             idx = int(idx)
             field = field.casefold()
@@ -1274,12 +1278,12 @@ class SME_Struct(Param):
     def __setitem__(self, key, value):
         assert isinstance(key, str), "Key must be of type string"
 
-        if key[:5].casefold() == "abund":
+        if len(key) > 5 and key[:5].casefold() == "abund":
             element = key[5:].strip()
             element = element.capitalize()
             self.abund.update_pattern({element: value})
             return
-        if key[:8].casefold() == "linelist":
+        if len(key) > 8 and key[:8].casefold() == "linelist":
             _, idx, field = key[8:].split(" ", 2)
             idx = int(idx)
             field = field.casefold()
@@ -1338,7 +1342,10 @@ class SME_Struct(Param):
         """
         logging.info("Loading SME file %s", filename)
         ext = Path(filename).suffix
-        if ext == ".npy":
+        if ext == ".sme":
+            s = SME_Struct()
+            persistence.load(filename, s)
+        elif ext == ".npy":
             # Numpy Save file
             s = np.load(filename, allow_pickle=True)
             s = np.atleast_1d(s)[0]
@@ -1488,51 +1495,4 @@ class SME_Struct(Param):
             save_func(filename, **fields)
 
         else:
-            # Create a (temporary) folder structure
-            # Add .json and .npy and .npz files with the correct names
-            # And subfolders for more complicated objects
-            # with the same layout
-            # Each class should have a save and a load method
-            # which can be used for this purpose
-
-            with zipfile.ZipFile(filename, mode="w") as file:
-                parameters = [
-                    "version",
-                    "id",
-                    "teff",
-                    "logg",
-                    "vmic",
-                    "vmac",
-                    "vsini",
-                    "vrad",
-                    "vrad_flag",
-                    "cscale",
-                    "cscale_flag",
-                    "gam6",
-                    "h2broad",
-                    "accwi",
-                    "accrt",
-                    "iptype",
-                    "ipres",
-                    "mu",
-                    "wran",
-                    "fitparameters",
-                ]
-                parameters = {p: toBaseType(getattr(self, p)) for p in parameters}
-                file.writestr("parameters.json", json.dumps(parameters))
-
-                if self.spec is not None:
-                    self.spec.save(file, "spec")
-                if self.synth is not None:
-                    self.synth.save(file, "synth")
-                if self.wave is not None:
-                    self.wave.save(file, "wave")
-                if self.mask is not None:
-                    self.mask.save(file, "mask")
-                if self.abund is not None:
-                    self.abund.save(file, "abund")
-
-                self.idlver.save(file, "idlversion")
-                self.atmo.save(file, "atmo")
-                self.nlte.save(file, "nlte")
-                self.linelist.save(file, "linelist")
+            persistence.save(filename, self)

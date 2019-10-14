@@ -313,5 +313,16 @@ class LineList:
         file.writestr(f"{folder}data.npy", b.getvalue())
 
     @staticmethod
-    def load():
-        raise NotImplementedError
+    def load(file, names, folder=""):
+        for name in names:
+            if name.endswith("info.json"):
+                info = file.read(name)
+                info = json.loads(info)
+                lineformat = info["format"]
+            elif name.endswith("data.npy"):
+                with file.open(name, "r") as npfile:
+                    linedata = np.load(npfile)
+
+        linedata = pd.DataFrame.from_records(linedata)
+
+        return LineList(linedata, lineformat=lineformat)

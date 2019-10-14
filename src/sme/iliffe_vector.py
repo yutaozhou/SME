@@ -380,5 +380,8 @@ class Iliffe_vector:
         file.writestr(f"{folder}.npz", b.getvalue())
 
     @staticmethod
-    def load(file, folder=""):
-        raise NotImplementedError
+    def load(file):
+        # file: npzfile
+        names = file.files
+        values = [file[n] for n in names]
+        return Iliffe_vector(values=values)
