@@ -22,7 +22,7 @@ from . import echelle, persistence
 from .abund import Abund
 from .iliffe_vector import Iliffe_vector
 from .vald import LineList
-from .version import version as __version__
+from . import __version__
 from .util import (
     getter,
     setter,
@@ -37,6 +37,9 @@ from .util import (
 )
 from .persistence import toBaseType
 from . import __file_ending__
+
+logger = logging.getLogger(__name__)
+
 
 class isVector(setter):
     def fset(self, obj, value):
@@ -325,7 +328,7 @@ class NLTE(Collection):
     @property
     def nlte_pro(self):
         """str: OBSOLETE name of the nlte function to use"""
-        logging.warning("OBSOLETE. This does nothing")
+        logger.warning("OBSOLETE. This does nothing")
         return "nlte"
 
     @property
@@ -384,7 +387,7 @@ class NLTE(Collection):
             if element not in NLTE._default_grids.keys():
                 raise ValueError(f"No default grid known for element {element}")
             grid = NLTE._default_grids[element]
-            logging.info("Using default grid %s for element %s", grid, element)
+            logger.info("Using default grid %s for element %s", grid, element)
 
         self.elements += [element]
         self.grids[element] = grid
@@ -765,7 +768,7 @@ class SME_Struct(Param):
             )
         except KeyError:
             self.linelist = LineList()
-            logging.warning("No or incomplete linelist data present")
+            logger.warning("No or incomplete linelist data present")
 
         # free parameters
         #:list of float: values of free parameters
@@ -1176,7 +1179,7 @@ class SME_Struct(Param):
         if self._wind is None:
             if self.wave is None:
                 return None
-            return [0, *self.wave.sizes]
+            return [0, *np.cumsum(self.wave.sizes)]
         return self._wind
 
     @wind.setter
@@ -1340,7 +1343,8 @@ class SME_Struct(Param):
         ValueError
             If the file format extension is not recognized
         """
-        logging.info("Loading SME file %s", filename)
+        logger.info("Loading SME file %s", filename)
+
         ext = Path(filename).suffix
         if ext == ".sme":
             s = SME_Struct()
@@ -1399,7 +1403,7 @@ class SME_Struct(Param):
         verbose : bool, optional
             if True will log the event
         """
-        # logging.info("Saving SME structure %s", filename)
+        # logger.info("Saving SME structure %s", filename)
         if compressed:
             save_func = np.savez_compressed
         else:

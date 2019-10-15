@@ -17,6 +17,8 @@ import wget
 import requests
 from ruamel.yaml import YAML
 
+logger = logging.getLogger(__name__)
+
 # We are lazy and want a simple check if a file is in the Path
 Path.__contains__ = lambda self, key: (self / key).exists()
 
@@ -93,7 +95,7 @@ class LargeFileStorage:
                     "File does not exist and is not tracked by the Large File system"
                 )
             else:
-                logging.warning(
+                logger.warning(
                     "Data file exists, but is not tracked by the large file storage"
                 )
                 return key
@@ -113,21 +115,21 @@ class LargeFileStorage:
 
         # Step 4: Otherwise check the cache for the requested version
         if newest in self.cache:
-            logging.debug("Using cached version of datafile")
+            logger.debug("Using cached version of datafile")
             os.symlink(self.cache / newest, self.current / key)
             return self.current / key
 
         # Step 5: If not in the cache, download from the server
-        logging.info("Downloading newest version of the datafile from server")
+        logger.info("Downloading newest version of the datafile from server")
         try:
             self.server.download(newest, self.cache)
             os.symlink(self.cache / newest, self.current / key)
         except TimeoutError:
-            logging.warning("Server connection timed out.")
+            logger.warning("Server connection timed out.")
             if key in self.current:
-                logging.warning("Using obsolete, but existing version")
+                logger.warning("Using obsolete, but existing version")
             else:
-                logging.warning("No data available for use")
+                logger.warning("No data available for use")
                 raise FileNotFoundError("No data could be found for the requested file")
 
         return self.current / key

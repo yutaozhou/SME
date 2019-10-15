@@ -1,5 +1,8 @@
 import io
+import logging
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 class Iliffe_vector:

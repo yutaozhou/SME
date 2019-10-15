@@ -7,6 +7,8 @@ import numpy as np
 from scipy.interpolate import interp1d
 from scipy.ndimage.filters import convolve
 
+logger = logging.getLogger(__name__)
+
 
 def integrate_flux(mu, inten, deltav, vsini, vrt, osamp=1):
     """
@@ -120,7 +122,7 @@ def integrate_flux(mu, inten, deltav, vsini, vrt, osamp=1):
     nmu = np.size(mu)  # number of radii
     if nmu == 1:
         if vsini != 0:
-            logging.warning(
+            logger.warning(
                 "Vsini is non-zero, but only one projected radius (mu value) is set. No rotational broadening will be performed."
             )
             vsini = 0  # ignore vsini if only 1 mu

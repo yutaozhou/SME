@@ -5,12 +5,15 @@ Wrapper for IDL style C libary code
 with argv = number of parameters
 and argc = list of pointers to those parameters
 """
+import logging
 import ctypes as ct
 import platform
 import sys
 from pathlib import Path
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 class IDL_String(ct.Structure):

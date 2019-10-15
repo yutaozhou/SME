@@ -1,8 +1,11 @@
 import io
+import logging
 from zipfile import ZipFile
 import json
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 def toBaseType(value):

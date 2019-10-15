@@ -1,6 +1,10 @@
+import logging
+
 import numpy as np
 
 from .util import safe_interpolation
+
+logger = logging.getLogger(__name__)
 
 
 def resamp(wold, sold, wnew):

@@ -9,6 +9,8 @@ from scipy.optimize import curve_fit
 
 from .sme import Atmo
 
+logger = logging.getLogger(__name__)
+
 
 class AtmosphereError(RuntimeError):
     """ Something went wrong with the atmosphere interpolation """
@@ -648,7 +650,7 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
     Mmin = np.min(Mlist)  # range of [M/H] in grid
     Mmax = np.max(Mlist)
     if MonH > Mmax:  # true: [M/H] too large
-        logging.info(
+        logger.info(
             "interp_atmo_grid: requested [M/H] (%.3f) larger than max grid value (%.3f). extrapolating.",
             MonH,
             Mmax,
@@ -670,7 +672,7 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
 
     # Trace diagnostics.
     if verbose >= 5:
-        logging.info("[M/H]: %.3f < %.3f < %.3f", Mlo, MonH, Mup)
+        logger.info("[M/H]: %.3f < %.3f < %.3f", Mlo, MonH, Mup)
 
     # *** DETERMINATION OF LOG(G) BRACKETS AT [M/H] BRACKET VALUES ***
     # Set up for loop through [M/H] bounds.
@@ -684,7 +686,7 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
         Gmin = np.min(Glist)  # range of gravities in grid
         Gmax = np.max(Glist)
         if logg > Gmax:  # true: logg too large
-            logging.info(
+            logger.info(
                 "interp_atmo_grid: requested log(g) (%.3f) larger than max grid value (%.3f). extrapolating.",
                 logg,
                 Gmax,
@@ -707,7 +709,7 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
 
         # Trace diagnostics.
         if verbose >= 5:
-            logging.info(
+            logger.info(
                 "log(g) at [M/H]=%.3f: %.3f < %.3f < %.3f", Mb[iMb], Glo, logg, Gup
             )
 
@@ -732,7 +734,7 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
                     % (Teff, Tmax)
                 )
             if Teff < Tmin:  # true: logg too small
-                logging.info(
+                logger.info(
                     "interp_atmo_grid: requested Teff (%i) smaller than min grid value (%i). extrapolating.",
                     Teff,
                     Tmin,
@@ -749,7 +751,7 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
 
             # Trace diagnostics.
             if verbose >= 5:
-                logging.info(
+                logger.info(
                     "Teff at log(g)=%.3f and [M/H]=%.3f: %i < %i < %i",
                     Gb[iMb, iGb],
                     Mb[iMb],
@@ -770,7 +772,7 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
         )[0]
         nwhr = iwhr.size
         if nwhr != 1:
-            logging.info(
+            logger.info(
                 "interp_atmo_grid: %i models in grid with [M/H]=%.1f, log(g)=%.1f, and Teff=%i",
                 nwhr,
                 Mb[iMb],
@@ -781,13 +783,13 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
 
     # Trace diagnostics.
     if verbose >= 1:
-        logging.info("Teff=%i,  log(g)=%.3f,  [M/H]=%.3f:", Teff, logg, MonH)
-        logging.info("indx  M/H  g   Teff     indx  M/H  g   Teff")
+        logger.info("Teff=%i,  log(g)=%.3f,  [M/H]=%.3f:", Teff, logg, MonH)
+        logger.info("indx  M/H  g   Teff     indx  M/H  g   Teff")
         for iMb in range(nb):
             for iGb in range(nb):
                 i0 = icor[iMb, iGb, 0]
                 i1 = icor[iMb, iGb, 1]
-                logging.info(
+                logger.info(
                     i0,
                     atmo_grid[i0].monh,
                     atmo_grid[i0].logg,
@@ -915,7 +917,7 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
                     "Input ATMO.GEOM='%s' not valid for requested model." % atmo.geom
                 )
             else:
-                logging.info(
+                logger.info(
                     "Input ATMO.GEOM='%s' overrides '%s' from grid.", atmo.geom, geom
                 )
     atmo.geom = geom

@@ -3,9 +3,12 @@ Elemental abundance data handling module
 """
 import io
 import json
+import logging
 
 import numpy as np
 from .util import apply, oftype
+
+logger = logging.getLogger(__name__)
 
 
 class Abund:

@@ -18,6 +18,8 @@ from scipy.signal import correlate
 from . import util
 from .sme_synth import SME_DLL
 
+logger = logging.getLogger(__name__)
+
 c_light = speed_of_light * 1e-3  # speed of light in km/s
 
 
@@ -70,14 +72,14 @@ def determine_continuum(sme, segment):
         if np.all(m != 2):
             # If no continuum mask has been set
             # Use the effective wavelength ranges of the lines to determine continuum points
-            logging.info(
+            logger.info(
                 "No Continuum mask was set, "
                 "Using effective wavelength range of lines to find continuum instead"
             )
             cont = get_continuum_mask(x, sme.linelist, mask=m)
             # Save mask for next iteration
             m[cont == 2] = 2
-            logging.debug("Continuum mask points: %i", np.count_nonzero(cont == 2))
+            logger.debug("Continuum mask points: %i", np.count_nonzero(cont == 2))
 
         cont = m == 2
         x = x - x[0]
@@ -144,7 +146,7 @@ def get_continuum_mask(wave, linelist, threshold=0.1, mask=None):
 
     mask[temp] = 2
 
-    logging.debug("Ignoring lines with depth < %f", threshold)
+    logger.debug("Ignoring lines with depth < %f", threshold)
     return mask
 
 
@@ -379,7 +381,7 @@ def determine_rv_and_cont(sme, segment, x_syn, y_syn, use_whole_spectrum=False):
         x2 = x_obs[len(x_obs) // 2]
         rvel = c_light * (1 - x2 / x1)
         if np.abs(rvel) >= c_light:
-            logging.warning(
+            logger.warning(
                 f"Radial Velocity could not be estimated from cross correlation, using initial guess of 0 km/h. Please check results!"
             )
             rvel = 0

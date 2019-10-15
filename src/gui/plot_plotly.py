@@ -5,6 +5,7 @@ Can also be used just for Plot.ly, which will then generated html files
 import numpy as np
 import plotly.offline as py
 import plotly.graph_objs as go
+from plotly.io import write_image
 
 from scipy.constants import speed_of_light
 from .plot_colors import PlotColors
@@ -84,11 +85,11 @@ class FinalPlot:
         layout = {
             "dragmode": "select",
             "selectdirection": "h",
-            "title": f"Segment {segment}",
+            "title": f"Segment {self.segment}",
             "xaxis": {"title": "Wavelength [Å]"},
             "yaxis": {"title": "Intensity"},
             "annotations": annotations[self.segment],
-            "sliders": [{"active": 0, "steps": steps}],
+            "sliders": [{"active": self.segment, "steps": steps}],
             "legend": {"traceorder": "reversed"},
         }
         self.fig = go.FigureWidget(data=data, layout=layout)
@@ -112,8 +113,11 @@ class FinalPlot:
 
     def save(self, _=None, filename="SME.html"):
         """ save plot to html file """
-        self.fig.layout.dragmode = "zoom"
-        py.plot(self.fig, filename=filename)
+        if filename.endswith(".html"):
+            self.fig.layout.dragmode = "zoom"
+            py.plot(self.fig, filename=filename)
+        else:
+            write_image(self.fig, filename)
 
     def shift_mask(self, x, mask):
         """ shift the edges of the mask to the bottom of the plot,
@@ -140,7 +144,7 @@ class FinalPlot:
 
     def create_plot(self, current_segment):
         """ Generate the plot componentes (lines and masks) and line labels """
-        seg = self.segment
+
         annotations = {}
         visible = []
         data = []

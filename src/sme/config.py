@@ -2,10 +2,12 @@
 Handle the Yaml configuration file
 At the moment it is only used for the LargeFileStorage
 """
-
+import logging
 from pathlib import Path
 
 from ruamel.yaml import YAML
+
+logger = logging.getLogger(__name__)
 
 
 def _requires_load(func):

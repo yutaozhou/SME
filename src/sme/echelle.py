@@ -4,9 +4,12 @@ Contains functions to read and modify echelle structures, just as in reduce
 Mostly for compatibility reasons
 """
 
+import logging
 import astropy.io.fits as fits
 import numpy as np
 import scipy.constants
+
+logger = logging.getLogger(__name__)
 
 
 def calc_2dpolynomial(solution2d):

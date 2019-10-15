@@ -4,6 +4,8 @@ import numpy as np
 from scipy.interpolate import interp1d
 from scipy.ndimage.filters import convolve
 
+logger = logging.getLogger(__name__)
+
 
 def apply_broadening(ipres, x_seg, y_seg, type="gauss", sme=None):
     """
@@ -149,7 +151,7 @@ def gaussbroad(w, s, hwhm):
 
     # Warn user if hwhm is negative.
     if hwhm < 0:
-        logging.warning("Forcing negative smoothing width to zero.")
+        logger.warning("Forcing negative smoothing width to zero.")
 
     # Return input argument if half-width is nonpositive.
     if hwhm <= 0:
@@ -220,7 +222,7 @@ def sincbroad(w, s, hwhm):
 
     # Warn user if hwhm is negative.
     if hwhm < 0:
-        logging.warning("Forcing negative smoothing width to zero.")
+        logger.warning("Forcing negative smoothing width to zero.")
 
     # Return input argument if half-width is nonpositive.
     if hwhm <= 0:

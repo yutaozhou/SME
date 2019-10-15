@@ -6,9 +6,12 @@ Uses a pandas dataframe under the hood to handle the data
 """
 import io
 import json
+import logging
 
 import numpy as np
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 class FileError(Exception):
@@ -322,5 +325,9 @@ class LineList:
             elif name.endswith("data.feather"):
                 b = io.BytesIO(file.read(name))
                 linedata = pd.read_feather(b)
+            elif name.endswith("data.npy"):
+                b = io.BytesIO(file.read(name))
+                linedata = np.load(b)
+                linedata = pd.DataFrame.from_records(linedata)
 
         return LineList(linedata, lineformat=lineformat)

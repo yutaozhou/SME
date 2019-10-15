@@ -8,6 +8,8 @@ import numpy as np
 
 from .cwrapper import get_lib_name, idl_call_external
 
+logger = logging.getLogger(__name__)
+
 
 def check_error(name, *args, **kwargs):
     """
@@ -730,6 +732,6 @@ class SME_DLL:
         try:
             check_error("GetNLTEflags", nlte_flags, nlines, type=("short", "int"))
         except AttributeError:
-            logging.warning("Using deprecated SME C library")
+            logger.warning("Using deprecated SME C library")
 
         return nlte_flags.astype(bool)

@@ -16,7 +16,7 @@ from pandas import __version__ as pdversion
 from scipy import __version__ as spversion
 from scipy.interpolate import interp1d
 
-from . import version as smeversion
+from . import __version__ as smeversion
 from .sme_synth import SME_DLL
 
 try:
@@ -26,6 +26,8 @@ try:
     in_notebook = cfg is not None
 except (AttributeError, ImportError):
     in_notebook = False
+
+logger = logging.getLogger(__name__)
 
 
 class getter:
@@ -231,7 +233,7 @@ def safe_interpolation(x_old, y_old, x_new=None, fill_value=0):
             assume_sorted=True,
         )
     except ValueError:
-        logging.warning(
+        logger.warning(
             "Could not instantiate cubic spline interpolation, using linear instead"
         )
         interpolator = interp1d(
@@ -249,9 +251,19 @@ def safe_interpolation(x_old, y_old, x_new=None, fill_value=0):
         return interpolator
 
 
-def has_logger(log_file="log.log"):
-    logger = logging.getLogger()
-    return len(logger.handlers) == 0
+def log_version():
+    """ For Debug purposes """
+    dll = SME_DLL()
+    logger.debug("----------------------")
+    logger.debug("Python version: %s", python_version())
+    try:
+        logger.debug("SME CLib version: %s", dll.SMELibraryVersion())
+    except OSError:
+        logger.debug("SME CLib version: ???")
+    logger.debug("PySME version: %s", smeversion)
+    logger.debug("Numpy version: %s", npversion)
+    logger.debug("Scipy version: %s", spversion)
+    logger.debug("Pandas version: %s", pdversion)
 
 
 def start_logging(log_file="log.log"):
@@ -263,50 +275,13 @@ def start_logging(log_file="log.log"):
         name of the logging file (default: "log.log")
     """
 
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
-
-    # Remove existing File handles
-    hasStream = False
-    for h in list(logger.handlers):
-        logger.removeHandler(h)
-
-    # Command Line output
-    # only if not running in notebook
-    if not in_notebook and not hasStream:
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.INFO)
-        ch_formatter = logging.Formatter("%(levelname)s - %(message)s")
-        ch.setFormatter(ch_formatter)
-        logger.addHandler(ch)
-
-    # Log file settings
-    if log_file is not None:
-        log_file = Path(log_file)
-        log_dir = log_file.parent
-        log_dir.mkdir(exist_ok=True)
-        file = logging.FileHandler(log_file)
-        file.setLevel(logging.DEBUG)
-        file_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-        file.setFormatter(file_formatter)
-        logger.addHandler(file)
-
-    # Turns print into logging.info
-    # But messes with the debugger
-    # builtins.print = lambda msg, *args, **kwargs: logging.info(msg, *args)
+    logging.basicConfig(
+        filename=log_file,
+        level=logging.DEBUG,
+        format="%(asctime)-15s - %(levelname)s - %(name)-8s - %(message)s",
+    )
     logging.captureWarnings(True)
-
-    dll = SME_DLL()
-    logging.debug("----------------------")
-    logging.debug("Python version: %s", python_version())
-    try:
-        logging.debug("SME CLib version: %s", dll.SMELibraryVersion())
-    except OSError:
-        logging.debug("SME CLib version: ???")
-    logging.debug("PySME version: %s", smeversion.full_version)
-    logging.debug("Numpy version: %s", npversion)
-    logging.debug("Scipy version: %s", spversion)
-    logging.debug("Pandas version: %s", pdversion)
+    log_version()
 
 
 def parse_args():

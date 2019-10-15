@@ -12,6 +12,8 @@ import pandas as pd
 from .abund import Abund
 from .linelist import FileError, LineList
 
+logger = logging.getLogger(__name__)
+
 
 class ValdError(FileError):
     """ Vald Data File Error """
@@ -73,7 +75,7 @@ class ValdFile:
         return ValdFile(filename)
 
     def _read(self, filename):
-        logging.info("Loading VALD file %s", filename)
+        logger.info("Loading VALD file %s", filename)
 
         with open(filename, "r") as file:
             lines = file.readlines()
@@ -93,7 +95,7 @@ class ValdFile:
                 abunddata = lines[4 + self.n : 22 + self.n]
         except IndexError:
             msg = "Linelist file is shorter than it should be according to the number of lines. Is it incomplete?"
-            logging.error(msg)
+            logger.error(msg)
             raise IOError(msg)
 
         self._linelist = self.parse_linedata(linedata, fmt=fmt)

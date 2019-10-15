@@ -12,6 +12,8 @@ from scipy import interpolate
 
 from .abund import Abund
 
+logger = logging.getLogger(__name__)
+
 
 class DirectAccessFile:
     """
@@ -472,7 +474,7 @@ def update_nlte_coefficients(sme, dll, lfs_nlte):
         # No NLTE to do
         if self.first:
             self.first = False
-            logging.info("Running in LTE")
+            logger.info("Running in LTE")
         return sme
     if sme.linelist.lineformat == "short":
         if self.first:
@@ -492,7 +494,7 @@ def update_nlte_coefficients(sme, dll, lfs_nlte):
 
     if self.first:
         self.first = False
-        logging.info("Running in NLTE: %s", ", ".join(elements))
+        logger.info("Running in NLTE: %s", ", ".join(elements))
 
     # Call each element to update and return its set of departure coefficients
     for elem in elements:

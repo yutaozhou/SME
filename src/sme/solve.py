@@ -26,6 +26,8 @@ from .uncertainties import uncertainties
 from .util import safe_interpolation
 from . import __file_ending__
 
+logger = logging.getLogger(__name__)
+
 clight = speed_of_light * 1e-3  # km/s
 warnings.filterwarnings("ignore", category=OptimizeWarning)
 
@@ -110,7 +112,7 @@ class SME_Solver:
         except AtmosphereError as ae:
             # Something went wrong (left the grid? Don't go there)
             # If returned value is not finite, the fit algorithm will not go there
-            logging.debug(ae)
+            logger.debug(ae)
             return np.inf
 
         # Return values by reference to sme
@@ -129,8 +131,7 @@ class SME_Solver:
             fname = f"{fname}_tmp{__file_ending__}"
             sme2.save(fname)
 
-        if segments == "all":
-            segments = range(sme.nseg)
+        segments = check_segments(sme, segments)
 
         synth = sme2.synth[segments]
         if mask is not None:
@@ -148,7 +149,7 @@ class SME_Solver:
             # Save result for jacobian
             self._latest_residual = resid
             self.iteration += 1
-            logging.debug("%s", {n: v for n, v in zip(self.parameter_names, param)})
+            logger.debug("%s", {n: v for n, v in zip(self.parameter_names, param)})
             # Plot
             # if fig is not None:
             #     wave = sme2.wave
@@ -249,15 +250,19 @@ class SME_Solver:
         result = np.array([[-np.inf, np.inf]] * self.nparam)
 
         for i, name in enumerate(self.parameter_names):
-            if name[:5] == "abund":
+            if name[:5].lower() == "abund":
                 result[i] = [-10, 11]
-            elif name[:8] == "linelist":
+            elif name[:8].lower() == "linelist":
                 pass
             else:
                 result[i] = bounds[name]
 
         result = result.T
-        return result
+
+        if len(result) > 0:
+            return result
+        else:
+            return [-np.inf, np.inf]
 
     def __get_scale(self):
         """
@@ -289,7 +294,7 @@ class SME_Solver:
         d.update({f"{el} abund": v for el, v in Abund.solar()().items()})
 
         def default(name):
-            logging.info("No value for %s set, using default value %s", name, d[name])
+            logger.info("No value for %s set, using default value %s", name, d[name])
             return d[name]
 
         return [
@@ -366,12 +371,9 @@ class SME_Solver:
 
         if "uncs" not in sme:
             sme.uncs = np.ones_like(sme.sob)
-            logging.warning(
-                "SME Structure has no uncertainties, using all ones instead"
-            )
+            logger.warning("SME Structure has no uncertainties, using all ones instead")
 
-        if segments == "all":
-            segments = range(sme.nseg)
+        segments = check_segments(sme, segments)
 
         # Clean parameter values
         self.parameter_names = sanitize_parameter_names(sme, param_names)
@@ -397,39 +399,43 @@ class SME_Solver:
         # Just as in IDL SME, this increases the relative error for points inside lines
         uncs /= spec
 
-        logging.info(
-            "Fitting Spectrum with Parameters " + "%s, " * self.nparam, *param_names
-        )
+        logger.info("Fitting Spectrum with Parameters: " + ",".join(param_names))
 
         # Setup LineList only once
         self.dll.SetLibraryPath()
         self.dll.InputLineList(sme.linelist)
 
         # Do the heavy lifting
-        res = least_squares(
-            self.__residuals,
-            x0=p0,
-            jac=self.__jacobian,
-            bounds=bounds,
-            x_scale=scales,
-            loss="soft_l1",
-            method="trf",
-            verbose=2,
-            args=(sme, spec, uncs, mask),
-            kwargs={"bounds": bounds, "segments": segments},
-        )
-
-        # Save the results in the sme structure
-        sme = self.__update_fitresults(sme, res)
+        if self.nparam > 0:
+            res = least_squares(
+                self.__residuals,
+                x0=p0,
+                jac=self.__jacobian,
+                bounds=bounds,
+                x_scale=scales,
+                loss="soft_l1",
+                method="trf",
+                verbose=2,
+                args=(sme, spec, uncs, mask),
+                kwargs={"bounds": bounds, "segments": segments},
+            )
+            sme = self.__update_fitresults(sme, res)
+            logger.debug("Reduced chi square: %.3f", sme.fitresults.chisq)
+            for name, value, unc in zip(
+                self.parameter_names, res.x, sme.fitresults.punc.values()
+            ):
+                logger.info("%s\t%.5f +- %.5g", name.ljust(10), value, unc)
+        elif len(param_names) > 0:
+            # This happens when vrad and/or cscale are given as parameters but nothing else
+            # We could try to reuse the already calculated synthetic spectrum (if it already exists)
+            # However it is much lower resolution then the newly synthethized one (usually)
+            # Therefore the radial velocity wont be as good as when redoing the whole thing
+            sme = synthesize_spectrum(sme, segments)
+        else:
+            raise ValueError("No fit parameters given")
 
         if self.filename is not None:
             sme.save(self.filename)
-
-        logging.debug("Reduced chi square: %.3f", sme.fitresults.chisq)
-        for name, value, unc in zip(
-            self.parameter_names, res.x, sme.fitresults.punc.values()
-        ):
-            logging.info("%s\t%.5f +- %.5g", name.ljust(10), value, unc)
 
         return sme
 
@@ -473,14 +479,14 @@ def sanitize_parameter_names(sme, param_names):
     if "vrad" in param_names:
         param_names.remove("vrad")
         sme.vrad_flag = "each"
-        logging.info(
+        logger.info(
             "Removed fit parameter 'vrad', instead set radial velocity flag to 'each'"
         )
 
     if "cont" in param_names:
         param_names.remove("cont")
         sme.cscale_flag = "linear"
-        logging.info(
+        logger.info(
             "Removed fit parameter 'cont', instead set continuum flag to 'linear'"
         )
     return param_names
@@ -618,6 +624,29 @@ def new_wavelength_grid(wint):
     return x_seg, vstep
 
 
+def check_segments(sme, segments):
+    if isinstance(segments, str) and segments == "all":
+        segments = range(sme.nseg)
+    else:
+        segments = np.atleast_1d(segments)
+        if np.any(segments < 0) or np.any(segments >= sme.nseg):
+            raise IndexError("Segment(s) out of range")
+    return segments
+
+
+def apply_radial_velocity_and_continuum(sme, wmod, smod, vrad, cscale, segments):
+    for il in segments:
+        if vrad[il] is not None:
+            rv_factor = np.sqrt((1 + vrad[il] / clight) / (1 - vrad[il] / clight))
+            wmod[il] *= rv_factor
+        smod[il] = safe_interpolation(wmod[il], smod[il], sme.wave[il])
+
+        if cscale[il] is not None and not np.all(cscale[il] == 0):
+            x = sme.wave[il] - sme.wave[il][0]
+            smod[il] *= np.polyval(cscale[il], x)
+    return smod
+
+
 def synthesize_spectrum(
     sme,
     segments="all",
@@ -677,12 +706,7 @@ def synthesize_spectrum(
     if "wint" not in sme:
         reuse_wavelength_grid = False
 
-    if segments == "all":
-        segments = range(n_segments)
-    else:
-        segments = np.atleast_1d(segments)
-        if np.any(segments < 0) or np.any(segments >= n_segments):
-            raise IndexError("Segment(s) out of range")
+    segments = check_segments(sme, segments)
 
     # Prepare arrays
     wran = sme.wran
@@ -727,7 +751,7 @@ def synthesize_spectrum(
     #   Interpolate onto geomspaced wavelength grid
     #   Apply instrumental and turbulence broadening
     for il in segments:
-        logging.debug("Segment %i", il)
+        logger.debug("Segment %i", il)
         # Input Wavelength range and Opacity
         vrad_seg = sme.vrad[il]
         wbeg, wend = get_wavelengthrange(wran[il], vrad_seg, sme.vsini)
@@ -740,7 +764,7 @@ def synthesize_spectrum(
         # Only calculate line opacities in the first segment
         keep_line_opacity = il != segments[0]
         #   Calculate spectral synthesis for each
-        logging.debug("Start Radiative Transfer")
+        logger.debug("Start Radiative Transfer")
         _, wint[il], sint[il], cint[il] = dll.Transf(
             sme.mu,
             sme.accrt,  # threshold line opacity / cont opacity
@@ -748,8 +772,8 @@ def synthesize_spectrum(
             keep_lineop=keep_line_opacity,
             wave=wint_seg,
         )
-        logging.debug("Radiative Transfer Done")
-        logging.debug(f"Reuse Wavelength Grid: {reuse_wavelength_grid}")
+        logger.debug("Radiative Transfer Done")
+        logger.debug(f"Reuse Wavelength Grid: {reuse_wavelength_grid}")
 
         # Create new geomspaced wavelength grid, to be used for intermediary steps
         wgrid, vstep = new_wavelength_grid(wint[il])
@@ -793,18 +817,9 @@ def synthesize_spectrum(
     # Fit continuum and radial velocity
     # And interpolate the flux onto the wavelength grid
     cscale, vrad = match_rv_continuum(sme, segments, wmod, smod)
-    logging.debug("Radial velocity: %s", str(vrad))
-    logging.debug("Continuum coefficients: %s", str(cscale))
-
-    for il in segments:
-        if vrad[il] is not None:
-            rv_factor = np.sqrt((1 + vrad[il] / clight) / (1 - vrad[il] / clight))
-            wmod[il] *= rv_factor
-        smod[il] = safe_interpolation(wmod[il], smod[il], wave[il])
-
-        if cscale[il] is not None and not np.all(cscale[il] == 0):
-            x = wave[il] - wave[il][0]
-            smod[il] *= np.polyval(cscale[il], x)
+    logger.debug("Radial velocity: %s", str(vrad))
+    logger.debug("Continuum coefficients: %s", str(cscale))
+    smod = apply_radial_velocity_and_continuum(sme, wmod, smod, vrad, cscale, segments)
 
     # Merge all segments
     # if sme already has a wavelength this should be the same
