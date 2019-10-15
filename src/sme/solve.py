@@ -634,15 +634,15 @@ def check_segments(sme, segments):
     return segments
 
 
-def apply_radial_velocity_and_continuum(sme, wmod, smod, vrad, cscale, segments):
+def apply_radial_velocity_and_continuum(wave, wmod, smod, vrad, cscale, segments):
     for il in segments:
         if vrad[il] is not None:
             rv_factor = np.sqrt((1 + vrad[il] / clight) / (1 - vrad[il] / clight))
             wmod[il] *= rv_factor
-        smod[il] = safe_interpolation(wmod[il], smod[il], sme.wave[il])
+        smod[il] = safe_interpolation(wmod[il], smod[il], wave[il])
 
         if cscale[il] is not None and not np.all(cscale[il] == 0):
-            x = sme.wave[il] - sme.wave[il][0]
+            x = wave[il] - wave[il][0]
             smod[il] *= np.polyval(cscale[il], x)
     return smod
 
@@ -819,7 +819,7 @@ def synthesize_spectrum(
     cscale, vrad = match_rv_continuum(sme, segments, wmod, smod)
     logger.debug("Radial velocity: %s", str(vrad))
     logger.debug("Continuum coefficients: %s", str(cscale))
-    smod = apply_radial_velocity_and_continuum(sme, wmod, smod, vrad, cscale, segments)
+    smod = apply_radial_velocity_and_continuum(wave, wmod, smod, vrad, cscale, segments)
 
     # Merge all segments
     # if sme already has a wavelength this should be the same
