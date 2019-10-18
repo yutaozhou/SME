@@ -8,4 +8,3 @@ include src/sme/datafiles_atmospheres.json
 include src/sme/datafiles_nlte.json
 
 include versioneer.py
-include src/sme/_version.py
