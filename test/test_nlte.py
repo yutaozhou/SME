@@ -6,14 +6,13 @@ from os.path import dirname
 
 import numpy as np
 
-from sme.sme import SME_Struct
-from sme.iliffe_vector import Iliffe_vector
-from sme.vald import ValdFile
-from sme.sme_synth import SME_DLL
-from sme.nlte import nlte
-from sme.solve import get_atmosphere, synthesize_spectrum
-
-from sme.config import Config
+from pysme.sme import SME_Struct
+from pysme.iliffe_vector import Iliffe_vector
+from pysme.vald import ValdFile
+from pysme.sme_synth import SME_DLL
+from pysme.nlte import nlte
+from pysme.solve import get_atmosphere, synthesize_spectrum
+from pysme.config import Config
 
 from .test_largefilestorage import skipif_lfs, lfs_nlte
 

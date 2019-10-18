@@ -5,9 +5,9 @@ from scipy.constants import speed_of_light
 
 # TODO create various kinds of default sme structures
 # then run test on all of the relevant ones
-from sme.sme import SME_Struct
-from sme.vald import ValdFile
-from sme.solve import synthesize_spectrum
+from pysme.sme import SME_Struct
+from pysme.vald import ValdFile
+from pysme.solve import synthesize_spectrum
 
 
 @pytest.fixture

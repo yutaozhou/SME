@@ -4,7 +4,7 @@ import numpy as np
 from os.path import dirname
 from os import remove
 
-from sme.sme import SME_Struct
+from pysme.sme import SME_Struct
 
 
 @pytest.fixture
