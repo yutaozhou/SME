@@ -43,7 +43,7 @@ def get_config():
     cfg.style = "pep440"
     cfg.tag_prefix = "pysme-"
     cfg.parentdir_prefix = "pysme-"
-    cfg.versionfile_source = "src/sme/_version.py"
+    cfg.versionfile_source = "src/pysme/_version.py"
     cfg.verbose = False
     return cfg
 
