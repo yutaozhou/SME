@@ -1,11 +1,10 @@
 """
-Handle the Yaml configuration file
+Handle the Json configuration file
 At the moment it is only used for the LargeFileStorage
 """
 import logging
 from pathlib import Path
-
-from ruamel.yaml import YAML
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -20,10 +19,8 @@ def _requires_load(func):
 
 
 class Config:
-    def __init__(self, fname="~/.sme/config.yaml"):
+    def __init__(self, fname="~/.sme/config.json"):
         self.filename = fname
-        self._yaml = YAML(typ="safe")
-        self._yaml.default_flow_style = False
         self._cfg = None
 
     @property
@@ -44,10 +41,10 @@ class Config:
 
     def load(self):
         with self._filename.open("r") as f:
-            self._cfg = self._yaml.load(f)
+            self._cfg = json.load(f)
         return self._cfg
 
     @_requires_load
     def save(self):
         with self._filename.open("w") as f:
-            self._yaml.dump(self._cfg, f)
+            json.dump(self._cfg, f)

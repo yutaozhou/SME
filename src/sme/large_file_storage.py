@@ -15,7 +15,7 @@ from pathlib import Path
 
 import wget
 import requests
-from ruamel.yaml import YAML
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -44,9 +44,8 @@ class LargeFileStorage:
             if not path.exists():
                 with path.open("w") as f:
                     f.writelines("")
-            yaml = YAML(typ="safe")
             with path.open("r") as f:
-                pointers = yaml.load(f)
+                pointers = json.load(f)
         #:dict(fname:hash): points from a filename to the current newest object id, usually a hash
         self.pointers = pointers
         #:Directory: directory of the current data files
@@ -167,11 +166,8 @@ class LargeFileStorage:
         if self.pointers is None:
             raise RuntimeError("Needs pointers")
 
-        yaml = YAML(typ="safe")
-        yaml.default_flow_style = False
-
         with open(filename, "w") as f:
-            yaml.dump(self.pointers, f)
+            json.dump(self.pointers, f)
 
 
 class Server:

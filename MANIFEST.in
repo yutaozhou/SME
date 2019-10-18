@@ -4,8 +4,8 @@ include src/sme/dll/stehle_long.dat.INTEL
 include src/sme/dll/vcsbalmer.dat
 include src/sme/dll/bpo_self.grid.INTEL
 
-include src/sme/datafiles_atmospheres.yaml
-include src/sme/datafiles_nlte.yaml
+include src/sme/datafiles_atmospheres.json
+include src/sme/datafiles_nlte.json
 
 include versioneer.py
 include src/sme/_version.py

@@ -1,16 +1,15 @@
 #!/usr/bin/env python
 
 import os
+import json
 from setuptools import setup
 
 import versioneer
 from pathlib import Path
-from ruamel.yaml import YAML
-
 
 # Create folder structure
 directory = Path("~/.sme/").expanduser()
-conf = directory / "config.yaml"
+conf = directory / "config.json"
 atmo = directory / "atmospheres"
 nlte = directory / "nlte_grids"
 cache_atmo = atmo / "cache"
@@ -32,16 +31,13 @@ if not conf.exists():
         "data.nlte_grids": "~/.sme/nlte_grids",
         "data.cache.atmospheres": "~/.sme/atmospheres/cache",
         "data.cache.nlte_grids": "~/.sme/nlte_grids/cache",
-        "data.pointers.atmospheres": "datafiles_atmospheres.yaml",
-        "data.pointers.nlte_grids": "datafiles_nlte.yaml",
+        "data.pointers.atmospheres": "datafiles_atmospheres.json",
+        "data.pointers.nlte_grids": "datafiles_nlte.json",
     }
 
     # Save file to disk
-    yaml = YAML(typ="safe")
-    yaml.default_flow_style = False
     with conf.open("w") as f:
-        yaml.dump(defaults, f)
-
+        json.dump(defaults, f)
 
 # Setup package
 setup(
@@ -54,13 +50,5 @@ setup(
     packages=["sme", "gui"],
     package_dir={"": "src"},
     include_package_data=True,
-    install_requires=[
-        "numpy",
-        "scipy",
-        "matplotlib",
-        "plotly",
-        "pandas",
-        "wget",
-        "ruamel.yaml",
-    ],
+    install_requires=["numpy", "scipy", "matplotlib", "plotly", "pandas", "wget"],
 )
