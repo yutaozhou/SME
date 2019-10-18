@@ -7,23 +7,24 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import norm
 
-from gui import plot_plotly, plot_pyplot
-from sme import sme as SME
-from sme import util
-from sme.abund import Abund
-from sme.solve import synthesize_spectrum, SME_Solver
-from sme.vald import ValdFile
+from pysme.gui import plot_plotly, plot_pyplot
+from pysme import sme as SME
+from pysme import util
+from pysme.abund import Abund
+from pysme.solve import synthesize_spectrum, SME_Solver
+from pysme.continuum_and_radial_velocity import match_rv_continuum
+from pysme.vald import ValdFile
 
 if __name__ == "__main__":
-    target = "k2-3"
+    target = "k2-3_2"
     util.start_logging(f"{target}.log")
 
     # Get input files
     if len(sys.argv) > 1:
         in_file, vald_file, fitparameters = util.parse_args()
     else:
-        examples_dir = "/DATA/ESO_Archive/HARPS/K2-3/"
-        in_file = os.path.join(examples_dir, "K2-3_red_c.ech")
+        examples_dir = "/DATA/ESO/HARPS/K2-3/"
+        in_file = "test.sme"  # os.path.join("./examples", "test.sme")
         vald_file = os.path.expanduser("~/Documents/IDL/SME/harps_red.lin")
         atmo_file = "marcs2012p_t2.0.sav"
         fitparameters = []
@@ -48,21 +49,24 @@ if __name__ == "__main__":
         else:
             fitparameters = ["teff", "logg", "monh"]
 
-    sme.teff = 3800
-    sme.logg = 4.7
-    sme.monh = -0.4
-    sme.vsini = 1
-    sme.vmic = 1
-    sme.vmac = 1
+    # sme.teff = 3800
+    # sme.logg = 4.7
+    # sme.monh = -0.4
+    # sme.vsini = 0
+    # sme.vmic = 1
+    # sme.vmac = 1
 
-    sme.cscale_flag = "none"
-    sme.cscale = 1
-    sme.vrad_flag = "whole"
-    sme.vrad = 30.75
+    # sme.cscale_flag = "none"
+    # sme.cscale = 1
+    sme.vrad_flag = "each"
+    # sme.vrad = 30.75
+
+    fitparameters = ["logg", "teff", "monh"]
 
     # Start SME solver
     # sme = synthesize_spectrum(sme, segments=[0])
-    solver = SME_Solver(filename=f"{target}.sme")
+
+    solver = SME_Solver(filename=f"test2.sme")
     sme = solver.solve(sme, fitparameters)
 
     try:
@@ -96,8 +100,15 @@ if __name__ == "__main__":
         pass
 
     # Plot results
-    fig = plot_plotly.FinalPlot(sme)
-    fig.save(filename=f"{target}.html")
+    sme.mask = None
+    fig = plot_plotly.FinalPlot(sme, segment=11)
+    fig.fig.layout["xaxis"]["range"] = [6134, 6140]
+    fig.fig.layout["yaxis"]["range"] = [0, 1.1]
+
+    fig.fig.layout["font"]["family"] = "Roboto"
+
+    fig.fig.update()
+    fig.save(filename=f"{target}.svg")
 
     # # if "synth" in sme:
     # #     plt.plot(sme.wob, sme.sob - sme.smod, label="Residual Python")
