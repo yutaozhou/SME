@@ -36,7 +36,7 @@ if not exists(conf):
     }
 
     # Save file to disk
-    with conf.open("w") as f:
+    with open(conf, "w") as f:
         json.dump(defaults, f)
 
 # Setup package
