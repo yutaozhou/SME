@@ -7,7 +7,6 @@ safe interpolation
 import argparse
 import logging
 from functools import wraps
-from pathlib import Path
 from platform import python_version
 
 import numpy as np
@@ -18,14 +17,6 @@ from scipy.interpolate import interp1d
 
 from . import __version__ as smeversion
 from .sme_synth import SME_DLL
-
-try:
-    from IPython import get_ipython
-
-    cfg = get_ipython()
-    in_notebook = cfg is not None
-except (AttributeError, ImportError):
-    in_notebook = False
 
 logger = logging.getLogger(__name__)
 

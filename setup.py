@@ -1,29 +1,29 @@
 #!/usr/bin/env python
 
-import os
 import json
-from setuptools import setup
+import os
+from os.path import exists, expanduser, join
 
 import versioneer
-from pathlib import Path
+from setuptools import setup
 
 # Create folder structure
-directory = Path("~/.sme/").expanduser()
-conf = directory / "config.json"
-atmo = directory / "atmospheres"
-nlte = directory / "nlte_grids"
-cache_atmo = atmo / "cache"
-cache_nlte = nlte / "cache"
+directory = expanduser("~/.sme/")
+conf = join(directory, "config.json")
+atmo = join(directory, "atmospheres")
+nlte = join(directory, "nlte_grids")
+cache_atmo = join(atmo, "cache")
+cache_nlte = join(nlte, "cache")
 
-directory.mkdir(exist_ok=True)
-atmo.mkdir(exist_ok=True)
-nlte.mkdir(exist_ok=True)
-cache_atmo.mkdir(exist_ok=True)
-cache_nlte.mkdir(exist_ok=True)
+os.makedirs(directory, exist_ok=True)
+os.makedirs(atmo, exist_ok=True)
+os.makedirs(nlte, exist_ok=True)
+os.makedirs(cache_atmo, exist_ok=True)
+os.makedirs(cache_nlte, exist_ok=True)
 
 
 # Create config file if it does not exist
-if not conf.exists():
+if not exists(conf):
     # Hardcode default settings?
     defaults = {
         "data.file_server": "http://sme.astro.uu.se/atmos",
