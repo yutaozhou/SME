@@ -1,10 +1,10 @@
-include src/sme/dll/sme_synth.so.*
+include src/pysme/dll/sme_synth.so.*
+include src/pysme/dll/stehle_long.dat.INTEL
+include src/pysme/dll/vcsbalmer.dat
+include src/pysme/dll/bpo_self.grid.INTEL
 
-include src/sme/dll/stehle_long.dat.INTEL
-include src/sme/dll/vcsbalmer.dat
-include src/sme/dll/bpo_self.grid.INTEL
-
-include src/sme/datafiles_atmospheres.json
-include src/sme/datafiles_nlte.json
+include src/pysme/datafiles_atmospheres.json
+include src/pysme/datafiles_nlte.json
 
 include versioneer.py
+include src/pysme/_version.py
