@@ -168,7 +168,7 @@ class SME_Solver:
         The calculation is the same as "3-point"
         but we can tell residuals that we are within a jacobian
         """
-        return approx_derivative(
+        g = approx_derivative(
             self.__residuals,
             param,
             method="3-point",
@@ -179,6 +179,12 @@ class SME_Solver:
             args=args,
             kwargs={"isJacobian": True, "segments": segments},
         )
+
+        if not np.all(np.isfinite(g)):
+            g[~np.isfinite(g)] = 0
+            logger.warning("Some derivatives are non-finite, setting them to zero. Final uncertainties will be inaccurate.")
+
+        return g
 
     def __get_bounds(self, atmo_file):
         """
