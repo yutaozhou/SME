@@ -4,8 +4,8 @@ from os import listdir, makedirs, stat
 from os.path import dirname, islink, exists
 from shutil import rmtree
 
-from sme.large_file_storage import LargeFileStorage, Server
-from sme.config import Config
+from pysme.large_file_storage import LargeFileStorage, Server
+from pysme.config import Config
 
 
 def lfs_available():

@@ -18,6 +18,8 @@ if __name__ == "__main__":
     in_file = os.path.join(examples_dir, "sun_6440_grid.inp")
 
     sme = SME.SME_Struct.load(in_file)
+
+    sme.vsini = 0
     fitparameters = ["teff", "logg", "monh"]
 
     # Start SME solver
@@ -25,7 +27,7 @@ if __name__ == "__main__":
     sme = solve(sme, fitparameters)
 
     # Save results
-    sme.save(f"{target}.npz")
+    sme.save(f"{target}.sme")
 
     # Plot results
     fig = plot_plotly.FinalPlot(sme)

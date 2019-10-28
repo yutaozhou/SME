@@ -1,5 +1,5 @@
 import pytest
-from sme.abund import Abund
+from pysme.abund import Abund
 from collections import OrderedDict
 
 import numpy as np
@@ -30,7 +30,8 @@ def test_init_using_pattern_names():
 
     # The 'Empty' abundance pattern has a value of None for all elements.
     abund = Abund(0, "Empty")
-    assert np.all(np.isnan(abund.pattern))
+    assert abund.pattern[0] == 0
+    assert np.all(np.isnan(abund.pattern[1:]))
 
     # An invalid abundance pattern name raises an error.
     with pytest.raises(ValueError):

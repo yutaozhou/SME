@@ -5,8 +5,8 @@ from os.path import dirname
 import pytest
 import numpy as np
 
-from sme.sme import SME_Struct
-from sme.continuum_and_radial_velocity import determine_rv_and_cont
+from pysme.sme import SME_Struct
+from pysme.continuum_and_radial_velocity import determine_rv_and_cont
 
 
 def test_match_both(testcase1):
