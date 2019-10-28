@@ -4,10 +4,10 @@ Run this from the examples directory, so that
 """
 import os.path
 
-from gui import plot_plotly
-from sme import sme as SME
-from sme import util
-from sme.solve import solve, synthesize_spectrum
+from pysme.gui import plot_plotly
+from pysme import sme as SME
+from pysme import util
+from pysme.solve import solve, synthesize_spectrum
 
 if __name__ == "__main__":
     target = "sun"
