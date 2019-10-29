@@ -58,20 +58,37 @@ class Abund:
         return self.totype(pattern, type, raw=raw)
 
     def __getitem__(self, elems):
-        if isinstance(elems, str):
-            elems = self._elem_dict[elems]
+        if isinstance(elems, np.str):
+            try:
+                elems = self._elem_dict[elems]
+            except KeyError:
+                try:
+                    elems = int(elems)
+                except ValueError:
+                    raise KeyError(
+                        "Got element abreviation %s, expected one of %s"
+                        % (elems, ", ".join(self._elem))
+                    )
             return self._pattern[elems]
-        if isinstance(elems, (list, tuple, np.ndarray)):
-            elems = [self._elem_dict[el] if isinstance(el, str) else el for el in elems]
+        elif isinstance(elems, (int, np.integer)):
+            return self._pattern[elems]
+        elif isinstance(elems, (list, tuple, np.ndarray)):
+            elems = [
+                self._elem_dict[el] if isinstance(el, np.str) else int(el)
+                for el in elems
+            ]
 
-        abund = np.copy(self._pattern)
-
-        try:
-            return abund[elems]
-        except KeyError:
-            raise KeyError(
-                "Got element abreviation %s, expected one of %s"
-                % (elems, ", ".join(self._elem))
+            try:
+                abund = np.copy(self._pattern)
+                return abund[elems]
+            except KeyError:
+                raise KeyError(
+                    "Got element abreviation %s, expected one of %s"
+                    % (elems, ", ".join(self._elem))
+                )
+        else:
+            raise TypeError(
+                "Could not understand key type. Expected one of [str, int, list]"
             )
 
     def __setitem__(self, elem, abund):

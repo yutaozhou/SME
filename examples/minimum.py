@@ -1,6 +1,4 @@
 """ Minimum working example of an SME script 
-
-Run this from the examples directory, so that 
 """
 import os.path
 
@@ -10,16 +8,29 @@ from pysme import util
 from pysme.solve import solve, synthesize_spectrum
 
 if __name__ == "__main__":
-    target = "sun"
-    util.start_logging(f"{target}.log")
 
-    # Put your input structure here!
+    # Define the location of all your files
+    # this will put everything into the example dir
+    target = "sun"
     examples_dir = os.path.dirname(os.path.realpath(__file__))
     in_file = os.path.join(examples_dir, "sun_6440_grid.inp")
+    out_file = os.path.join(examples_dir, f"{target}.sme")
+    plot_file = os.path.join(examples_dir, f"{target}.html")
+    log_file = os.path.join(examples_dir, f"{target}.log")
 
+    # Start the logging to the file
+    util.start_logging(log_file)
+
+    # Load your existing SME structure or create your own
     sme = SME.SME_Struct.load(in_file)
 
+    # Change parameters if your want
     sme.vsini = 0
+
+    # Define any fitparameters you want
+    # For abundances use: 'abund {El}', where El is the element (e.g. 'abund Fe')
+    # For linelist use: 'linelist {Nr} {p}', where Nr is the number in the
+    # linelist and p is the line parameter (e.g. 'linelist 17 gflog')
     fitparameters = ["teff", "logg", "monh"]
 
     # Start SME solver
@@ -27,8 +38,8 @@ if __name__ == "__main__":
     sme = solve(sme, fitparameters)
 
     # Save results
-    sme.save(f"{target}.sme")
+    sme.save(out_file)
 
     # Plot results
     fig = plot_plotly.FinalPlot(sme)
-    fig.save(filename=f"{target}.html")
+    fig.save(filename=plot_file)

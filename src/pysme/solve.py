@@ -356,7 +356,7 @@ class SME_Solver:
         # punc3 = uncertainties(res.jac, res.fun, uncs, param_names, plot=False)
         return sme
 
-    def solve(self, sme, param_names=("teff", "logg", "monh"), segments="all"):
+    def solve(self, sme, param_names=None, segments="all"):
         """
         Find the least squares fit parameters to an observed spectrum
 
@@ -386,6 +386,8 @@ class SME_Solver:
         segments = check_segments(sme, segments)
 
         # Clean parameter values
+        if param_names is None:
+            param_names = sme.fitparameters
         self.parameter_names = sanitize_parameter_names(sme, param_names)
 
         self.update_linelist = False
@@ -810,7 +812,7 @@ def synthesize_spectrum(
             )
 
         # Divide calculated spectrum by continuum
-        if sme.cscale_flag != "fix":
+        if sme.normalize_by_continuum:
             flux /= cont_flux
         smod[il] = flux
         wmod[il] = wgrid

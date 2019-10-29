@@ -706,6 +706,8 @@ class SME_Struct(Param):
         "accrt",
         "iptype",
         "ipres",
+        "ip_x",
+        "ip_y",
         "mu",
         "wran",
         "fitparameters",
@@ -718,8 +720,9 @@ class SME_Struct(Param):
         "linelist",
         "nlte",
         "atmo",
-        "idlver",
+        "system_info",
         "fitresults",
+        "normalize_by_continuum",
     ]
 
     def __init__(self, atmo=None, nlte=None, idlver=None, **kwargs):
@@ -809,6 +812,10 @@ class SME_Struct(Param):
         self.iptype = None
         #:int: Instrumental resolution for instrumental broadening
         self.ipres = None
+        #:array: Instrumental broadening table in x direction
+        self.ip_x = None
+        #:array: Instrumental broadening table in y direction
+        self.ip_y = None
         #:Fitresults: results from the latest fit
         self.fitresults = Fitresults(
             maxiter=kwargs.pop("maxiter", None),
@@ -820,9 +827,12 @@ class SME_Struct(Param):
         #:list of arrays: calculated adaptive wavelength grids
         self.wint = None
         self.smod = None
+
+        #:bool: If True (default), the synthetic spectrum will be normalized by the continuum intensities 
+        self.normalize_by_continuum = kwargs.get("cscale_flag", "") != "fix"
         # Substructures
         #:Version: System information
-        self.idlver = Version(idlver)
+        self.system_info = Version(idlver)
         #:Atmo: Stellar atmosphere
         self.atmo = Atmo(atmo, abund=kwargs.get("abund"), monh=kwargs.get("monh", kwargs.get("feh", 0)))
         #:NLTE: NLTE settings
@@ -875,7 +885,7 @@ class SME_Struct(Param):
 
     @property
     def h2broad(self):
-        """bool: flag determing wether to use H2 broadening or not"""
+        """bool: flag determing whether to use H2 broadening or not"""
         return self._h2broad
 
     @h2broad.setter
@@ -902,6 +912,26 @@ class SME_Struct(Param):
     @oftype(float)
     def accrt(self, value):
         self._accrt = value
+
+    @property
+    def ipres(self):
+        """float: Instrument resolution """
+        return self._ipres
+
+    @ipres.setter
+    @oftype(float)
+    def ipres(self, value):
+        self._ipres = value
+
+    @property
+    def iptype(self):
+        """str: The type of instrumental broadening to use """
+        return self._iptype
+
+    @iptype.setter
+    @oneof([None, "gauss", "sinc", "table"])
+    def iptype(self, value):
+        self._iptype = value
 
     @property
     def atomic(self):
@@ -1035,9 +1065,10 @@ class SME_Struct(Param):
     @property
     def wran(self):
         """array of size (nseg, 2): Beginning and end Wavelength points of each segment"""
-        if self._wran is None and self.wob is not None:
+        #TODO
+        if self._wran is None and self.wave is not None:
             # Default to just one wavelength range with all points if not specified
-            return [self.wob[[0, -1]]]
+            return [self.wave[0][0], self.wave[-1][-1]]
         return self._wran
 
     @wran.setter
@@ -1098,7 +1129,7 @@ class SME_Struct(Param):
         if self.cscale_flag == "none":
             return np.ones((nseg, 1))
 
-        ndeg = {"fix": 1, "constant": 1, "linear": 2, "quadratic": 3}[self.cscale_flag]
+        ndeg = self.cscale_degree
         n, length = self._cscale.shape
 
         if length == ndeg and n == nseg:
