@@ -13,6 +13,7 @@ Welcome to PySME's documentation!
    usage/installation
    usage/quickstart
    usage/sme_struct
+   usage/fitparameters
    usage/changes
    usage/faq
    _sources/modules
