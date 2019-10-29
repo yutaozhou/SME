@@ -12,9 +12,10 @@ Welcome to PySME's documentation!
 
    usage/installation
    usage/quickstart
+   usage/sme_struct
    usage/changes
    usage/faq
-   _source/modules
+   _sources/modules
 
 Indices and tables
 ==================
