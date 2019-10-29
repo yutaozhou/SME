@@ -61,8 +61,8 @@ def test_empty_structure():
     assert empty.abund["H"] == 0
     assert np.isnan(empty.abund()["Mg"])
 
-    assert empty.idlver is not None
-    assert empty.idlver.arch is None
+    assert empty.system_info is not None
+    assert empty.system_info.arch is None
 
     assert len(empty.fitparameters) == 0
     assert empty.fitresults is not None
@@ -125,7 +125,7 @@ def test_cscale_degree():
 
 def test_idlver():
     sme = SME_Struct()
-    sme.idlver.update()
+    sme.system_info.update()
     # assert sme.idlver.arch == "x86_64"
 
 

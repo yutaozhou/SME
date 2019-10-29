@@ -1129,7 +1129,7 @@ class SME_Struct(Param):
         if self.cscale_flag == "none":
             return np.ones((nseg, 1))
 
-        ndeg = self.cscale_degree
+        ndeg = self.cscale_degree + 1
         n, length = self._cscale.shape
 
         if length == ndeg and n == nseg:
