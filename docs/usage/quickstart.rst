@@ -56,7 +56,7 @@ Once the SME structure is prepared, SME can be run in one of its two modes:
         >>> sme = synthesize_spectrum(sme)
     2. Finding the best fit (least squares) solution
         >>> from sme.solve import solve
-        >>> fitparameters = ["teff", "logg", "monh", "Mg Abund"]
+        >>> fitparameters = ["teff", "logg", "monh", "abund Mg"]
         >>> sme = solve(sme, fitparameters)
 
 The results will be contained in the output sme structure. These can for example be plotted using the gui module.
