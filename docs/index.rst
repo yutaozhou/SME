@@ -18,6 +18,7 @@ Welcome to PySME's documentation!
    usage/atmosphere
    usage/nlte
    usage/fitparameters
+   usage/system_info
    usage/lfs
    usage/changes
    usage/faq

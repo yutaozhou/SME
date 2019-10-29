@@ -187,6 +187,7 @@ System Information
 The sme structure does contain information about the host system.
 E.g. which operating system was used. This is mostly for
 legacy reasons, and potential debugging information.
+For more information see :ref:`system_info`.
 
 :system_info: The system information object. It replaces the idlver object.
 
