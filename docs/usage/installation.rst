@@ -3,7 +3,7 @@ Installation
 
 How to install SME:
 
-Prerequisites: 
+Prerequisites:
     - libgfortran3
     - gcc
 

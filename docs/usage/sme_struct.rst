@@ -113,20 +113,15 @@ from IDL SME. It is recommend however to use the new variables.
     specify the exact wavelength grid of the synthetic
     observation. Note that this is not an Illiffe vector.
 
-.. _abund:
 
 Abundance
 ---------
 
-SME can calculate simulate and fit the first 99 elements of
-the periodic table (from Hydrogen H to Einsteinium Es).
 The individal abundances are stored in a seperate Abundance
 object, which shares the same metallicity as the overall structure.
+For more detailed information see :ref:`abund`
 
 :abund: The abundance object
-
-
-.. _linelist:
 
 Linelist
 --------
@@ -134,6 +129,7 @@ Linelist
 The sme structure does contain the whole linelist in the linelist property.
 For legacy reasons, it also provides direct access to
 the 'species' and 'atomic' arrays. They refer directly to the linelist however.
+For more detailed information see :ref:`linelist`.
 
 :linelist: The linelist object
 :species: Names of the species of each spectral line
@@ -146,17 +142,16 @@ Atmosphere
 
 Unlike the linelist the atmosphere is stored in an external file,
 that is only referenced by name in the structure.
+For more detailed information see :ref:`atmosphere`.
 
 :atmo: The atmosphere object
 
 NLTE
 ----
 
-Unlike the linelist, but similar to the atmosphere, the NLTE [#]_
+Unlike the linelist, but similar to the atmosphere, the NLTE
 parameters are stored in external tables, which are only referenced
-by name.
-
-.. [#] Non Local Thermal Equilibrium
+by name. For more detailed information see :ref:`nlte`.
 
 :nlte: The NLTE object
 

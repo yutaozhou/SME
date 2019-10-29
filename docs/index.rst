@@ -13,7 +13,12 @@ Welcome to PySME's documentation!
    usage/installation
    usage/quickstart
    usage/sme_struct
+   usage/linelist
+   usage/abundance
+   usage/atmosphere
+   usage/nlte
    usage/fitparameters
+   usage/lfs
    usage/changes
    usage/faq
    _sources/modules
