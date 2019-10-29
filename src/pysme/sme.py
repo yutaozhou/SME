@@ -648,7 +648,7 @@ class Fitresults(Collection):
     and Goodness of Fit parameters
     """
 
-    _names = ["maxiter", "chisq", "punc", "covar", "grad", "pder"]
+    _names = ["maxiter", "chisq", "punc", "covar", "grad", "pder", "resid"]
 
     def __init__(self, **kwargs):
         #:int: Maximum number of iterations in the solver
@@ -661,6 +661,7 @@ class Fitresults(Collection):
         self.covar = kwargs.pop("covar", None)
         self.grad = kwargs.pop("grad", None)
         self.pder = kwargs.pop("pder", None)
+        self.resid = kwargs.pop("resid", None)
         super().__init__(**kwargs)
 
     def clear(self):
@@ -671,6 +672,7 @@ class Fitresults(Collection):
         self.covar = None
         self.grad = None
         self.pder = None
+        self.resid = None
 
 
 class SME_Struct(Param):
