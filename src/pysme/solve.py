@@ -183,7 +183,9 @@ class SME_Solver:
         if not np.all(np.isfinite(g)):
             g[~np.isfinite(g)] = 0
             logger.warning(
-                "Some derivatives are non-finite, setting them to zero. Final uncertainties will be inaccurate."
+                "Some derivatives are non-finite, setting them to zero. "
+                "Final uncertainties will be inaccurate. "
+                "You might be running into the boundary of the grid"
             )
 
         return g
