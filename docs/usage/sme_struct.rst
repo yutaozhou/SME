@@ -179,7 +179,7 @@ Fitresults
 :fitparameters:
     The fitparameters used for the fitting.
     See :ref:`fitparameters`.
-:fitresults: The fitresults object
+:fitresults: The fitresults object. See :ref:`fitresults`.
 
 System Information
 ------------------
