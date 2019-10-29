@@ -659,8 +659,11 @@ class Fitresults(Collection):
         self.punc = kwargs.pop("punc", None)
         #:array of size (nfree, nfree): Covariance matrix
         self.covar = kwargs.pop("covar", None)
+        #:array of size (nfree,): Final gradients of the free parameters on the cost function
         self.grad = kwargs.pop("grad", None)
+        #:array of size (npoints, nfree): Final Jacobian of each point and each parameter
         self.pder = kwargs.pop("pder", None)
+        #:array of size (npoints): Final Residuals of the fit
         self.resid = kwargs.pop("resid", None)
         super().__init__(**kwargs)
 
@@ -710,6 +713,7 @@ class SME_Struct(Param):
         "synth",
         "wave",
         "mask",
+        "uncs",
         "abund",
         "linelist",
         "nlte",
