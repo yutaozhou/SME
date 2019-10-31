@@ -24,7 +24,7 @@ if __name__ == "__main__":
         in_file, vald_file, fitparameters = util.parse_args()
     else:
         examples_dir = "/DATA/ESO/HARPS/K2-3/"
-        in_file = "test.sme"  # os.path.join("./examples", "test.sme")
+        in_file = os.path.join(examples_dir, "K2-3_red_c.ech")
         vald_file = os.path.expanduser("~/Documents/IDL/SME/harps_red.lin")
         atmo_file = "marcs2012p_t2.0.sav"
         fitparameters = []
@@ -62,6 +62,9 @@ if __name__ == "__main__":
     # sme.vrad = 30.75
 
     fitparameters = ["logg", "teff", "monh"]
+
+    sme.save("k2-3.sme")
+    SME.SME_Struct.load("k2-3.sme")
 
     # Start SME solver
     # sme = synthesize_spectrum(sme, segments=[0])
