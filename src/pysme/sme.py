@@ -168,9 +168,9 @@ class Param(Collection):
 
         self.teff = None
         self.logg = None
-        self.vsini = None
-        self.vmac = None
-        self.vmic = None
+        self.vsini = 0
+        self.vmac = 0
+        self.vmic = 0
 
         # Helium is also fractional (sometimes?)
         if abund is not None and abund[1] > 0:
@@ -507,7 +507,7 @@ class Atmo(Param):
         self.temp = None
         self.xna = None
         self.xne = None
-        self.vturb = None
+        self.vturb = 0
         self.lonh = None
         self.source = None
         self.depth = None
@@ -648,7 +648,7 @@ class Fitresults(Collection):
     and Goodness of Fit parameters
     """
 
-    _names = ["maxiter", "chisq", "punc", "covar", "grad", "pder", "resid"]
+    _names = ["maxiter", "chisq", "punc", "covar", "grad", "pder", "resid", "punc2"]
 
     def __init__(self, **kwargs):
         #:int: Maximum number of iterations in the solver
@@ -665,6 +665,8 @@ class Fitresults(Collection):
         self.pder = kwargs.pop("pder", None)
         #:array of size (npoints): Final Residuals of the fit
         self.resid = kwargs.pop("resid", None)
+
+        self.punc2 = None
         super().__init__(**kwargs)
 
     def clear(self):

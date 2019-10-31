@@ -188,6 +188,8 @@ class SME_Solver:
                 "You might be running into the boundary of the grid"
             )
 
+        self._last_jac = np.copy(g)
+
         return g
 
     def __get_bounds(self, atmo_file):
@@ -312,12 +314,6 @@ class SME_Solver:
         ]
 
     def __update_fitresults(self, sme, result):
-        # SME structure is updated inside synthetize_spectrum to contain the results of the calculation
-        # If for some reason that should not work, one can load the intermediary "sme.npy" file
-        # sme = SME.SME_Struct.load("sme.npy")
-        for i, name in enumerate(self.parameter_names):
-            sme[name] = result.x[i]
-
         # Update SME structure
         popt = result.x
         sme.pfree = np.atleast_2d(popt)  # 2d for compatibility
@@ -424,13 +420,15 @@ class SME_Solver:
                 x0=p0,
                 jac=self.__jacobian,
                 bounds=bounds,
-                x_scale=scales,
+                x_scale="jac",
                 loss="soft_l1",
                 method="trf",
                 verbose=2,
                 args=(sme, spec, uncs, mask),
                 kwargs={"bounds": bounds, "segments": segments},
             )
+            # The returned jacobian is "scaled for robust loss function"
+            res.jac = self._last_jac
             sme = self.__update_fitresults(sme, res)
             logger.debug("Reduced chi square: %.3f", sme.fitresults.chisq)
             for name, value, unc in zip(
