@@ -64,6 +64,8 @@ class SME_DLL:
         #:dict: NLTE subgrids for nlte coefficient interpolation
         self._nlte_grids = {}
 
+        self.check_data_files_exist()
+
     @property
     def ndepth(self):
         """int: Number of depth layers in the atmosphere model"""
@@ -82,6 +84,38 @@ class SME_DLL:
         """str: (Expected) Location of the library file"""
         return get_lib_name()
 
+    @property
+    def directory(self):
+        prefix = Path(__file__).parent
+        libpath = str(prefix / "dll") + os.sep
+        return libpath
+
+    def check_data_files_exist(self):
+        """
+        Checks if required data files for the SME library exist.
+        If they dont exist, SME will just segfault, without any hint.
+        
+        Raises
+        ------
+        FileNotFoundError
+            If any of the files don't exist
+        """
+        names = [
+            "bpo_self.grid.INTEL",
+            "Fe1_Bautista2017.dat.INTEL",
+            "NH_Stancil2018.dat.INTEL",
+            "stehle_long.dat.INTEL",
+            "vcsbalmer.dat",
+        ]
+
+        directory = self.directory
+        for name in names:
+            n = os.path.join(directory, name)
+            if not os.path.exists(n):
+                raise FileNotFoundError(
+                    f"Could not find required data file {name} in library directory {directory}"
+                )
+
     def SMELibraryVersion(self):
         """
         Return SME library version
@@ -96,8 +130,7 @@ class SME_DLL:
 
     def SetLibraryPath(self):
         """ Set the path to the library """
-        prefix = Path(__file__).parent
-        libpath = str(prefix / "dll") + os.sep
+        libpath = self.directory
         check_error("SetLibraryPath", libpath)
 
     def InputWaveRange(self, wfirst, wlast):
