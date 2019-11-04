@@ -25,9 +25,9 @@ def test_empty_structure():
     assert isinstance(empty.version, str)
     assert empty.teff is None
     assert empty.logg is None
-    assert empty.vmic is 0
-    assert empty.vmac is 0
-    assert empty.vsini is 0
+    assert empty.vmic == 0
+    assert empty.vmac == 0
+    assert empty.vsini == 0
 
     assert empty.nseg is None
     assert empty.wave is None
