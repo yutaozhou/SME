@@ -47,7 +47,7 @@ setup(
     description="Spectroscopy Made Easy",
     author="Ansgar Wehrhahn, Jeff A. Valenti",
     author_email="ansgar.wehrhahn@physics.uu.se, valenti@stsci.edu",
-    packages=["pysme"],
+    packages=["pysme", "pysme.gui"],
     package_dir={"": "src"},
     include_package_data=True,
     install_requires=["numpy", "scipy", "matplotlib", "plotly", "pandas", "wget"],
