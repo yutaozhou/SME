@@ -762,10 +762,10 @@ class SME_Struct(Param):
         self.cscale_flag = "none"
 
         self.gam6 = 1
-        self.h2broad = False
+        self.h2broad = True
         self.accwi = 0.003
         self.accrt = 0.001
-        self.mu = 1
+        self.mu = np.geomspace(0.1, 1, num=7)
         #:LineList: spectral line information
         self.linelist = None
         try:
@@ -1132,20 +1132,21 @@ class SME_Struct(Param):
             return np.ones((nseg, 1))
 
         ndeg = self.cscale_degree + 1
-        n, length = self._cscale.shape
+        ns, nd = self._cscale.shape
 
-        if length == ndeg and n == nseg:
+        if nd == ndeg and ns == nseg:
             return self._cscale
 
-        cs = np.ones((nseg, ndeg))
-        if length == n:
-            cs[:n, :] = self._cscale[:n, :]
-        elif length < ndeg:
-            cs[:n, -length:] = self._cscale[:n, :]
+        cs = np.zeros((nseg, ndeg))
+        cs[:, -1] = 1
+        if nd > ndeg:
+            cs[:ns, :] = self._cscale[:ns, -ndeg:]
+        elif nd < ndeg:
+            cs[:ns, -nd:] = self._cscale[:ns, :]
         else:
-            cs[:n, :] = self._cscale[:n, -ndeg:]
+            cs[:ns, :] = self._cscale[:ns, :]
 
-        cs[n:, -1] = self._cscale[-1, -1]
+        cs[ns:, -1] = self._cscale[-1, -1]
 
         return cs
 

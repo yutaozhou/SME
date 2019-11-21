@@ -8,12 +8,13 @@ import warnings
 from pathlib import Path
 
 import numpy as np
+from tqdm import tqdm
 from scipy.constants import speed_of_light
 from scipy.io import readsav
 from scipy.optimize import OptimizeWarning, least_squares
 from scipy.optimize._numdiff import approx_derivative
 
-from . import broadening
+from . import __file_ending__, broadening
 from .abund import Abund
 from .atmosphere import AtmosphereError, interp_atmo_grid, krz_file
 from .config import Config
@@ -24,7 +25,6 @@ from .nlte import update_nlte_coefficients
 from .sme_synth import SME_DLL
 from .uncertainties import uncertainties
 from .util import safe_interpolation
-from . import __file_ending__
 
 logger = logging.getLogger(__name__)
 
@@ -399,6 +399,7 @@ class SME_Solver:
         p0 = self.__get_default_values(sme)
 
         # Get constant data from sme structure
+        sme.mask[segments][sme.uncs[segments] == 0] = 0
         mask = sme.mask_good[segments]
         spec = sme.spec[segments][mask]
         uncs = sme.uncs[segments][mask]
@@ -760,7 +761,7 @@ def synthesize_spectrum(
     #   Calculate spectral synthesis for each
     #   Interpolate onto geomspaced wavelength grid
     #   Apply instrumental and turbulence broadening
-    for il in segments:
+    for il in tqdm(segments, desc="Segment", leave=False):
         logger.debug("Segment %i", il)
         # Input Wavelength range and Opacity
         vrad_seg = sme.vrad[il]
