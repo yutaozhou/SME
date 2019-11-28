@@ -8,17 +8,54 @@ import argparse
 import logging
 from functools import wraps
 from platform import python_version
+import sys
+import contextlib
 
 import numpy as np
 from numpy import __version__ as npversion
 from pandas import __version__ as pdversion
 from scipy import __version__ as spversion
 from scipy.interpolate import interp1d
+from tqdm import tqdm
 
 from . import __version__ as smeversion
 from .sme_synth import SME_DLL
 
 logger = logging.getLogger(__name__)
+
+
+class DummyTqdmFile(object):
+    """Dummy file-like that will write to tqdm"""
+
+    file = None
+
+    def __init__(self, file):
+        self.file = file
+
+    def write(self, x):
+        # Avoid print() second call (useless \n)
+        if len(x.rstrip()) > 0:
+            tqdm.write(x, file=self.file)
+
+    def flush(self):
+        return getattr(self.file, "flush", lambda: None)()
+
+    def isatty(self):
+        return getattr(self.file, "isatty", lambda: False)()
+
+
+@contextlib.contextmanager
+def std_out_err_redirect_tqdm():
+    orig_out_err = sys.stdout, sys.stderr
+    try:
+        sys.stdout, sys.stderr = map(DummyTqdmFile, orig_out_err)
+        yield orig_out_err[0]
+    # Relay exceptions
+    except Exception as exc:
+        raise exc
+    # Always restore sys.stdout/err if necessary
+    finally:
+        sys.stdout, sys.stderr = orig_out_err
 
 
 class getter:
@@ -170,6 +207,57 @@ class lowercase(oftype):
         if value is not None:
             value = value.lower()
         return value
+
+
+def air2vac(wl_air, copy=True):
+    """
+    Convert wavelengths in air to vacuum wavelength
+    in Angstrom
+    Author: Nikolai Piskunov
+    """
+    if copy:
+        wl_vac = np.copy(wl_air)
+    else:
+        wl_vac = np.asarray(wl_air)
+    wl_air = np.asarray(wl_air)
+
+    ii = np.where(wl_air > 1999.352)
+
+    sigma2 = (1e4 / wl_air[ii]) ** 2  # Compute wavenumbers squared
+    fact = (
+        1e0
+        + 8.336_624_212_083e-5
+        + 2.408_926_869_968e-2 / (1.301_065_924_522e2 - sigma2)
+        + 1.599_740_894_897e-4 / (3.892_568_793_293e1 - sigma2)
+    )
+    wl_vac[ii] = wl_air[ii] * fact  # Convert to vacuum wavelength
+
+    return wl_vac
+
+
+def vac2air(wl_vac, copy=True):
+    """
+    Convert vacuum wavelengths to wavelengths in air
+    in Angstrom
+    Author: Nikolai Piskunov
+    """
+    if copy:
+        wl_air = np.copy(wl_vac)
+    else:
+        wl_air = np.asarray(wl_vac)
+
+    # Only works for wavelengths above 2000 Angstrom
+    ii = np.where(wl_vac > 2e3)
+
+    sigma2 = (1e4 / wl_vac[ii]) ** 2  # Compute wavenumbers squared
+    fact = (
+        1e0
+        + 8.34254e-5
+        + 2.406_147e-2 / (130e0 - sigma2)
+        + 1.5998e-4 / (38.9e0 - sigma2)
+    )
+    wl_air[ii] = wl_vac[ii] / fact  # Convert to air wavelength
+    return wl_air
 
 
 def safe_interpolation(x_old, y_old, x_new=None, fill_value=0):

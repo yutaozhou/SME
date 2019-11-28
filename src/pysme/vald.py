@@ -5,12 +5,15 @@ Module for handling linelist data from the VALD3 database (http://vald.astro.uu.
 """
 import logging
 from io import StringIO
+import re
 
 import numpy as np
 import pandas as pd
+from astropy import units as u
 
 from .abund import Abund
 from .linelist import FileError, LineList
+from .util import air2vac, vac2air
 
 logger = logging.getLogger(__name__)
 
@@ -23,13 +26,16 @@ class ValdFile:
     """Atomic data for a list of spectral lines.
     """
 
-    def __init__(self, filename):
+    def __init__(self, filename, medium="vac"):
         self._filename = filename
         self._wavelo = None
         self._wavehi = None
         self._nlines = None
         self._nlines_proc = None
         self._vmicro = None
+        self.medium = None
+        self.desired_medium = medium
+        self.unit = None
         self._read(filename)
 
     @property
@@ -81,6 +87,7 @@ class ValdFile:
             lines = file.readlines()
 
         self.parse_header(lines[0])
+        self.parse_columns(lines[2])
         # TODO how to recognise extended format
         fmt = "long" if lines[4][:2] == "' " else "short"
 
@@ -106,12 +113,12 @@ class ValdFile:
         """
         Parse header line from a VALD line data file
         and sets the internal parameters
-        
+
         Parameters
         ----------
         line : str
             header line of a vald file
-        
+
         Raises
         ------
         ValdError
@@ -128,6 +135,42 @@ class ValdFile:
             self._vmicro = float(words[4])
         except:
             raise ValdError(f"{self._filename} is not a VALD line data file")
+
+    def parse_columns(self, line):
+        match = re.search("WL_(air|vac)\((.*?)\)", line)
+        medium = match.group(1)
+        unit = match.group(2)
+
+        match = re.search("E_low\((.*?)\)", line)
+        energy_unit = match.group(1)
+
+        if medium == "air":
+            self.medium = "air"
+        elif medium == "vac":
+            self.medium = "vac"
+        else:
+            raise ValueError(
+                "Could not determine the medium that the wavelength is based on (air or vacuum)"
+            )
+
+        if unit == "A":
+            self.unit = u.AA
+        elif unit == "nm":
+            self.unit = u.AA
+        elif unit == "cm^-1":
+            self.unit = 1 / u.cm
+        else:
+            raise ValueError("Could not determine the unit of the wavelength")
+
+        if energy_unit == "eV":
+            self.energy_unit = u.eV
+        elif energy_unit == "cm^-1":
+            self.energy_unit = 1 / u.cm
+        else:
+            raise ValueError("could not determine the unit of the energy levels")
+
+        # columns = re.split("\s\s+", line)
+        # return columns
 
     def parse_linedata(self, lines, fmt="short"):
         """Parse line data from a VALD line data file
@@ -198,9 +241,10 @@ class ValdFile:
 
         if fmt == "long":
             # Convert from cm^-1 to eV
-            conversion_factor = 8065.544
-            linelist["excit"] /= conversion_factor
-            linelist["e_upp"] /= conversion_factor
+            if self.energy_unit == 1 / u.cm:
+                conversion_factor = 8065.544
+                linelist["excit"] /= conversion_factor
+                linelist["e_upp"] /= conversion_factor
 
             comment = [c.replace("'", "").strip() for c in comment]
             linelist["reference"] = comment
@@ -218,6 +262,18 @@ class ValdFile:
             error = np.array([s[:10].strip() for s in comment])
             error = LineList.parse_line_error(error, linelist["depth"])
             linelist["error"] = error
+
+        # Convert from whatever unit to Angstrom
+        factor = self.unit.to(u.AA)
+        linelist["wlcent"] *= factor
+        self.unit = "Angstrom"
+
+        if self.medium == "air" and self.desired_medium == "vac":
+            linelist["wlcent"] = air2vac(linelist["wlcent"])
+            self.medium = "vac"
+        elif self.medium == "vac" and self.desired_medium == "air":
+            linelist["wlcent"] = vac2air(linelist["wlcent"])
+            self.medium = "air"
 
         linelist = LineList(linelist, lineformat=fmt)
 
