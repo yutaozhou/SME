@@ -59,7 +59,7 @@ class Iliffe_vector:
             if not self.__equal_size__(index):
                 raise ValueError("Index vector has a different shape")
             values = [v[i] for v, i in zip(self._values, index._values)]
-            return np.concatenate(values)
+            return Iliffe_vector(values=values)
 
         if isinstance(index[0], slice):
             start = index[0].start if index[0].start is not None else 0
@@ -70,6 +70,15 @@ class Iliffe_vector:
                 stop = len(self)
 
             values = self._values[start:stop]
+            if len(index) > 1:
+                if isinstance(index[1], (int, np.integer)):
+                    values = [v[index[1]] for v in values]
+                    return np.array(values)
+                elif isinstance(index[1], (list, np.ndarray)):
+                    if len(index[1]) == len(self):
+                        values = [v[i] for v, i in zip(values, index[1])]
+                        return np.array(values)
+                values = [np.atleast_1d(v[index[1:]]) for v in values]
             return Iliffe_vector(values=values)
 
         if len(index) == 1:
@@ -123,12 +132,23 @@ class Iliffe_vector:
         return all(self.shape[1] == other.shape[1])
 
     def __operator__(self, other, operator):
-        if isinstance(other, Iliffe_vector):
+        if isinstance(other, np.ndarray):
+            # Proper broadcasting shape
+            if other.shape[0] == len(self) and (
+                other.ndim == 1 or (other.ndim == 2 and other.shape[1] == 1)
+            ):
+                values = [getattr(v, operator)(o) for v, o in zip(self._values, other)]
+            else:
+                raise ValueError(
+                    f"Incompatible shapes of ({len(self)}) and {other.shape}"
+                )
+        elif isinstance(other, Iliffe_vector):
             if not self.__equal_size__(other):
                 return NotImplemented
             other = other._values
-
-        values = [getattr(v, operator)(other) for v in self._values]
+            values = [getattr(v, operator)(o) for v, o in zip(self._values, other)]
+        else:
+            values = [getattr(v, operator)(other) for v in self._values]
         iv = Iliffe_vector(values=values)
         return iv
 

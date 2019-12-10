@@ -7,15 +7,18 @@ import logging
 import warnings
 from itertools import product
 
+import emcee
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.constants import speed_of_light
 from scipy.linalg import lu_factor, lu_solve
 from scipy.ndimage.filters import median_filter
-from scipy.optimize import least_squares
-from scipy.signal import correlate
+from scipy.optimize import least_squares, minimize_scalar
+from scipy.signal import correlate, find_peaks
+from tqdm import tqdm
 
 from . import util
+from .iliffe_vector import Iliffe_vector
 from .sme_synth import SME_DLL
 
 logger = logging.getLogger(__name__)
@@ -272,7 +275,13 @@ def determine_radial_velocity(sme, segment, cscale, x_syn, y_syn):
     return rvel
 
 
-def determine_rv_and_cont(sme, segment, x_syn, y_syn, use_whole_spectrum=False):
+def null_result(nseg, ndeg=0):
+    vrad, vrad_unc = np.zeros(nseg), np.zeros((nseg, 2))
+    cscale, cscale_unc = np.ones((nseg, ndeg + 1)), np.zeros((nseg, ndeg + 1, 2))
+    return vrad, vrad_unc, cscale, cscale_unc
+
+
+def determine_rv_and_cont(sme, segment, x_syn, y_syn):
     """
     Fits both radial velocity and continuum level simultaneously
     by comparing the synthetic spectrum to the observation
@@ -293,42 +302,53 @@ def determine_rv_and_cont(sme, segment, x_syn, y_syn, use_whole_spectrum=False):
 
     Returns
     -------
-    rvel : float
+    vrad : float
         radial velocity in km/s
+    vrad_unc : float
+        radial velocity uncertainty in km/s
     cscale : array of size (ndeg+1,)
         polynomial coefficients of the continuum
+    cscale_unc : array if size (ndeg + 1,)
+        uncertainties of the continuum coefficients
     """
+
+    if np.isscalar(segment):
+        segment = [segment]
+    nseg = len(segment)
 
     if "spec" not in sme or "mask" not in sme or "wave" not in sme or "uncs" not in sme:
         # No observation no radial velocity
-        warnings.warn("Missing data for radial velocity/continuum determination")
-        return 0, [1]
+        logger.warning("Missing data for radial velocity/continuum determination")
+        return null_result(nseg)
 
     if np.all(sme.mask_bad[segment].ravel()):
-        warnings.warn(
+        logger.warning(
             "Only bad pixels in this segments, can't determine radial velocity/continuum"
         )
-        return 0, [1]
+        return null_result(nseg)
+
+    if x_syn.ndim == 1:
+        x_syn = x_syn[None, :]
+    if y_syn.ndim == 1:
+        y_syn = y_syn[None, :]
 
     mask = sme.mask_good[segment]
     x_obs = sme.wave[segment][mask]
     y_obs = sme.spec[segment][mask]
-    u_obs = sme.uncs[segment][mask]
-    x_num = x_obs - sme.wave[segment].ravel()[0]
+    x_num = x_obs - sme.wave[segment][:, 0]
 
-    if len(x_obs) <= sme.cscale_degree:
+    if x_obs.size <= sme.cscale_degree:
         warnings.warn("Not enough good pixels to determine radial velocity/continuum")
-        return 0, [1]
+        return null_result(nseg)
 
-    if use_whole_spectrum:
+    if sme.cscale_flag in [-3, "none"]:
         cflag = False
-        cscale = [1]
-    elif sme.cscale_flag in [-3, "none"]:
-        cflag = False
-        cscale = [1]
+        cscale = np.ones((nseg, 1))
+        ndeg = 0
     elif sme.cscale_flag in [-1, -2, "fix"]:
         cflag = False
         cscale = sme.cscale[segment]
+        ndeg = cscale.shape[1] - 1
     elif sme.cscale_flag in [0, "constant"]:
         ndeg = 0
         cflag = True
@@ -342,86 +362,189 @@ def determine_rv_and_cont(sme, segment, x_syn, y_syn, use_whole_spectrum=False):
         raise ValueError("cscale_flag not recognized")
 
     if cflag:
-        cscale = np.zeros(ndeg + 1)
         if sme.cscale is not None:
             cscale = sme.cscale[segment]
         else:
-            cscale[-1] = np.median(y_obs)
+            cscale = np.zeros(nseg, ndeg + 1)
+            cscale[:, -1] = np.median(y_obs, axis=1)
 
     # Even when the vrad_flag is set to whole
     # you still want to fit the rv of the individual segments
     # just for the continuum fit
     if sme.vrad_flag == "none":
-        rvel = 0
-        vflag_fit = False
-        vflag_return = False
+        vrad = [0]
+        vflag = False
     elif sme.vrad_flag == "whole":
-        rvel = sme.vrad[0]
-        vflag_fit = True
-        vflag_return = use_whole_spectrum
+        vrad = sme.vrad[:1]
+        vflag = True
     elif sme.vrad_flag == "each":
-        rvel = sme.vrad[segment]
-        vflag_fit = True
-        vflag_return = True
+        vrad = sme.vrad[segment]
+        vflag = True
+    elif sme.vrad_flag == "fix":
+        vrad = sme.vrad[segment]
+        vflag = False
     else:
         raise ValueError(f"Radial velocity Flag not understood {sme.vrad_flag}")
 
-    if vflag_fit:
-        # Get a first rough estimate from cross correlation
-        # Subtract median (rough continuum estimate) for better correlation
-        y_tmp = util.safe_interpolation(
-            x_syn, y_syn, x_obs, fill_value=(y_syn[0], y_syn[-1])
-        )
-        corr = correlate(
-            y_obs - np.median(y_obs), y_tmp - np.median(y_tmp), mode="same"
-        )
+    # Limit shift to half an order
+    x1, x2 = x_obs[:, 0], x_obs[:, [s // 4 for s in x_obs.shape[1]]]
+    rv_limit = np.abs(c_light * (1 - x2 / x1))
+    if sme.vrad_flag == "whole":
+        rv_limit = np.min(rv_limit)
+
+    # Use Cross corellatiom as a first guess for the radial velocity
+    # This uses the median as the continuum
+    if vrad is None:
+        y_tmp = np.interp(x_obs, x_syn, y_syn, left=1, right=1)
+        corr = correlate(y_obs - np.median(y_obs), y_tmp - 1, mode="same")
         offset = np.argmax(corr)
-
-        x1 = x_obs[offset]
-        x2 = x_obs[len(x_obs) // 2]
-        rvel = c_light * (1 - x2 / x1)
-        if np.abs(rvel) >= c_light:
+        x1, x2 = x_obs[offset], x_obs[len(x_obs) // 2]
+        vrad = c_light * (1 - x2 / x1)
+        if np.abs(vrad) >= rv_limit:
             logger.warning(
-                f"Radial Velocity could not be estimated from cross correlation, using initial guess of 0 km/h. Please check results!"
+                "Radial Velocity could not be estimated from cross correlation, using initial guess of 0 km/h. Please check results!"
             )
-            rvel = 0
+            vrad = 0
 
-    interpolator = util.safe_interpolation(
-        x_syn, y_syn, None, fill_value=(y_syn[0], y_syn[-1])
-    )
-
-    def func(par):
-        # The radial velocity shift is inversed
-        # i.e. the wavelength grid of the observation is shifted to match the synthetic spectrum
-        # but thats ok, because the shift is symmetric
-        if vflag_fit:
-            rv = par[0]
-            rv_factor = np.sqrt((1 - rv / c_light) / (1 + rv / c_light))
-        else:
-            rv_factor = 1
-        shifted = interpolator(x_obs * rv_factor)
-
+    def log_prior(rv, cscale):
+        nwalkers = rv.shape[0]
+        prior = np.zeros(nwalkers)
+        # Add the prior here
+        # TODO reject too large/small rv values in a prior
+        where = np.full(nwalkers, False)
+        if vflag:
+            where |= np.abs(rv[:, 0]) > rv_limit
         if cflag:
-            coef = par[1:]
-            shifted *= np.polyval(coef, x_num)
+            where |= np.any(cscale[:, :, -1] < 0, axis=1)
+            if ndeg == 1:
+                where |= np.any(
+                    cscale[:, :, -1] + cscale[:, :, -2] * x_num[:, -1] < 0, axis=1
+                )
+            elif ndeg == 2:
+                where |= np.any(
+                    cscale[:, :, -1]
+                    + cscale[:, :, -2] * x_num[:, -1]
+                    + cscale[:, :, -3] * x_num[:, -1] ** 2,
+                    axis=1,
+                )
+        prior[where] = -np.inf
+        return prior
 
-        resid = (y_obs - shifted) / u_obs
-        resid = np.nan_to_num(resid, copy=False)
-        return resid
+    def log_prob(par, sep, nseg, ndeg):
+        """
+        par : array of shape (nwalkers, ndim)
+            ndim = 1 for radial velocity + continuum polynomial coeficients
+        """
+        nwalkers = par.shape[0]
+        rv = par[:, :sep] if vflag else vrad[None, :]
+        if sep == 1 and nseg > 1:
+            rv = np.tile(rv, [1, nseg])
+        if cflag:
+            cs = par[:, sep:]
+            cs.shape = nwalkers, nseg, ndeg + 1
+        else:
+            cs = cscale[None, ...]
 
-    x0 = [rvel, *cscale]
-    res = least_squares(func, x0=x0, loss="soft_l1")
+        prior = log_prior(rv, cs)
 
-    if vflag_return:
-        rvel = res.x[0]
-    else:
-        rvel = 0
+        # Apply RV shift
+        rv_factor = np.sqrt((1 - rv / c_light) / (1 + rv / c_light))
+        total = np.zeros(nwalkers)
+        for i in range(nseg):
+            x = x_obs[i][None, :] * rv_factor[:, i, None]
+            model = np.interp(x, x_syn[i], y_syn[i], left=0, right=0)
+
+            # Apply continuum
+            y = np.zeros_like(x_num[i])[None, :]
+            for j in range(ndeg + 1):
+                y = y * x_num[i] + cs[:, i, j, None]
+            model *= y
+
+            # Ignore the non-overlapping parts of the spectrum
+            mask = model == 0
+            npoints = mask.shape[1] - np.count_nonzero(mask, axis=1)
+            resid = (model - y_obs[i]) ** 2
+            resid[mask] = 0
+            prob = -0.5 * np.sum(resid, axis=-1)
+            # Need to rescale here, to account for the ignored points before
+            prob *= mask.shape[1] / npoints
+            prob[np.isnan(prob)] = -np.inf
+            total += prob
+        return prior + total
+
+    sep = len(vrad) if vflag else 0
+    ndim, p0, scale = 0, [], []
+    if vflag:
+        ndim += len(vrad)
+        p0 += list(vrad)
+        scale += [1] * len(vrad)
     if cflag:
-        cscale = res.x[1:]
-    else:
-        cscale = [1]
+        ndim += cscale.size
+        p0 += list(cscale.ravel())
+        scale += [0.1] * cscale.size
+    p0 = np.array(p0)[None, :]
+    scale = np.array(scale)[None, :]
 
-    return rvel, cscale
+    max_n = 10000
+    ncheck = 100
+    nburn = 300
+    nwalkers = max(2 * ndim + 1, 10)
+    p0 = p0 + np.random.randn(nwalkers, ndim) * scale
+    # If the original guess is good then DEMove is much faster, and sometimes just as good
+    # However StretchMove is much more robust to the initial starting value
+    moves = [(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2)]
+
+    sampler = emcee.EnsembleSampler(
+        nwalkers, ndim, log_prob, vectorize=True, moves=moves, args=(sep, nseg, ndeg)
+    )
+    # We'll track how the average autocorrelation time estimate changes
+    index = 0
+    autocorr = np.empty((max_n // ncheck + 1, ndim))
+    # This will be useful to testing convergence
+    # old_tau = 0
+
+    # Now we'll sample for up to max_n steps
+    with tqdm(leave=False, desc="RV", total=max_n) as t:
+        for _ in sampler.sample(p0, iterations=max_n):
+            t.update()
+            # Only check convergence every 100 steps
+            if sampler.iteration < 2 * nburn or sampler.iteration % ncheck != 0:
+                continue
+
+            # Compute the autocorrelation time so far
+            # Using tol=0 means that we'll always get an estimate even
+            # if it isn't trustworthy
+            tau = sampler.get_autocorr_time(tol=0, discard=sampler.iteration - ncheck)
+            autocorr[index] = tau
+            index += 1
+
+            # Check convergence
+            converged = np.all(tau * 100 < sampler.iteration - nburn)
+            # converged &= np.all(np.abs(old_tau - tau) < 0.01 * tau)
+            # old_tau = tau
+            if converged:
+                break
+
+    if sampler.iteration == max_n:
+        logger.warning(
+            "The radial velocity did not converge within the limit. Check the results!"
+        )
+
+    samples = sampler.get_chain(flat=True, discard=nburn)
+    _, vrad_unc, _, cscale_unc = null_result(nseg, ndeg)
+    if vflag:
+        vmin, vrad, vmax = np.percentile(samples[:, :sep], (32, 50, 68), axis=0)
+        vrad_unc[:, 0] = vrad - vmin
+        vrad_unc[:, 1] = vmax - vrad
+
+    if cflag:
+        vmin, cscale, vmax = np.percentile(samples[:, sep:], (32, 50, 68), axis=0)
+        vmin.shape = cscale.shape = vmax.shape = nseg, ndeg + 1
+
+        cscale_unc[..., 0] = cscale - vmin
+        cscale_unc[..., 1] = vmax - cscale
+
+    return vrad, vrad_unc, cscale, cscale_unc
 
 
 def cont_fit(sme, segment, x_syn, y_syn, rvel=0):
@@ -554,28 +677,27 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
     cscale : array of size (ndeg + 1,)
         new continuum coefficients
     """
+
+    vrad, vrad_unc, cscale, cscale_unc = null_result(sme.nseg, sme.cscale_degree)
     if sme.cscale_flag == "none" and sme.vrad_flag == "none":
-        return [[1] for _ in range(sme.nseg)], [0 for _ in range(sme.nseg)]
+        return vrad, vrad_unc, cscale, cscale_unc
 
-    rvel = [None for _ in range(sme.nseg)]
-    cscale = [None for _ in range(sme.nseg)]
+    if np.isscalar(segments):
+        segments = [segments]
 
-    for s in segments:
-        rvel[s], cscale[s] = determine_rv_and_cont(sme, s, x_syn[s], y_syn[s])
-
-    if sme.vrad_flag == "whole":
-        wave = np.concatenate([x_syn[s] for s in segments])
-        smod = np.concatenate([y_syn[s] for s in segments])
-        rvel_whole, _ = determine_rv_and_cont(
-            sme, segments, wave, smod, use_whole_spectrum=True
+    if sme.vrad_flag in ["each", "none", "fix"]:
+        for s in tqdm(segments, desc="RV/Cont", leave=False):
+            vrad[s], vrad_unc[s], cscale[s], cscale_unc[s] = determine_rv_and_cont(
+                sme, s, x_syn[s], y_syn[s]
+            )
+    elif sme.vrad_flag == "whole":
+        wave = Iliffe_vector(values=[x_syn[s] for s in segments])
+        smod = Iliffe_vector(values=[y_syn[s] for s in segments])
+        s = segments
+        vrad[s], vrad_unc[s], cscale[s], cscale_unc[s] = determine_rv_and_cont(
+            sme, s, wave, smod
         )
-        for s in segments:
-            rvel[s] = rvel_whole
+    else:
+        raise ValueError(f"Radial velocity flag {sme.vrad_flag} not understood")
 
-    # Scale using relative depth (from Nikolai)
-    # cscale = cont_fit(sme, segment, x_syn, y_syn, rvel=rvel)
-
-    # cscale = determine_continuum(sme, segment)
-    # rvel = determine_radial_velocity(sme, segment, cscale, x_syn, y_syn)
-
-    return cscale, rvel
+    return cscale, cscale_unc, vrad, vrad_unc

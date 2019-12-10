@@ -6,6 +6,9 @@ And also determines the best fit parameters
 import logging
 import warnings
 from pathlib import Path
+import contextlib
+import sys
+import builtins
 
 import numpy as np
 from tqdm import tqdm
@@ -21,10 +24,11 @@ from .config import Config
 from .continuum_and_radial_velocity import match_rv_continuum
 from .integrate_flux import integrate_flux
 from .large_file_storage import LargeFileStorage
+from .iliffe_vector import Iliffe_vector
 from .nlte import update_nlte_coefficients
 from .sme_synth import SME_DLL
 from .uncertainties import uncertainties
-from .util import safe_interpolation
+from .util import safe_interpolation, print_to_log
 
 logger = logging.getLogger(__name__)
 
@@ -37,15 +41,17 @@ class SME_Solver:
         self.dll = SME_DLL()
         self.config, self.lfs_atmo, self.lfs_nlte = setup_lfs()
 
+        # Various parameters to keep track of during solving
         self.filename = filename
         self.iteration = 0
-        self.fig = None
-
         self.parameter_names = []
-
         self.update_linelist = False
-
         self._latest_residual = None
+
+        # For displaying the progressbars
+        self.fig = None
+        self.progressbar = None
+        self.progressbar_jacobian = None
 
     @property
     def nparam(self):
@@ -91,19 +97,21 @@ class SME_Solver:
         update = not isJacobian
         save = not isJacobian
         reuse_wavelength_grid = isJacobian
-        # TODO: Set to true if one of the fit parameters affects the linelist
+        radial_velocity_mode = "robust" if not isJacobian else "fast"
 
         # change parameters
         for name, value in zip(self.parameter_names, param):
             sme[name] = value
         # run spectral synthesis
         try:
-            sme2 = synthesize_spectrum(
+            result = synthesize_spectrum(
                 sme,
+                updateStructure=update,
                 reuse_wavelength_grid=reuse_wavelength_grid,
                 segments=segments,
                 passLineList=False,
                 updateLineList=self.update_linelist,
+                radial_velocity_mode=radial_velocity_mode,
                 config=self.config,
                 lfs_atmo=self.lfs_atmo,
                 lfs_nlte=self.lfs_nlte,
@@ -115,13 +123,6 @@ class SME_Solver:
             logger.debug(ae)
             return np.inf
 
-        # Return values by reference to sme
-        if update:
-            sme.wave = sme2.wave
-            sme.synth = sme2.synth
-            sme.vrad = sme2.vrad
-            sme.cscale = sme2.cscale
-
         # Also save intermediary results, because we can
         if save and self.filename is not None:
             if self.filename.endswith(__file_ending__):
@@ -129,21 +130,28 @@ class SME_Solver:
             else:
                 fname = self.filename
             fname = f"{fname}_tmp{__file_ending__}"
-            sme2.save(fname)
+            sme.save(fname)
 
         segments = check_segments(sme, segments)
 
-        synth = sme2.synth[segments]
-        if mask is not None:
-            synth = synth[mask]
-        else:
-            synth = synth.ravel()
+        # Get the correct results for the comparison
+        synth = sme.synth if update else result[1]
+        synth = synth[segments]
+        synth = synth[mask] if mask is not None else synth
 
         # TODO: update based on lineranges
         uncs_linelist = 0
 
         resid = (synth - spec) / (uncs + uncs_linelist)
+        resid = resid.ravel()
         resid = np.nan_to_num(resid, copy=False)
+
+        # Update progress bars
+        if isJacobian:
+            self.progressbar_jacobian.update(1)
+        else:
+            self.progressbar.total += 1
+            self.progressbar.update(1)
 
         if not isJacobian:
             # Save result for jacobian
@@ -168,6 +176,7 @@ class SME_Solver:
         The calculation is the same as "3-point"
         but we can tell residuals that we are within a jacobian
         """
+        self.progressbar_jacobian.reset()
         g = approx_derivative(
             self.__residuals,
             param,
@@ -416,18 +425,23 @@ class SME_Solver:
 
         # Do the heavy lifting
         if self.nparam > 0:
-            res = least_squares(
-                self.__residuals,
-                x0=p0,
-                jac=self.__jacobian,
-                bounds=bounds,
-                x_scale="jac",
-                loss="soft_l1",
-                method="trf",
-                verbose=2,
-                args=(sme, spec, uncs, mask),
-                kwargs={"bounds": bounds, "segments": segments},
-            )
+            self.progressbar = tqdm(desc="Iteration", total=0)
+            self.progressbar_jacobian = tqdm(desc="Jacobian", total=len(p0) * 2)
+            with print_to_log():
+                res = least_squares(
+                    self.__residuals,
+                    x0=p0,
+                    jac=self.__jacobian,
+                    bounds=bounds,
+                    x_scale="jac",
+                    loss="soft_l1",
+                    method="trf",
+                    verbose=2,
+                    args=(sme, spec, uncs, mask),
+                    kwargs={"bounds": bounds, "segments": segments},
+                )
+            self.progressbar.close()
+            self.progressbar_jacobian.close()
             # The returned jacobian is "scaled for robust loss function"
             res.jac = self._last_jac
             sme = self.__update_fitresults(sme, res)
@@ -436,6 +450,8 @@ class SME_Solver:
                 self.parameter_names, res.x, sme.fitresults.punc.values()
             ):
                 logger.info("%s\t%.5f +- %.5g", name.ljust(10), value, unc)
+            logger.info("%s\t%s +- %s", "v_rad".ljust(10), sme.vrad, sme.vrad_unc)
+
         elif len(param_names) > 0:
             # This happens when vrad and/or cscale are given as parameters but nothing else
             # We could try to reuse the already calculated synthetic spectrum (if it already exists)
@@ -645,12 +661,14 @@ def check_segments(sme, segments):
     return segments
 
 
-def apply_radial_velocity_and_continuum(wave, wmod, smod, vrad, cscale, segments):
+def apply_radial_velocity_and_continuum(wave, wmod, smod, cmod, vrad, cscale, segments):
     for il in segments:
         if vrad[il] is not None:
             rv_factor = np.sqrt((1 + vrad[il] / clight) / (1 - vrad[il] / clight))
             wmod[il] *= rv_factor
         smod[il] = safe_interpolation(wmod[il], smod[il], wave[il])
+        if cmod is not None:
+            cmod[il] = safe_interpolation(wmod[il], cmod[il], wave[il])
 
         if cscale[il] is not None and not np.all(cscale[il] == 0):
             x = wave[il] - wave[il][0]
@@ -664,8 +682,10 @@ def synthesize_spectrum(
     passLineList=True,
     passAtmosphere=True,
     passNLTE=True,
+    updateStructure=True,
     updateLineList=False,
     reuse_wavelength_grid=False,
+    radial_velocity_mode="robust",
     config=None,
     lfs_atmo=None,
     lfs_nlte=None,
@@ -712,10 +732,15 @@ def synthesize_spectrum(
     # fix impossible input
     if "spec" not in sme:
         sme.vrad_flag = "none"
-    if "spec" not in sme:
         sme.cscale_flag = "none"
+    else:
+        for i in range(sme.nseg):
+            sme.mask[i, ~np.isfinite(sme.spec[i])] = 0
+
     if "wint" not in sme:
         reuse_wavelength_grid = False
+    if radial_velocity_mode != "robust" and ("cscale" not in sme or "vrad" not in sme):
+        radial_velocity_mode = "robust"
 
     segments = check_segments(sme, segments)
 
@@ -731,6 +756,7 @@ def synthesize_spectrum(
     cscale[:, -1] = 1
     wave = [None for _ in range(n_segments)]
     smod = [[] for _ in range(n_segments)]
+    cmod = [[] for _ in range(n_segments)]
     wmod = [[] for _ in range(n_segments)]
     wind = np.zeros(n_segments + 1, dtype=int)
 
@@ -764,7 +790,7 @@ def synthesize_spectrum(
     for il in tqdm(segments, desc="Segment", leave=False):
         logger.debug("Segment %i", il)
         # Input Wavelength range and Opacity
-        vrad_seg = sme.vrad[il]
+        vrad_seg = sme.vrad[il] if sme.vrad[il] is not None else 0
         wbeg, wend = get_wavelengthrange(wran[il], vrad_seg, sme.vsini)
 
         dll.InputWaveRange(wbeg, wend)
@@ -775,7 +801,6 @@ def synthesize_spectrum(
         # Only calculate line opacities in the first segment
         keep_line_opacity = il != segments[0]
         #   Calculate spectral synthesis for each
-        logger.debug("Start Radiative Transfer")
         _, wint[il], sint[il], cint[il] = dll.Transf(
             sme.mu,
             sme.accrt,  # threshold line opacity / cont opacity
@@ -783,8 +808,6 @@ def synthesize_spectrum(
             keep_lineop=keep_line_opacity,
             wave=wint_seg,
         )
-        logger.debug("Radiative Transfer Done")
-        logger.debug(f"Reuse Wavelength Grid: {reuse_wavelength_grid}")
 
         # Create new geomspaced wavelength grid, to be used for intermediary steps
         wgrid, vstep = new_wavelength_grid(wint[il])
@@ -813,6 +836,7 @@ def synthesize_spectrum(
         # Divide calculated spectrum by continuum
         if sme.normalize_by_continuum:
             flux /= cont_flux
+        cmod[il] = cont_flux
         smod[il] = flux
         wmod[il] = wgrid
 
@@ -827,32 +851,51 @@ def synthesize_spectrum(
 
     # Fit continuum and radial velocity
     # And interpolate the flux onto the wavelength grid
-    cscale, vrad = match_rv_continuum(sme, segments, wmod, smod)
-    logger.debug("Radial velocity: %s", str(vrad))
-    logger.debug("Continuum coefficients: %s", str(cscale))
-    smod = apply_radial_velocity_and_continuum(wave, wmod, smod, vrad, cscale, segments)
+    # cscale, vrad = match_rv_continuum(sme, segments, wmod, smod)
+
+    if radial_velocity_mode == "robust":
+        cscale, cscale_unc, vrad, vrad_unc = match_rv_continuum(
+            sme, segments, wmod, smod
+        )
+        logger.debug("Radial velocity: %s", str(vrad))
+        logger.debug("Continuum coefficients: %s", str(cscale))
+    elif radial_velocity_mode == "fast":
+        cscale, vrad = sme.cscale, sme.vrad
+    else:
+        raise ValueError("Radial Velocity mode not understood")
+
+    smod = apply_radial_velocity_and_continuum(
+        wave, wmod, smod, cmod, vrad, cscale, segments
+    )
 
     # Merge all segments
     # if sme already has a wavelength this should be the same
+    if updateStructure:
+        sme.wind = wind = np.cumsum(wind)
+        sme.wint = wint
 
-    sme.wind = wind = np.cumsum(wind)
-    sme.wint = wint
+        if "wave" not in sme:
+            npoints = sum([len(wave[s]) for s in segments])
+            sme.wave = np.zeros(npoints)
+        if "synth" not in sme:
+            sme.synth = np.zeros_like(sme.wob)
+            sme.cont = np.zeros_like(sme.wob)
 
-    if "wave" not in sme:
-        npoints = sum([len(wave[s]) for s in segments])
-        sme.wave = np.zeros(npoints)
-    if "synth" not in sme:
-        sme.smod = np.zeros_like(sme.wob)
-
-    for s in segments:
-        sme.wave[s] = wave[s]
-        sme.synth[s] = smod[s]
-
-    if sme.cscale_flag not in ["fix", "none"]:
         for s in segments:
-            sme.cscale[s] = cscale[s]
+            sme.wave[s] = wave[s]
+            sme.synth[s] = smod[s]
+            sme.cont[s] = cmod[s]
 
-    sme.vrad = np.asarray(vrad)
-    sme.nlte.flags = dll.GetNLTEflags()
+        if sme.cscale_flag not in ["fix", "none"]:
+            for s in segments:
+                sme.cscale[s] = cscale[s]
+            sme.cscale_unc = cscale_unc
 
-    return sme
+        sme.vrad = np.asarray(vrad)
+        sme.vrad_unc = np.asarray(vrad_unc)
+        sme.nlte.flags = dll.GetNLTEflags()
+        return sme
+    else:
+        wave = Iliffe_vector(values=wave)
+        smod = Iliffe_vector(values=smod)
+        return wave, smod

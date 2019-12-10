@@ -11,6 +11,22 @@ from pysme.continuum_and_radial_velocity import determine_rv_and_cont
 
 def test_match_both(testcase1):
     sme, x_syn, y_syn, rv = testcase1
+
+    vrad_options = ["fix", "none", "each", "whole"]
+    cscale_options = ["fix", "none", "constant", "linear"]
+
+    for voption in vrad_options:
+        for coption in cscale_options:
+            sme.vrad_flag = voption
+            sme.cscale_flag = coption
+            sme.vrad = None
+            sme.cscale = None
+
+            rvel, cscale = determine_rv_and_cont(sme, 0, x_syn, y_syn)
+
+            assert rvel is not None
+            assert cscale is not None
+
     # Nothing should change
     sme.vrad_flag = "none"
     sme.cscale_flag = "none"

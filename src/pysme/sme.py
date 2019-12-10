@@ -718,6 +718,7 @@ class SME_Struct(Param):
         "wave",
         "mask",
         "uncs",
+        "cont",
         "abund",
         "linelist",
         "nlte",
@@ -756,7 +757,7 @@ class SME_Struct(Param):
         self.id = str(dt.now())
 
         # additional parameters
-        self.vrad = 0
+        self.vrad = None
         self.vrad_flag = "none"
         self.cscale = 1
         self.cscale_flag = "none"
@@ -1065,6 +1066,16 @@ class SME_Struct(Param):
         self.synth = value
 
     @property
+    @apply("ravel")
+    def cmod(self):
+        """array: Continuum Intensities """
+        return self.cont
+
+    @cmod.setter
+    def cmod(self, value):
+        self.cont = value
+
+    @property
     def wran(self):
         """array of size (nseg, 2): Beginning and end Wavelength points of each segment"""
         #TODO
@@ -1097,8 +1108,11 @@ class SME_Struct(Param):
     @property
     def vrad(self):
         """array of size (nseg,): Radial velocity in km/s for each wavelength region"""
-        if self._vrad is None or self.nseg is None:
-            return None
+        if self._vrad is None and self.nseg is None:
+            return [None]
+        elif self._vrad is None:
+            return [None for _ in range(self.nseg)]
+
         if self.vrad_flag == "none":
             return np.zeros(self.nseg)
         else:
@@ -1211,7 +1225,7 @@ class SME_Struct(Param):
         return self._vrad_flag
 
     @vrad_flag.setter
-    @oneof([-2, -1, 0, "none", "whole", "each"])
+    @oneof([-2, -1, 0, "none", "whole", "each", "fix"])
     def vrad_flag(self, value):
         if isinstance(value, (int, np.integer)):
             value = {-2: "none", -1: "whole", 0: "each"}[value]
@@ -1269,6 +1283,16 @@ class SME_Struct(Param):
     @isVector()
     def synth(self, value):
         self._synth = value
+
+    @property
+    def cont(self):
+        """Iliffe_vector of shape (nseg, ...): Continuum Intensities """
+        return self._cont
+
+    @cont.setter
+    @isVector()
+    def cont(self, value):
+        self._cont = value
 
     @property
     def mask(self):

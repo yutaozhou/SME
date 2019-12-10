@@ -9,6 +9,7 @@ import logging
 from functools import wraps
 from platform import python_version
 import sys
+import builtins
 import contextlib
 
 import numpy as np
@@ -45,17 +46,13 @@ class DummyTqdmFile(object):
 
 
 @contextlib.contextmanager
-def std_out_err_redirect_tqdm():
-    orig_out_err = sys.stdout, sys.stderr
+def print_to_log():
+    original_print = builtins.print
+    builtins.print = lambda *args, **kwargs: logger.info(*args, **kwargs)
     try:
-        sys.stdout, sys.stderr = map(DummyTqdmFile, orig_out_err)
-        yield orig_out_err[0]
-    # Relay exceptions
-    except Exception as exc:
-        raise exc
-    # Always restore sys.stdout/err if necessary
+        yield None
     finally:
-        sys.stdout, sys.stderr = orig_out_err
+        builtins.print = original_print
 
 
 class getter:
@@ -245,7 +242,8 @@ def vac2air(wl_vac, copy=True):
         wl_air = np.copy(wl_vac)
     else:
         wl_air = np.asarray(wl_vac)
-
+    wl_vac = np.asarray(wl_vac)
+    
     # Only works for wavelengths above 2000 Angstrom
     ii = np.where(wl_vac > 2e3)
 

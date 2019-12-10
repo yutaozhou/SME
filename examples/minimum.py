@@ -26,6 +26,7 @@ if __name__ == "__main__":
 
     # Change parameters if your want
     sme.vsini = 0
+    sme.vrad_flag = "each"
 
     # Define any fitparameters you want
     # For abundances use: 'abund {El}', where El is the element (e.g. 'abund Fe')
