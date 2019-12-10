@@ -239,13 +239,14 @@ class ValdFile:
             usecols=range(len(names)),
         )
 
-        if fmt == "long":
-            # Convert from cm^-1 to eV
-            if self.energy_unit == 1 / u.cm:
-                conversion_factor = 8065.544
-                linelist["excit"] /= conversion_factor
+        # Convert from cm^-1 to eV
+        if self.energy_unit == 1 / u.cm:
+            conversion_factor = 8065.544
+            linelist["excit"] /= conversion_factor
+            if fmt == "long":
                 linelist["e_upp"] /= conversion_factor
 
+        if fmt == "long":
             comment = [c.replace("'", "").strip() for c in comment]
             linelist["reference"] = comment
 
