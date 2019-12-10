@@ -184,10 +184,10 @@ def read(
             # Correct for radial velocity and barycentric correction
             velocity_correction = 0
             if barycentric_correction:
-                velocity_correction += header.get("barycorr", 0)
+                velocity_correction -= header.get("barycorr", 0)
                 header["barycorr"] = 0
             if radial_velociy_correction:
-                velocity_correction -= header.get("radvel", 0)
+                velocity_correction += header.get("radvel", 0)
                 header["radvel"] = 0
 
             speed_of_light = scipy.constants.speed_of_light * 1e-3
