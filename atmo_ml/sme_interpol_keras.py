@@ -53,7 +53,8 @@ class Scaler:
 
     def train(self, x):
         if self.useLog10:
-            x = np.log10(x, where=self.log10)
+            x = np.copy(x)
+            x = np.log10(x, where=self.log10, out=x)
         if self.scale == "abs":
             self.min = np.min(x, axis=0)
             self.max = np.max(x, axis=0)
@@ -68,7 +69,8 @@ class Scaler:
         if not self.is_trained:
             raise ValueError("Scaler needs to be trained first")
         if self.useLog10:
-            x = np.log10(x, where=self.log10)
+            x = np.copy(x)
+            x = np.log10(x, where=self.log10, out=x)
         if self.scale == "abs":
             return (x - self.min) / (self.max - self.min)
         elif self.scale == "std":
@@ -86,7 +88,8 @@ class Scaler:
         else:
             raise ValueError("Scale parameter is not understood")
         if self.useLog10:
-            x = np.power(10.0, x, where=self.log10)
+            x = np.copy(x)
+            x = np.power(10.0, x, where=self.log10, out=x)
         return x
 
 
