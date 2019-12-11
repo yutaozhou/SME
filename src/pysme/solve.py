@@ -879,6 +879,7 @@ def synthesize_spectrum(
             sme.wave = np.zeros(npoints)
         if "synth" not in sme:
             sme.synth = np.zeros_like(sme.wob)
+        if "cont" not in sme:
             sme.cont = np.zeros_like(sme.wob)
 
         for s in segments:
