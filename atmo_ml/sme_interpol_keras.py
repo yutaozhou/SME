@@ -4,29 +4,27 @@ using machine learning methods
 
 Credit to Klemen Cotar
 """
-import os, sys
-from os.path import expanduser, join, dirname
+import os
+import sys
+from os.path import dirname, expanduser, join
 
-os.environ["KERAS_BACKEND"] = "tensorflow"
-import matplotlib
-
-matplotlib.use("Agg")
-import tensorflow as tf
-
-tf.config.optimizer.set_jit(True)
-
-import numpy as np
-from scipy.io import readsav
 import joblib
+import matplotlib
 import matplotlib.pyplot as plt
-
-from keras.layers import Input, Dense, Dropout
-from keras.models import Model, Sequential, load_model
-from keras.layers.advanced_activations import PReLU, ReLU
+import numpy as np
+import tensorflow as tf
 from astropy.table import Table
-
+from keras.layers import Dense, Dropout, Input
+from keras.layers.advanced_activations import PReLU, ReLU
+from keras.models import Model, Sequential, load_model
 from pysme.config import Config
 from pysme.large_file_storage import LargeFileStorage
+from scipy.io import readsav
+from scipy.interpolate import griddata
+
+os.environ["KERAS_BACKEND"] = "tensorflow"
+# matplotlib.use("Agg")
+tf.config.optimizer.set_jit(True)
 
 
 def setup_lfs():
@@ -39,406 +37,322 @@ def setup_lfs():
     return lfs_atmo
 
 
-lfs = setup_lfs()
+class Scaler:
+    def __init__(self, x, scale="abs", log10=False):
+        self.scale = scale
+        if np.isscalar(log10):
+            self.log10 = np.full(x.shape[1], log10)
+        else:
+            self.log10 = log10
+        self.useLog10 = np.any(self.log10)
+
+        self.min = self.max = self.median = self.std = None
+        self.is_trained = False
+
+        self.train(x)
+
+    def train(self, x):
+        if self.useLog10:
+            x = np.log10(x, where=self.log10)
+        if self.scale == "abs":
+            self.min = np.min(x, axis=0)
+            self.max = np.max(x, axis=0)
+        elif self.scale == "std":
+            self.std = np.std(x, axis=0)
+            self.median = np.median(x, axis=0)
+        else:
+            raise ValueError("Scale parameter is not understood")
+        self.is_trained = True
+
+    def apply(self, x):
+        if not self.is_trained:
+            raise ValueError("Scaler needs to be trained first")
+        if self.useLog10:
+            x = np.log10(x, where=self.log10)
+        if self.scale == "abs":
+            return (x - self.min) / (self.max - self.min)
+        elif self.scale == "std":
+            return (x - self.median) / self.std
+        else:
+            raise ValueError("Scale parameter is not understood")
+
+    def unscale(self, x):
+        if not self.is_trained:
+            raise ValueError("Scaler needs to be trained first")
+        if self.scale == "abs":
+            x = x * (self.max - self.min) + self.min
+        elif self.scale == "std":
+            x = x * self.std + self.median
+        else:
+            raise ValueError("Scale parameter is not understood")
+        if self.useLog10:
+            x = np.power(10.0, x, where=self.log10)
+        return x
 
 
-def get_tau():
-    tau1 = np.linspace(-5, -3, 11)
-    tau2 = np.linspace(-2.9, 1.0, 40)
-    tau3 = np.linspace(1.2, 2, 5)
-    tau = np.concatenate((tau1, tau2, tau3))
-    return tau
+class SME_Model:
+    def __init__(
+        self,
+        fname,
+        nlayers=4,
+        normalize=False,
+        log10=True,
+        activation="sigmoid",
+        optimizer="adam",
+    ):
+        self.fname = fname
+        self.nlayers = nlayers
+        self.normalize = normalize
+        self.log10 = log10
+        self.activation = activation
+        self.optimizer = optimizer
+        self.labels = ["TEFF", "LOGG", "MONH"]
+        self.parameters = ["TEMP", "RHO", "RHOX", "XNA", "XNE"]
+        self.lfs = setup_lfs()
+        self.scaler_x = None
+        self.scaler_y = None
 
+        if log10:
+            self.idx_y_logcols = np.array(self.parameters) != "TEMP"
+        else:
+            self.idx_y_logcols = np.full(len(self.parameters), False)
 
-def get_tau_test():
-    tau1 = np.linspace(-5, -3, 30)
-    tau2 = np.linspace(-2.9, 1.0, 120)
-    tau3 = np.linspace(1.2, 2, 30)
-    tau = np.concatenate((tau1, tau2, tau3))
-    return tau
+        self.dim_in = len(self.labels) + 1
+        self.dim_out = len(self.parameters)
 
+        self.model = None
+        self.create_model()
 
-"""
-Run scripts
+    @property
+    def output_dir(self):
+        output_dir = f"{self.nlayers}layers_"
+        output_dir += "-".join(self.parameters)
 
-nohup python sme_interpol_keras.py > /dev/null &
-nohup python sme_interpol_keras.py TEMP > /dev/null &
-nohup python sme_interpol_keras.py RHO > /dev/null &
-nohup python sme_interpol_keras.py RHOX > /dev/null &
-nohup python sme_interpol_keras.py XNA > /dev/null &
-nohup python sme_interpol_keras.py XNE > /dev/null &
+        if self.log10:
+            output_dir += "_log10"
+        if self.normalize:
+            output_dir += "_norm"
+        else:
+            output_dir += "_std"
 
-nohup python sme_interpol_keras.py > all.log &
-nohup python sme_interpol_keras.py TEMP > TEMP.log &
-nohup python sme_interpol_keras.py RHO > RHO.log &
-nohup python sme_interpol_keras.py RHOX > RHOX.log &
-nohup python sme_interpol_keras.py XNA > XNA.log &
-nohup python sme_interpol_keras.py XNE > XNE.log &
+        output_dir += f"_{self.activation}_{self.optimizer}"
 
-"""
+        output_dir = join(dirname(__file__), output_dir)
+        return output_dir
 
+    @property
+    def outmodel_file(self):
+        return join(self.output_dir, "model_weights.h5")
 
-def load_data(labels, parameters, fname, NORMALIZE, log10_params):
-    fname = lfs.get(fname)
-    data = readsav(fname)["atmo_grid"]
+    def get_tau(self, resolution=1):
+        points = [11, 40, 5]
+        points = [p * resolution for p in points]
+        tau1 = np.linspace(-5, -3, points[0])
+        tau2 = np.linspace(-2.9, 1.0, points[1])
+        tau3 = np.linspace(1.2, 2, points[2])
+        tau = np.concatenate((tau1, tau2, tau3))
+        return tau
 
-    tau = get_tau()
-    tau_test = get_tau_test()
+    def load_data(self):
+        fname = self.lfs.get(self.fname)
+        data = readsav(fname)["atmo_grid"]
 
-    # Define the input data (here use temperature)
-    x_raw = np.array([data[ln] for ln in labels]).T
-    y_raw = [data[pa] for pa in parameters]
+        tau = self.get_tau()
+        tau_test = self.get_tau(3)
 
-    labels = []
-    labels_test = []
-    output = []
-    for i, x_row in enumerate(x_raw):
-        for k, tau_val in enumerate(tau):
-            labels.append([x_row[0], x_row[1], x_row[2], tau_val])
-            out_row = []
-            for i_par in range(len(parameters)):
-                out_row.append(y_raw[i_par][i][k])
-            output.append(out_row)
+        # Define the input data (here use temperature)
+        x_raw = np.array([data[ln] for ln in self.labels]).T
+        y_raw = [np.concatenate(data[pa]).reshape(-1, 56) for pa in self.parameters]
 
-    for x_row in x_raw:
-        for tau_val in tau_test:
-            labels_test.append([x_row[0], x_row[1], x_row[2], tau_val])
+        inputs = []
+        outputs = []
+        inputs_test = []
+        outputs_test = []
+        for i, x_row in enumerate(x_raw):
+            for k, tau_val in enumerate(tau):
+                inputs.append([x_row[0], x_row[1], x_row[2], tau_val])
+                out_row = []
+                for i_par in range(len(self.parameters)):
+                    out_row.append(y_raw[i_par][i][k])
+                outputs.append(out_row)
 
-    x = np.array(labels)
-    x_test = np.array(labels_test)
-    y = np.array(output)
+            for i_par in range(len(self.parameters)):
+                outputs_test.append(np.interp(tau_test, tau, y_raw[i_par][i]))
 
-    # logaritmize output parameters
-    if log10_params:
-        # logaritmize all output parameters except TEMP that is already has manageable span og values
-        idx_y_logcols = np.array(parameters) != "TEMP"
-        y[:, idx_y_logcols] = np.log10(y[:, idx_y_logcols])
+        for x_row in x_raw:
+            for tau_val in tau_test:
+                inputs_test.append([x_row[0], x_row[1], x_row[2], tau_val])
 
-    # scale output values
-    y_max = np.max(y, axis=0)
-    y_min = np.min(y, axis=0)
-    y_median = np.median(y, axis=0)
-    y_std = np.std(y, axis=0)
+        x_train = np.array(inputs)
+        x_test = np.array(inputs_test)
+        y_train = np.array(outputs)
+        y_test = np.array(outputs_test).reshape(len(self.parameters), -1).T
 
-    # normalization or standardization of outputs
-    if NORMALIZE:
-        y_train = (y - y_min) / (y_max - y_min)
-    else:
-        y_train = (y - y_median) / y_std
+        return (x_train, y_train, x_test, y_test)
 
-    print(x)
+    def create_model(self):
+        # create ann model
+        self.model = Sequential()
+        layers = [50, 200, 350, 500, 500, 350, 200, 50]
+        n = 1
+        self.model.add(
+            Dense(
+                layers[0],
+                input_shape=(self.dim_in,),
+                activation=self.activation,
+                name="E_in",
+            )
+        )
 
-    # scale input labels
-    x_max = np.max(x, axis=0)
-    x_min = np.min(x, axis=0)
-    x_median = np.median(x, axis=0)
-    x_std = np.std(x, axis=0)
-    # normalization or standardization of inputs
-    if NORMALIZE:
-        x_train = (x - x_min) / (x_max - x_min)
-        x_test_train = (x_test - x_min) / (x_max - x_min)
-    else:
-        x_train = (x - x_median) / x_std
-        x_test_train = (x_test - x_median) / x_std
+        self.model.add(Dense(layers[1], activation=self.activation, name=f"E_{n}"))
+        n += 1
 
-    print("X ranges:", x_min, x_max)
+        if n_layers >= 5:
+            self.model.add(Dense(layers[2], activation=self.activation, name=f"E_{n}"))
+        n += 1
 
-    return (
-        labels,
-        labels_test,
-        output,
-        x_train,
-        y_train,
-        x_test_train,
-        y_train,
-        y_min,
-        y_max,
-        y_median,
-        y_std,
-        idx_y_logcols,
-    )
+        if n_layers >= 7:
+            self.model.add(Dense(layers[3], activation=self.activation, name=f"E_{n}"))
+        n += 1
 
+        if n_layers >= 8:
+            self.model.add(Dense(layers[-4], activation=self.activation, name=f"E_{n}"))
+        n += 1
 
-def prepare_output(
-    parameters, n_layers, activation, optimizer, log10_params, NORMALIZE
-):
-    output_dir = str(n_layers) + "layers"
-    output_dir += "_" + "-".join(parameters)
+        if n_layers >= 6:
+            self.model.add(Dense(layers[-3], activation=self.activation, name=f"E_{n}"))
+        n += 1
 
-    if log10_params:
-        output_dir += "_log10"
-    if NORMALIZE:
-        output_dir += "_norm"
-    else:
-        output_dir += "_std"
+        self.model.add(Dense(layers[-2], activation=self.activation, name=f"E_{n}"))
+        n += 1
 
-    output_dir += "_" + str(activation)
-    output_dir += "_" + str(optimizer)
+        self.model.add(Dense(layers[-1], activation=self.activation, name=f"E_{n}"))
+        n += 1
 
-    output_dir = join(dirname(__file__), output_dir)
+        self.model.add(Dense(self.dim_out, activation="linear", name="E_out"))
+        self.model.summary()
 
-    try:
-        os.mkdir(output_dir)
-    except FileExistsError:
-        pass
-    return output_dir
+        return self.model
 
+    def train_scaler(self, x_train, y_train):
+        scale = "abs" if self.normalize else "std"
+        self.scaler_x = Scaler(scale=scale, x=x_train)
+        self.scaler_y = Scaler(scale=scale, x=y_train, log10=self.idx_y_logcols)
 
-def create_model(dim_in, dim_out, n_layers, activation=None):
-    # create ann model
-    sme_nn = Sequential()
+    def train_model(self, x_train, y_train):
+        self.train_scaler(x_train, y_train)
+        x_train = self.scaler_x.apply(x_train)
+        y_train = self.scaler_y.apply(y_train)
 
-    sme_nn.add(Dense(50, input_shape=(dim_in,), activation=activation, name="E_in"))
-    if activation is None:
-        sme_nn.add(PReLU(name="PR_0"))
+        self.model.compile(optimizer=self.optimizer, loss="mse")
+        ann_fit_hist = self.model.fit(
+            x_train,
+            y_train,
+            epochs=1000 + n_layers * 500,
+            shuffle=True,
+            batch_size=4096,
+            validation_split=0,
+            validation_data=(x_train, y_train),
+            verbose=2,
+        )
+        self.save_model()
 
-    sme_nn.add(Dense(200, activation=activation, name="E_1"))
-    if activation is None:
-        sme_nn.add(PReLU(name="PR_1"))
+        plt.figure(figsize=(13, 5))
+        plt.plot(ann_fit_hist.history["loss"], label="Train", alpha=0.5)
+        plt.plot(ann_fit_hist.history["val_loss"], label="Validation", alpha=0.5)
+        plt.title("Model accuracy")
+        plt.xlabel("Epoch")
+        plt.ylabel("Loss value")
+        plt.ylim(0.0, min(1, np.nanpercentile(ann_fit_hist.history["loss"], 96)))
+        plt.xlim(-5, max(1, len(ann_fit_hist.history["loss"])) + 5)
+        plt.tight_layout()
+        plt.legend()
+        plt.savefig(join(self.output_dir, "sme_ann_network_loss.png"), dpi=300)
+        plt.close()
+        return self.model
 
-    if n_layers >= 5:
-        sme_nn.add(Dense(350, activation=activation, name="E_2"))
-        if activation is None:
-            sme_nn.add(PReLU(name="PR_2"))
+    def load_model(self):
+        self.model.load_weights(self.outmodel_file, by_name=True)
+        return self.model
 
-    if n_layers >= 7:
-        sme_nn.add(Dense(500, activation=activation, name="E_3"))
-        if activation is None:
-            sme_nn.add(PReLU(name="PR_3"))
+    def save_model(self):
+        self.model.save_weights(self.outmodel_file)
 
-    if n_layers >= 8:
-        sme_nn.add(Dense(500, activation=activation, name="E_4"))
-        if activation is None:
-            sme_nn.add(PReLU(name="PR_4"))
+    def predict(self, x):
+        xt = self.scaler_x.apply(x)
+        yt = self.model.predict(xt, verbose=2, batch_size=2048)
+        y = self.scaler_y.unscale(yt)
+        return y
 
-    if n_layers >= 6:
-        sme_nn.add(Dense(350, activation=activation, name="E_5"))
-        if activation is None:
-            sme_nn.add(PReLU(name="PR_5"))
+    def plot_results(self, x_train, y_train, x_test, y_test, y_new, y_test_new):
 
-    sme_nn.add(Dense(200, activation=activation, name="E_6"))
-    if activation is None:
-        sme_nn.add(PReLU(name="PR_6"))
+        n_params = len(self.parameters)
+        teff_vals = np.unique(x_train[:, 0])[::2]
+        logg_vals = [3]  # np.unique(x_train[:, 1])[::2]
+        meh_vals = [0]  # np.unique(x_train[:, 2])[::3]
+        print(teff_vals, logg_vals, meh_vals)
 
-    sme_nn.add(Dense(50, activation=activation, name="E_7"))
-    if activation is None:
-        sme_nn.add(PReLU(name="PR_7"))
+        for u_teff in teff_vals:
+            for u_logg in logg_vals:
+                for u_meh in meh_vals:
 
-    sme_nn.add(Dense(dim_out, activation="linear", name="E_out"))
-    sme_nn.summary()
-    return sme_nn
-
-
-def train_model(sme_nn, x_train, y_train, optimizer, out_model_file):
-    sme_nn.compile(optimizer=optimizer, loss="mse")
-    ann_fit_hist = sme_nn.fit(
-        x_train,
-        y_train,
-        epochs=1000 + n_layers * 500,
-        shuffle=True,
-        batch_size=4096,
-        validation_split=0,
-        validation_data=(x_train, y_train),
-        verbose=2,
-    )
-    sme_nn.save_weights(out_model_file)
-
-    plt.figure(figsize=(13, 5))
-    plt.plot(ann_fit_hist.history["loss"], label="Train", alpha=0.5)
-    plt.plot(ann_fit_hist.history["val_loss"], label="Validation", alpha=0.5)
-    plt.title("Model accuracy")
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss value")
-    plt.ylim(0.0, min(1, np.nanpercentile(ann_fit_hist.history["loss"], 96)))
-    plt.xlim(-5, max(1, len(ann_fit_hist.history["loss"])) + 5)
-    plt.tight_layout()
-    plt.legend()
-    plt.savefig("sme_ann_network_loss.png", dpi=300)
-    plt.close()
-    return sme_nn
-
-
-def predict_values(
-    sme_nn,
-    x_train,
-    x_test,
-    y_test,
-    y_min,
-    y_max,
-    y_median,
-    y_std,
-    NORMALIZE,
-    log10_params,
-    idx_y_logcols,
-):
-    print("Predicting model values")
-    y_predicted = sme_nn.predict(x_train, verbose=2, batch_size=2048)
-
-    print("Predicting model values on denser tau grid ")
-    y_test_predicted = sme_nn.predict(x_test, verbose=2, batch_size=2048)
-
-    if NORMALIZE:
-        y_new = y_predicted * (y_max - y_min) + y_min
-        y_test_new = y_test_predicted * (y_max - y_min) + y_min
-    else:
-        y_new = y_predicted * y_std + y_median
-        y_test_new = y_test_predicted * y_std + y_median
-
-    # anti-logaritmize output parameters
-    if log10_params:
-        y_test[:, idx_y_logcols] = 10.0 ** y_test[:, idx_y_logcols]
-        y_new[:, idx_y_logcols] = 10.0 ** y_new[:, idx_y_logcols]
-        y_test_new[:, idx_y_logcols] = 10.0 ** y_test_new[:, idx_y_logcols]
-    return y_test, y_new, y_test_new
-
-
-def plot_results(
-    labels,
-    labels_test,
-    output,
-    x_train,
-    y_train,
-    x_test,
-    y_test,
-    y_new,
-    y_test_new,
-    parameters,
-    output_dir,
-):
-    x = np.array(labels)
-    x_test = np.array(labels_test)
-    y = np.array(output)
-
-    n_params = len(parameters)
-    teff_vals = np.unique(x[:, 0])[::2]
-    logg_vals = [3]  # np.unique(x_train[:, 1])[::2]
-    meh_vals = [0]  # np.unique(x_train[:, 2])[::3]
-    print(teff_vals, logg_vals, meh_vals)
-
-    for u_teff in teff_vals:
-        for u_logg in logg_vals:
-            for u_meh in meh_vals:
-
-                idx_plot = (
-                    (x[:, 0] == u_teff) & (x[:, 1] == u_logg) & (x[:, 2] == u_meh)
-                )
-
-                idx_plot_test = (
-                    (x_test[:, 0] == u_teff)
-                    & (x_test[:, 1] == u_logg)
-                    & (x_test[:, 2] == u_meh)
-                )
-
-                if np.sum(idx_plot) <= 0:
-                    continue
-
-                print("Plot points:", np.sum(idx_plot), u_teff, u_logg, u_meh)
-                plot_x = x[:, 3][idx_plot]
-                plot_x_test = x_test[:, 3][idx_plot_test]
-
-                fig, ax = plt.subplots(
-                    n_params, 1, sharex=True, figsize=(7, 2.5 * n_params)
-                )
-
-                if n_params == 1:
-                    ax = [ax]
-
-                for i_par in range(n_params):
-                    ax[i_par].plot(
-                        plot_x, y[:, i_par][idx_plot], label="Reference", alpha=0.5
+                    idx_plot = (
+                        (x_train[:, 0] == u_teff)
+                        & (x_train[:, 1] == u_logg)
+                        & (x_train[:, 2] == u_meh)
                     )
-                    ax[i_par].plot(
-                        plot_x,
-                        y_new[:, i_par][idx_plot],
-                        label="Predicted",
-                        alpha=0.5,
-                        ls="--",
+
+                    idx_plot_test = (
+                        (x_test[:, 0] == u_teff)
+                        & (x_test[:, 1] == u_logg)
+                        & (x_test[:, 2] == u_meh)
                     )
-                    ax[i_par].plot(
-                        plot_x_test,
-                        y_test_new[:, i_par][idx_plot_test],
-                        label="Predicted denser",
-                        alpha=0.5,
-                        ls=":",
+
+                    if np.sum(idx_plot) <= 0:
+                        continue
+
+                    print("Plot points:", np.sum(idx_plot), u_teff, u_logg, u_meh)
+                    plot_x = x_train[:, 3][idx_plot]
+                    plot_x_test = x_test[:, 3][idx_plot_test]
+
+                    fig, ax = plt.subplots(
+                        n_params, 1, sharex=True, figsize=(7, 2.5 * n_params)
                     )
-                    ax[i_par].set(ylabel=parameters[i_par])
 
-                ax[-1].set(xlabel="tau")
-                ax[0].legend()
-                fig.tight_layout()
-                fig.subplots_adjust(wspace=0.0)
-                fname = f"{u_teff:.1f}-teff_{u_logg:.1f}-logg_{u_meh:.1f}-monh.png"
-                fname = join(output_dir, fname)
-                fig.savefig(fname)
-                plt.close()
+                    if n_params == 1:
+                        ax = [ax]
 
+                    for i_par in range(n_params):
+                        ax[i_par].plot(
+                            plot_x,
+                            y_train[:, i_par][idx_plot],
+                            label="Reference",
+                            alpha=0.5,
+                        )
+                        ax[i_par].plot(
+                            plot_x,
+                            y_new[:, i_par][idx_plot],
+                            label="Predicted",
+                            alpha=0.5,
+                            ls="--",
+                        )
+                        ax[i_par].plot(
+                            plot_x_test,
+                            y_test_new[:, i_par][idx_plot_test],
+                            label="Predicted denser",
+                            alpha=0.5,
+                            ls=":",
+                        )
+                        ax[i_par].set(ylabel=self.parameters[i_par])
 
-def run_nn(in_args, NORMALIZE, activation, optimizer, n_layers=4, log10_params=True):
-    """
-    Train the neural network
-    """
-
-    # -----------------------------------------------------------------------------
-    fname = "marcs2012p_t0.0.sav"
-    labels = ["TEFF", "LOGG", "MONH"]
-    parameters = ["TEMP", "RHO", "RHOX", "XNA", "XNE"]
-
-    if len(in_args) >= 2:
-        parameters = in_args[1].split("_")
-    print("Parameters:", parameters)
-
-    # Load data
-    labels, labels_test, output, x_train, y_train, x_test, y_test, y_min, y_max, y_median, y_std, idx_y_logcols = load_data(
-        labels, parameters, fname, NORMALIZE, log10_params
-    )
-
-    # Prepare output folder
-    output_dir = prepare_output(
-        parameters, n_layers, activation, optimizer, log10_params, NORMALIZE
-    )
-
-    # KERAS NN implementation
-    print("Dimesions labels:", x_train.shape, y_train.shape)
-    dim_in = x_train.shape[1]
-    dim_out = y_train.shape[1]
-    sme_nn = create_model(dim_in, dim_out, n_layers, activation)
-
-    # Load or train weights
-    out_model_file = join(output_dir, "model_weights.h5")
-    if os.path.isfile(out_model_file):
-        sme_nn.load_weights(out_model_file, by_name=True)
-    else:
-        sme_nn = train_model(sme_nn, x_train, y_train, optimizer, out_model_file)
-
-    # Predict output
-    y_test, y_new, y_test_new = predict_values(
-        sme_nn,
-        x_train,
-        x_test,
-        y_test,
-        y_min,
-        y_max,
-        y_median,
-        y_std,
-        NORMALIZE,
-        log10_params,
-        idx_y_logcols,
-    )
-
-    # Plot comparison
-    plot_results(
-        labels,
-        labels_test,
-        output,
-        x_train,
-        y_train,
-        x_test,
-        y_test,
-        y_new,
-        y_test_new,
-        parameters,
-        output_dir,
-    )
+                    ax[-1].set(xlabel="tau")
+                    ax[0].legend()
+                    fig.tight_layout()
+                    fig.subplots_adjust(wspace=0.0)
+                    fname = f"{u_teff:.1f}-teff_{u_logg:.1f}-logg_{u_meh:.1f}-monh.png"
+                    fname = join(self.output_dir, fname)
+                    fig.savefig(fname)
+                    plt.close()
 
 
 if __name__ == "__main__":
@@ -448,11 +362,20 @@ if __name__ == "__main__":
     u_activation = "sigmoid"
     u_optimizer = "adam"
 
-    run_nn(
-        sys.argv,
-        u_NORMALIZE,
-        u_activation,
-        u_optimizer,
-        n_layers=n_layers,
-        log10_params=log_y_values,
+    # Source of the training data
+    fname = "marcs2012p_t0.0.sav"
+
+    model = SME_Model(
+        fname, n_layers, u_NORMALIZE, log_y_values, u_activation, u_optimizer
     )
+    x_train, y_train, x_test, y_test = model.load_data()
+    if os.path.isfile(model.outmodel_file):
+        model.train_scaler(x_train, y_train)
+        model.load_model()
+    else:
+        model.train_model(x_train, y_train)
+
+    y_new = model.predict(x_train)
+    y_test_new = model.predict(x_test)
+
+    model.plot_results(x_train, y_train, x_test, y_test, y_new, y_test_new)
