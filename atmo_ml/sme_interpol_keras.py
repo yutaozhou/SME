@@ -8,23 +8,25 @@ import os
 import sys
 from os.path import dirname, expanduser, join
 
-import joblib
+os.environ["KERAS_BACKEND"] = "tensorflow"
+
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.interpolate import griddata
+from scipy.io import readsav
+
+# matplotlib.use("Agg")
+
 import tensorflow as tf
-from astropy.table import Table
 from keras.layers import Dense, Dropout, Input
 from keras.layers.advanced_activations import PReLU, ReLU
 from keras.models import Model, Sequential, load_model
+
+tf.config.optimizer.set_jit(True)
+
 from pysme.config import Config
 from pysme.large_file_storage import LargeFileStorage
-from scipy.io import readsav
-from scipy.interpolate import griddata
-
-os.environ["KERAS_BACKEND"] = "tensorflow"
-# matplotlib.use("Agg")
-tf.config.optimizer.set_jit(True)
 
 
 def setup_lfs():
@@ -358,19 +360,10 @@ class SME_Model:
                     plt.close()
 
 
-if __name__ == "__main__":
-    n_layers = 4
-    log_y_values = True
-    u_NORMALIZE = False
-    u_activation = "sigmoid"
-    u_optimizer = "adam"
-
-    # Source of the training data
+def run_nn(in_args, normalize, activation, optimizer, n_layers=4, log10=True):
     fname = "marcs2012p_t0.0.sav"
 
-    model = SME_Model(
-        fname, n_layers, u_NORMALIZE, log_y_values, u_activation, u_optimizer
-    )
+    model = SME_Model(fname, n_layers, normalize, log10, activation, optimizer)
     x_train, y_train, x_test, y_test = model.load_data()
     if os.path.isfile(model.outmodel_file):
         model.train_scaler(x_train, y_train)
@@ -382,3 +375,16 @@ if __name__ == "__main__":
     y_test_new = model.predict(x_test)
 
     model.plot_results(x_train, y_train, x_test, y_test, y_new, y_test_new)
+
+
+if __name__ == "__main__":
+    n_layers = 4
+    log10 = True
+    normalize = False
+    activation = "sigmoid"
+    optimizer = "adam"
+
+    # Source of the training data
+    fname = "marcs2012p_t0.0.sav"
+
+    run_nn([], normalize, activation, optimizer, n_layers, log10)
