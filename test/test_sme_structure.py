@@ -34,6 +34,7 @@ def test_empty_structure():
     assert empty.spec is None
     assert empty.uncs is None
     assert empty.synth is None
+    assert empty.cont is None
     assert empty.mask is None
     assert empty.mask_good is None
     assert empty.mask_bad is None
@@ -41,13 +42,13 @@ def test_empty_structure():
     assert empty.mask_continuum is None
 
     assert empty.cscale == [[1]]
-    assert empty.vrad is None
+    assert empty.vrad == [0]
     assert empty.cscale_flag == "none"
     assert empty.vrad_flag == "none"
     assert empty.cscale_degree == 0
 
-    assert empty.mu == [1]
-    assert empty.nmu == 1
+    assert empty.mu is not None
+    assert empty.nmu == 7
 
     assert empty.md5 is not None
 

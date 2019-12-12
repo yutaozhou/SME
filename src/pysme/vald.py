@@ -26,7 +26,7 @@ class ValdFile:
     """Atomic data for a list of spectral lines.
     """
 
-    def __init__(self, filename, medium="vac"):
+    def __init__(self, filename, medium=None):
         self._filename = filename
         self._wavelo = None
         self._wavehi = None
@@ -142,6 +142,8 @@ class ValdFile:
         unit = match.group(2)
 
         match = re.search("E_low\((.*?)\)", line)
+        if match is None:
+            match = re.search("Excit\((.*?)\)", line)
         energy_unit = match.group(1)
 
         if medium == "air":
@@ -152,6 +154,9 @@ class ValdFile:
             raise ValueError(
                 "Could not determine the medium that the wavelength is based on (air or vacuum)"
             )
+
+        if self.desired_medium is None:
+            self.desired_medium = self.medium
 
         if unit == "A":
             self.unit = u.AA
@@ -276,7 +281,7 @@ class ValdFile:
             linelist["wlcent"] = vac2air(linelist["wlcent"])
             self.medium = "air"
 
-        linelist = LineList(linelist, lineformat=fmt)
+        linelist = LineList(linelist, lineformat=fmt, medium=self.medium)
 
         return linelist
 

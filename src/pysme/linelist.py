@@ -11,6 +11,8 @@ import logging
 import numpy as np
 import pandas as pd
 
+from .util import air2vac, vac2air
+
 logger = logging.getLogger(__name__)
 
 
@@ -180,6 +182,7 @@ class LineList:
         self.lineformat = lineformat
         #:pandas.DataFrame: DataFrame that contains all the data
         self._lines = linedata  # should have all the fields (20)
+        self._medium = kwargs.pop("medium", None)
 
     def __len__(self):
         return len(self._lines)
@@ -203,6 +206,32 @@ class LineList:
         if name[0] != "_" and name not in dir(self):
             return self._lines[name].values
         return super().__getattribute__(name)
+
+    @property
+    def medium(self):
+        return self._medium
+
+    @medium.setter
+    def medium(self, value):
+        if self._medium is None:
+            logger.warning(
+                "No medium was defined for the linelist."
+                " The new value of %s is assumed to be the native medium of the linelist. No conversion was performed"
+            )
+            self._medium = value
+        if self._medium == value:
+            return
+        else:
+            if self._medium == "air" and value == "vac":
+                self._lines["wlcent"] = air2vac(self._lines["wlcent"])
+                self._medium = "vac"
+            elif self._medium == "vac" and value == "air":
+                self._lines["wlcent"] = vac2air(self._lines["wlcent"])
+                self._medium = "air"
+            else:
+                raise ValueError(
+                    f"Type of medium not undertstood. Expected one of [vac, air], but got {value} instead"
+                )
 
     @property
     def species(self):

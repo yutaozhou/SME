@@ -77,10 +77,20 @@ def test_valdfile():
 
     assert len(linelist) == 44
     assert linelist.lineformat == "short"
+    assert linelist.medium == "air"
     assert linelist[0].species == "V 1"
 
     with pytest.raises(IOError):
         vf = ValdFile(join(testdir, "testcase1.npy"))
+
+
+def test_medium():
+    """Test class to read a VALD line data file.
+    """
+    testdir = dirname(__file__)
+    vf = ValdFile(join(testdir, "testcase1.lin"), medium="vac")
+
+    assert vf.linelist.medium == "vac"
 
 
 def test_short_format():

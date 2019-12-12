@@ -1,6 +1,7 @@
 import pytest
 
 from os.path import dirname, join
+import numpy as np
 from scipy.constants import speed_of_light
 
 # TODO create various kinds of default sme structures
@@ -26,9 +27,21 @@ def testcase1():
     sme = SME_Struct.load(fname)
     sme = synthesize_spectrum(sme)
 
+    # Add a second segment (just for testing)
+    sme.spec = [sme.spec[0], sme.spec[0]]
+    sme.wave = [sme.wave[0], sme.wave[0]]
+    sme.synth = [sme.synth[0], sme.synth[0]]
+    sme.mask = [sme.mask[0], sme.mask[0]]
+
+    sme.wran = [sme.wran[0], sme.wran[0]]
+
     rv = 10
     x_syn = sme.wave[0] * (1 - rv / c_light)
     y_syn = sme.synth[0]
+
+    x_syn = np.array([x_syn, x_syn])
+    y_syn = np.array([y_syn, y_syn])
+
     return sme, x_syn, y_syn, rv
 
 

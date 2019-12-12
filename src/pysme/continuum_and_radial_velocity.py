@@ -277,7 +277,8 @@ def determine_radial_velocity(sme, segment, cscale, x_syn, y_syn):
 
 def null_result(nseg, ndeg=0):
     vrad, vrad_unc = np.zeros(nseg), np.zeros((nseg, 2))
-    cscale, cscale_unc = np.ones((nseg, ndeg + 1)), np.zeros((nseg, ndeg + 1, 2))
+    cscale, cscale_unc = np.zeros((nseg, ndeg + 1)), np.zeros((nseg, ndeg + 1, 2))
+    cscale[:, -1] = 1
     return vrad, vrad_unc, cscale, cscale_unc
 
 
@@ -316,21 +317,35 @@ def determine_rv_and_cont(sme, segment, x_syn, y_syn):
         segment = [segment]
     nseg = len(segment)
 
+    if sme.cscale_flag in ["none", "fix"] and sme.vrad_flag in ["none", "fix"]:
+        vrad, vunc, cscale, cunc = null_result(nseg, sme.cscale_degree)
+        if sme.vrad_flag == "fix":
+            vrad = sme.vrad[segment]
+        if sme.cscale_flag == "fix":
+            cscale = sme.cscale[segment]
+        return vrad, vunc, cscale, cunc
+
     if "spec" not in sme or "mask" not in sme or "wave" not in sme or "uncs" not in sme:
         # No observation no radial velocity
         logger.warning("Missing data for radial velocity/continuum determination")
-        return null_result(nseg)
+        return null_result(nseg, sme.cscale_degree)
 
     if np.all(sme.mask_bad[segment].ravel()):
-        logger.warning(
-            "Only bad pixels in this segments, can't determine radial velocity/continuum"
+        warnings.warn(
+            "Only bad pixels in this segments, can't determine radial velocity/continuum",
+            UserWarning,
         )
-        return null_result(nseg)
+        return null_result(nseg, sme.cscale_degree)
 
     if x_syn.ndim == 1:
         x_syn = x_syn[None, :]
     if y_syn.ndim == 1:
         y_syn = y_syn[None, :]
+
+    if x_syn.shape[0] != nseg or y_syn.shape[0] != nseg:
+        raise ValueError(
+            "Size of synthetic spectrum, does not match the number of requested segments"
+        )
 
     mask = sme.mask_good[segment]
     x_obs = sme.wave[segment][mask]
@@ -372,7 +387,7 @@ def determine_rv_and_cont(sme, segment, x_syn, y_syn):
     # you still want to fit the rv of the individual segments
     # just for the continuum fit
     if sme.vrad_flag == "none":
-        vrad = [0]
+        vrad = np.zeros(len(segment))
         vflag = False
     elif sme.vrad_flag == "whole":
         vrad = sme.vrad[:1]
@@ -406,14 +421,13 @@ def determine_rv_and_cont(sme, segment, x_syn, y_syn):
             )
             vrad = 0
 
-    def log_prior(rv, cscale):
-        nwalkers = rv.shape[0]
+    def log_prior(rv, cscale, nwalkers):
         prior = np.zeros(nwalkers)
         # Add the prior here
         # TODO reject too large/small rv values in a prior
         where = np.full(nwalkers, False)
         if vflag:
-            where |= np.abs(rv[:, 0]) > rv_limit
+            where |= np.any(np.abs(rv) > rv_limit, axis=1)
         if cflag:
             where |= np.any(cscale[:, :, -1] < 0, axis=1)
             if ndeg == 1:
@@ -421,12 +435,14 @@ def determine_rv_and_cont(sme, segment, x_syn, y_syn):
                     cscale[:, :, -1] + cscale[:, :, -2] * x_num[:, -1] < 0, axis=1
                 )
             elif ndeg == 2:
-                where |= np.any(
-                    cscale[:, :, -1]
-                    + cscale[:, :, -2] * x_num[:, -1]
-                    + cscale[:, :, -3] * x_num[:, -1] ** 2,
-                    axis=1,
-                )
+                for i in range(nseg):
+                    where |= np.any(
+                        cscale[:, i, None, -1]
+                        + cscale[:, i, None, -2] * x_num[i]
+                        + cscale[:, i, None, -3] * x_num[i] ** 2
+                        < 0,
+                        axis=1,
+                    )
         prior[where] = -np.inf
         return prior
 
@@ -437,7 +453,9 @@ def determine_rv_and_cont(sme, segment, x_syn, y_syn):
         """
         nwalkers = par.shape[0]
         rv = par[:, :sep] if vflag else vrad[None, :]
-        if sep == 1 and nseg > 1:
+        if rv.shape[0] == 1 and nwalkers > 1:
+            rv = np.tile(rv, [nwalkers, 1])
+        if rv.shape[1] == 1 and nseg > 1:
             rv = np.tile(rv, [1, nseg])
         if cflag:
             cs = par[:, sep:]
@@ -445,7 +463,7 @@ def determine_rv_and_cont(sme, segment, x_syn, y_syn):
         else:
             cs = cscale[None, ...]
 
-        prior = log_prior(rv, cs)
+        prior = log_prior(rv, cs, nwalkers)
 
         # Apply RV shift
         rv_factor = np.sqrt((1 - rv / c_light) / (1 + rv / c_light))
@@ -543,6 +561,9 @@ def determine_rv_and_cont(sme, segment, x_syn, y_syn):
 
         cscale_unc[..., 0] = cscale - vmin
         cscale_unc[..., 1] = vmax - cscale
+
+    if sme.vrad_flag == "whole":
+        vrad = np.tile(vrad, [nseg])
 
     return vrad, vrad_unc, cscale, cscale_unc
 

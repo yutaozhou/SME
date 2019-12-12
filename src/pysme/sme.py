@@ -1109,13 +1109,13 @@ class SME_Struct(Param):
     @property
     def vrad(self):
         """array of size (nseg,): Radial velocity in km/s for each wavelength region"""
-        if self._vrad is None and self.nseg is None:
-            return [None]
-        elif self._vrad is None:
-            return [None for _ in range(self.nseg)]
+        nseg = self.nseg if self.nseg is not None else 1
+        
+        if self._vrad is None:
+            return np.zeros(nseg)
 
         if self.vrad_flag == "none":
-            return np.zeros(self.nseg)
+            return np.zeros(nseg)
         else:
             nseg = self._vrad.shape[0]
             if nseg == self.nseg:
@@ -1139,10 +1139,13 @@ class SME_Struct(Param):
         The x coordinates of each polynomial are chosen so that x = 0, at the first wavelength point,
         i.e. x is shifted by wave[segment][0]
         """
-        if self._cscale is None:
-            return None
-
         nseg = self.nseg if self.nseg is not None else 1
+
+        if self._cscale is None:
+            cs = np.zeros((nseg, self.cscale_degree + 1))
+            cs[:, -1] = 1
+            return cs
+
         if self.cscale_flag == "none":
             return np.ones((nseg, 1))
 
@@ -1209,7 +1212,10 @@ class SME_Struct(Param):
         if self.cscale_flag == "quadratic":
             return 2
         if self.cscale_flag == "fix":
-            return self._cscale.shape[1] - 1
+            if self._cscale is not None:
+                return self._cscale.shape[1] - 1
+            else:
+                return 0
         if self.cscale_flag == "none":
             return 0
         raise ValueError("This should never happen")
