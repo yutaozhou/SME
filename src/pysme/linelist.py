@@ -309,7 +309,7 @@ class LineList:
         info = {"format": self.lineformat}
         file.writestr(f"{folder}info.json", json.dumps(info))
 
-        lines = self._lines.reset_index()
+        lines = self._lines.reset_index(drop=True)
         b = io.BytesIO()
         lines.to_feather(b)
 

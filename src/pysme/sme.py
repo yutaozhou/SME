@@ -809,6 +809,7 @@ class SME_Struct(Param):
         self.sob = None
         self.uob = None
         self.mob = None
+        self.cont = None
 
         # Instrument broadening
         #:str: Instrumental broadening type, values are "table", "gauss", "sinc"
