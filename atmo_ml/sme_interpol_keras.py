@@ -16,7 +16,7 @@ import numpy as np
 from scipy.interpolate import griddata
 from scipy.io import readsav
 
-# matplotlib.use("Agg")
+matplotlib.use("Agg")
 
 import tensorflow as tf
 from keras.layers import Dense, Dropout, Input
@@ -104,6 +104,7 @@ class SME_Model:
         log10=True,
         activation="sigmoid",
         optimizer="adam",
+        parameters=["TEMP", "RHO", "RHOX", "XNA", "XNE"],
     ):
         self.fname = fname
         self.nlayers = nlayers
@@ -112,7 +113,7 @@ class SME_Model:
         self.activation = activation
         self.optimizer = optimizer
         self.labels = ["TEFF", "LOGG", "MONH"]
-        self.parameters = ["TEMP", "RHO", "RHOX", "XNA", "XNE"]
+        self.parameters = parameters
         self.lfs = setup_lfs()
         self.scaler_x = None
         self.scaler_y = None
@@ -253,7 +254,7 @@ class SME_Model:
         ann_fit_hist = self.model.fit(
             x_train,
             y_train,
-            epochs=1000 + n_layers * 500,
+            epochs=200,  # 1000 + n_layers * 500,
             shuffle=True,
             batch_size=4096,
             validation_split=0,
@@ -281,6 +282,7 @@ class SME_Model:
         return self.model
 
     def save_model(self):
+        os.makedirs(self.output_dir, exist_ok=True)
         self.model.save_weights(self.outmodel_file)
 
     def predict(self, x):
@@ -360,10 +362,23 @@ class SME_Model:
                     plt.close()
 
 
-def run_nn(in_args, normalize, activation, optimizer, n_layers=4, log10=True):
+def run_nn(in_args, normalize, activation, optimizer, n_layers=4, log10_params=True):
     fname = "marcs2012p_t0.0.sav"
 
-    model = SME_Model(fname, n_layers, normalize, log10, activation, optimizer)
+    if len(in_args) >= 2:
+        parameters = in_args[1].split("_")
+    else:
+        parameters = ["TEMP", "RHO", "RHOX", "XNA", "XNE"]
+
+    model = SME_Model(
+        fname,
+        n_layers,
+        normalize,
+        log10_params,
+        activation,
+        optimizer,
+        parameters=parameters,
+    )
     x_train, y_train, x_test, y_test = model.load_data()
     if os.path.isfile(model.outmodel_file):
         model.train_scaler(x_train, y_train)
@@ -378,13 +393,45 @@ def run_nn(in_args, normalize, activation, optimizer, n_layers=4, log10=True):
 
 
 if __name__ == "__main__":
-    n_layers = 4
-    log10 = True
-    normalize = False
-    activation = "sigmoid"
-    optimizer = "adam"
+    # loop through all possible combinations of ANN configurations, pre-processing and optimizers
+    for n_layers in [4]:
+        for log_y_values in [True, False]:  #
+            for u_NORMALIZE in [True, False]:  #
+                for u_activation in [
+                    None,
+                    "tanh",
+                    "sigmoid",
+                    "relu",
+                ]:  # 'exponential' 'elu'
+                    for u_optimizer in ["adam", "RMSprop"]:  # 'SGD'
+                        print("=====================================================")
+                        print("=====================================================")
+                        print(
+                            "Running parameter inputs:",
+                            u_NORMALIZE,
+                            u_activation,
+                            u_optimizer,
+                            n_layers,
+                            log_y_values,
+                        )
+                        print("=====================================================")
+                        print("=====================================================")
+                        run_nn(
+                            sys.argv,
+                            u_NORMALIZE,
+                            u_activation,
+                            u_optimizer,
+                            n_layers=n_layers,
+                            log10_params=log_y_values,
+                        )
 
-    # Source of the training data
-    fname = "marcs2012p_t0.0.sav"
+    # n_layers = 4
+    # log10 = True
+    # normalize = False
+    # activation = "sigmoid"
+    # optimizer = "adam"
 
-    run_nn([], normalize, activation, optimizer, n_layers, log10)
+    # # Source of the training data
+    # fname = "marcs2012p_t0.0.sav"
+
+    # run_nn([], normalize, activation, optimizer, n_layers, log10)
