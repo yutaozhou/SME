@@ -196,6 +196,16 @@ class SME_Model:
 
         return (x_train, y_train, x_test, y_test)
 
+    def extract_samples(self, x, y, n=1):
+        parametersets = np.unique(x[:, :3], axis=0)
+        idx = np.random.choice(parametersets.shape[0], replace=False, size=n)
+        mask = np.all(x[:, :3] == parametersets[idx], axis=1)
+
+        x_test, y_test = x[mask], y[mask]
+        x_train, y_train = x[~mask], y[~mask]
+
+        return x_train, y_train, x_test, y_test
+
     def create_model(self):
         # create ann model
         self.model = Sequential()
@@ -294,33 +304,29 @@ class SME_Model:
     def plot_results(self, x_train, y_train, x_test, y_test, y_new, y_test_new):
 
         n_params = len(self.parameters)
-        teff_vals = np.unique(x_train[:, 0])[::2]
-        logg_vals = [3]  # np.unique(x_train[:, 1])[::2]
-        meh_vals = [0]  # np.unique(x_train[:, 2])[::3]
+        teff_vals, logg_vals, meh_vals = np.unique(x_test[:, :3], axis=0).T
         print(teff_vals, logg_vals, meh_vals)
 
         for u_teff in teff_vals:
             for u_logg in logg_vals:
                 for u_meh in meh_vals:
 
-                    idx_plot = (
-                        (x_train[:, 0] == u_teff)
-                        & (x_train[:, 1] == u_logg)
-                        & (x_train[:, 2] == u_meh)
-                    )
+                    # idx_plot = (
+                    #     (x_train[:, 0] == u_teff)
+                    #     & (x_train[:, 1] == u_logg)
+                    #     & (x_train[:, 2] == u_meh)
+                    # )
 
-                    idx_plot_test = (
+                    idx_plot = (
                         (x_test[:, 0] == u_teff)
                         & (x_test[:, 1] == u_logg)
                         & (x_test[:, 2] == u_meh)
                     )
 
-                    if np.sum(idx_plot) <= 0:
-                        continue
+                    # if np.sum(idx_plot) <= 0:
+                    #     continue
 
                     print("Plot points:", np.sum(idx_plot), u_teff, u_logg, u_meh)
-                    plot_x = x_train[:, 3][idx_plot]
-                    plot_x_test = x_test[:, 3][idx_plot_test]
 
                     fig, ax = plt.subplots(
                         n_params, 1, sharex=True, figsize=(7, 2.5 * n_params)
@@ -331,24 +337,17 @@ class SME_Model:
 
                     for i_par in range(n_params):
                         ax[i_par].plot(
-                            plot_x,
-                            y_train[:, i_par][idx_plot],
+                            x_test[idx_plot, 3],
+                            y_test[:, i_par][idx_plot],
                             label="Reference",
                             alpha=0.5,
                         )
                         ax[i_par].plot(
-                            plot_x,
-                            y_new[:, i_par][idx_plot],
+                            x_test[idx_plot, 3],
+                            y_test_new[:, i_par][idx_plot],
                             label="Predicted",
                             alpha=0.5,
                             ls="--",
-                        )
-                        ax[i_par].plot(
-                            plot_x_test,
-                            y_test_new[:, i_par][idx_plot_test],
-                            label="Predicted denser",
-                            alpha=0.5,
-                            ls=":",
                         )
                         ax[i_par].set(ylabel=self.parameters[i_par])
 
@@ -380,6 +379,8 @@ def run_nn(in_args, normalize, activation, optimizer, n_layers=4, log10_params=T
         parameters=parameters,
     )
     x_train, y_train, x_test, y_test = model.load_data()
+    x_train, y_train, x_test, y_test = model.extract_samples(x_train, y_train, n=1)
+
     if os.path.isfile(model.outmodel_file):
         model.train_scaler(x_train, y_train)
         model.load_model()
