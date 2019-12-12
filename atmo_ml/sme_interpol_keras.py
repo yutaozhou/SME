@@ -255,7 +255,7 @@ class SME_Model:
         self.scaler_x = Scaler(scale=scale, x=x_train)
         self.scaler_y = Scaler(scale=scale, x=y_train, log10=self.idx_y_logcols)
 
-    def train_model(self, x_train, y_train):
+    def train_model(self, x_train, y_train, x_test, y_test):
         self.train_scaler(x_train, y_train)
         x_train = self.scaler_x.apply(x_train)
         y_train = self.scaler_y.apply(y_train)
@@ -264,14 +264,20 @@ class SME_Model:
         ann_fit_hist = self.model.fit(
             x_train,
             y_train,
-            epochs=200,  # 1000 + n_layers * 500,
+            epochs=1000 + n_layers * 500,
             shuffle=True,
             batch_size=4096,
-            validation_split=0,
-            validation_data=(x_train, y_train),
+            validation_split=0.1,
+            # validation_data=(x_test, y_test),
             verbose=2,
         )
         self.save_model()
+
+        np.savez(
+            join(self.output_dir, "history.npz"),
+            loss=ann_fit_hist.history["loss"],
+            val_loss=ann_fit_hist.history["val_loss"],
+        )
 
         plt.figure(figsize=(13, 5))
         plt.plot(ann_fit_hist.history["loss"], label="Train", alpha=0.5)
@@ -279,7 +285,7 @@ class SME_Model:
         plt.title("Model accuracy")
         plt.xlabel("Epoch")
         plt.ylabel("Loss value")
-        plt.ylim(0.0, min(1, np.nanpercentile(ann_fit_hist.history["loss"], 96)))
+        # plt.ylim(0.0, min(1, np.nanpercentile(ann_fit_hist.history["loss"], 96)))
         plt.xlim(-5, max(1, len(ann_fit_hist.history["loss"])) + 5)
         plt.tight_layout()
         plt.legend()
@@ -385,7 +391,7 @@ def run_nn(in_args, normalize, activation, optimizer, n_layers=4, log10_params=T
         model.train_scaler(x_train, y_train)
         model.load_model()
     else:
-        model.train_model(x_train, y_train)
+        model.train_model(x_train, y_train, x_test, y_test)
 
     y_new = model.predict(x_train)
     y_test_new = model.predict(x_test)
@@ -398,12 +404,7 @@ if __name__ == "__main__":
     for n_layers in [4]:
         for log_y_values in [True, False]:  #
             for u_NORMALIZE in [True, False]:  #
-                for u_activation in [
-                    None,
-                    "tanh",
-                    "sigmoid",
-                    "relu",
-                ]:  # 'exponential' 'elu'
+                for u_activation in ["tanh", "sigmoid", "relu"]:  # 'exponential' 'elu'
                     for u_optimizer in ["adam", "RMSprop"]:  # 'SGD'
                         print("=====================================================")
                         print("=====================================================")
