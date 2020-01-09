@@ -6,7 +6,6 @@ Credit to Klemen Cotar
 """
 import os
 import sys
-import json
 from os.path import dirname, expanduser, join
 
 os.environ["KERAS_BACKEND"] = "tensorflow"
@@ -328,15 +327,15 @@ class SME_Model:
 
     def load_model(self):
         self.model.load_weights(self.outmodel_file, by_name=True)
-        self.scaler_x = Scaler.load(join(self.output_dir, "scaler_x.json"))
-        self.scaler_y = Scaler.load(join(self.output_dir, "scaler_y.json"))
+        self.scaler_x = Scaler.load(join(self.output_dir, "scaler_x.npz"))
+        self.scaler_y = Scaler.load(join(self.output_dir, "scaler_y.npz"))
         return self.model
 
     def save_model(self):
         os.makedirs(self.output_dir, exist_ok=True)
         self.model.save_weights(self.outmodel_file)
-        self.scaler_x.save(join(self.output_dir, "scaler_x.json"))
-        self.scaler_y.save(join(self.output_dir, "scaler_y.json"))
+        self.scaler_x.save(join(self.output_dir, "scaler_x.npz"))
+        self.scaler_y.save(join(self.output_dir, "scaler_y.npz"))
 
     def predict(self, x):
         xt = self.scaler_x.apply(x)
