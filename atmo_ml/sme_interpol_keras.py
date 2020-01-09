@@ -6,6 +6,7 @@ Credit to Klemen Cotar
 """
 import os
 import sys
+import json
 from os.path import dirname, expanduser, join
 
 os.environ["KERAS_BACKEND"] = "tensorflow"
@@ -93,6 +94,38 @@ class Scaler:
             x = np.copy(x)
             x = np.power(10.0, x, where=self.log10, out=x)
         return x
+
+    def save(self, fname):
+        """ Save the scaler information to a file """
+        if self.scale == "abs":
+            arr0, arr1 = self.min, self.max
+        elif self.scale == "std":
+            arr0, arr1 = self.median, self.std
+        else:
+            raise ValueError
+
+        np.savez(fname, scale=self.scale, log10=self.log10, arr0=arr0, arr1=arr1)
+
+    @staticmethod
+    def load(fname):
+        data = np.load(fname)
+
+        scale = data["scale"]
+        log10 = data["log10"]
+        arr0, arr1 = data["arr0"], data["arr1"]
+        scaler = Scaler(None, scale=scale, log10=log10)
+
+        if scale == "abs":
+            scaler.min, scaler.max = arr0, arr1
+        elif scale == "std":
+            scaler.median, scaler.std = arr0, arr1
+        else:
+            raise ValueError
+
+        if arr0 is not None or arr1 is not None:
+            scaler.is_trained = True
+
+        return scaler
 
 
 class SME_Model:
@@ -295,11 +328,15 @@ class SME_Model:
 
     def load_model(self):
         self.model.load_weights(self.outmodel_file, by_name=True)
+        self.scaler_x = Scaler.load(join(self.output_dir, "scaler_x.json"))
+        self.scaler_y = Scaler.load(join(self.output_dir, "scaler_y.json"))
         return self.model
 
     def save_model(self):
         os.makedirs(self.output_dir, exist_ok=True)
         self.model.save_weights(self.outmodel_file)
+        self.scaler_x.save(join(self.output_dir, "scaler_x.json"))
+        self.scaler_y.save(join(self.output_dir, "scaler_y.json"))
 
     def predict(self, x):
         xt = self.scaler_x.apply(x)
@@ -402,10 +439,10 @@ def run_nn(in_args, normalize, activation, optimizer, n_layers=4, log10_params=T
 if __name__ == "__main__":
     # loop through all possible combinations of ANN configurations, pre-processing and optimizers
     for n_layers in [4]:
-        for log_y_values in [True, False]:  #
-            for u_NORMALIZE in [True, False]:  #
-                for u_activation in ["tanh", "sigmoid", "relu"]:  # 'exponential' 'elu'
-                    for u_optimizer in ["adam", "RMSprop"]:  # 'SGD'
+        for log_y_values in [True]:  #
+            for u_NORMALIZE in [False]:  #
+                for u_activation in ["sigmoid"]:  # 'exponential' 'elu'
+                    for u_optimizer in ["adam"]:  # 'SGD'
                         print("=====================================================")
                         print("=====================================================")
                         print(

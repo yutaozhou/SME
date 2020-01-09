@@ -22,7 +22,7 @@ from .abund import Abund
 from .atmosphere.atmosphere import AtmosphereError
 from .atmosphere.savfile import SavFile
 from .atmosphere.krzfile import KrzFile
-from .atmosphere.interpolation import interp_atmo_grid
+from .atmosphere.interpolation import interpolate_grid
 from .config import Config
 from .continuum_and_radial_velocity import match_rv_continuum
 from .integrate_flux import integrate_flux
@@ -518,4 +518,3 @@ class SME_Solver:
 def solve(sme, param_names=("teff", "logg", "monh"), segments="all", filename=None):
     solver = SME_Solver(filename=filename)
     return solver.solve(sme, param_names, segments)
-
