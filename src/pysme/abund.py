@@ -92,9 +92,7 @@ class Abund:
             )
 
     def __setitem__(self, elem, abund):
-        raise TypeError(
-            "can't set abundance directly; instead set monh and pattern separately"
-        )
+        self.update_pattern({elem: abund})
 
     def __str__(self):
         if self._pattern is None:
