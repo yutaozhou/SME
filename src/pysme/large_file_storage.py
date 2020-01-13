@@ -91,11 +91,11 @@ class LargeFileStorage:
         if key not in self.pointers:
             if key not in self.current:
                 raise FileNotFoundError(
-                    "File does not exist and is not tracked by the Large File system"
+                    f"File {key} does not exist and is not tracked by the Large File system"
                 )
             else:
                 logger.warning(
-                    "Data file exists, but is not tracked by the large file storage"
+                    f"Data file {key} exists, but is not tracked by the large file storage"
                 )
                 return key
 

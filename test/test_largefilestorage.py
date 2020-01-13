@@ -49,3 +49,11 @@ def test_load_atmo(lfs_atmo):
     dname = lfs_atmo.get(fname)
     assert fname in listdir(dirname(dname))
     assert exists(dname)
+
+
+@skipif_lfs
+def test_load_nlte(lfs_nlte):
+    fname = "marcs2012_Na.grd"
+    dname = lfs_nlte.get(fname)
+    assert fname in listdir(dirname(dname))
+    assert exists(dname)

@@ -30,8 +30,9 @@ def test_init_using_pattern_names():
 
     # The 'Empty' abundance pattern has a value of None for all elements.
     abund = Abund(0, "Empty")
-    assert abund.pattern[0] == 0
-    assert np.all(np.isnan(abund.pattern[1:]))
+    pattern = abund.get_pattern(raw=True)
+    assert pattern[0] == 0
+    assert np.all(np.isnan(pattern[1:]))
 
     # An invalid abundance pattern name raises an error.
     with pytest.raises(ValueError):

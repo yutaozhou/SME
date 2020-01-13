@@ -93,6 +93,22 @@ class Abund:
                     out += "\n"
             return out
 
+    # These are there for the atmosphere interpolation
+    # The internal format is always H=12, so that should be fine
+    def __add__(self, other):
+        if isinstance(other, Abund):
+            self._pattern += other._pattern
+        else:
+            self._pattern += other
+        return self
+
+    def __mul__(self, other):
+        self._pattern *= other
+        return self
+
+    def __rmul__(self, other):
+        return self.__mul__(other)
+
     def _get_index(self, elem):
         try:
             return self._elem_dict[elem]
@@ -319,6 +335,7 @@ class Abund:
         ValueError
             If an undefined pattern_name was given
         """
+        self.type = "H=12"
         if pattern_name.lower() == "asplund2009":
             self._pattern = np.array(self._asplund2009, dtype=float)
         elif pattern_name.lower() == "grevesse2007":
@@ -355,7 +372,7 @@ class Abund:
         """
         pattern = self.get_pattern(type=self.type, raw=True)
         for key in updates:
-            pos = self._get_index(elem)
+            pos = self._get_index(key)
             pattern[pos] = updates[key]
         self.set_pattern_by_value(pattern, self.type)
 
@@ -391,11 +408,11 @@ class Abund:
             folder += "/"
 
         monh = float(self.monh) if self.monh is not None else None
-        info = {"format": str(self._type), "monh": monh}
+        info = {"format": str(self.type), "monh": monh}
         file.writestr(f"{folder}info.json", json.dumps(info))
 
         b = io.BytesIO()
-        np.save(b, self._pattern)
+        np.save(b, self.get_pattern(raw=True))
         file.writestr(f"{folder}pattern.npy", b.getvalue())
 
     @staticmethod

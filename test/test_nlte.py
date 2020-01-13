@@ -14,7 +14,7 @@ from pysme.nlte import nlte
 from pysme.solve import get_atmosphere, synthesize_spectrum
 from pysme.config import Config
 
-from .test_largefilestorage import skipif_lfs, lfs_nlte
+from .test_largefilestorage import skipif_lfs, lfs_nlte, lfs_atmo
 
 cwd = dirname(__file__)
 
@@ -96,8 +96,8 @@ def test_run_with_nlte():
 
 
 @skipif_lfs
-@pytest.mark.usefixtures("lfs_nlte")
-def test_dll(lfs_nlte):
+@pytest.mark.usefixtures("lfs_atmo", "lfs_nlte")
+def test_dll(lfs_atmo, lfs_nlte):
     sme = make_minimum_structure()
     elem = "Ca"
     sme.nlte.set_nlte(elem)
@@ -105,7 +105,7 @@ def test_dll(lfs_nlte):
     libsme = SME_DLL()
     libsme.ResetNLTE()
 
-    sme = get_atmosphere(sme, lfs_nlte)
+    sme = get_atmosphere(sme, lfs_atmo)
     libsme.InputLineList(sme.linelist)
     libsme.InputModel(sme.teff, sme.logg, sme.vmic, sme.atmo)
 
