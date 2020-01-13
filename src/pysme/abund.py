@@ -41,7 +41,8 @@ class Abund:
     def __init__(self, monh, pattern, type=None):
         self.monh = monh
         # The internal type is fixed to this value
-        self._type = "H=12"
+        self._type_internal = "H=12"
+        self.type = type
         if isinstance(pattern, str):
             self.set_pattern_by_name(pattern)
         else:
@@ -57,39 +58,10 @@ class Abund:
             pattern[2:] += self.monh
         return self.totype(pattern, type, raw=raw)
 
-    def __getitem__(self, elems):
-        if isinstance(elems, np.str):
-            try:
-                elems = self._elem_dict[elems]
-            except KeyError:
-                try:
-                    elems = int(elems)
-                except ValueError:
-                    raise KeyError(
-                        "Got element abreviation %s, expected one of %s"
-                        % (elems, ", ".join(self._elem))
-                    )
-            return self._pattern[elems]
-        elif isinstance(elems, (int, np.integer)):
-            return self._pattern[elems]
-        elif isinstance(elems, (list, tuple, np.ndarray)):
-            elems = [
-                self._elem_dict[el] if isinstance(el, np.str) else int(el)
-                for el in elems
-            ]
-
-            try:
-                abund = np.copy(self._pattern)
-                return abund[elems]
-            except KeyError:
-                raise KeyError(
-                    "Got element abreviation %s, expected one of %s"
-                    % (elems, ", ".join(self._elem))
-                )
-        else:
-            raise TypeError(
-                "Could not understand key type. Expected one of [str, int, list]"
-            )
+    def __getitem__(self, elem):
+        pattern = self.get_pattern(self.type, raw=True)
+        i = self._get_index(elem)
+        return pattern[i]
 
     def __setitem__(self, elem, abund):
         self.update_pattern({elem: abund})
@@ -121,19 +93,13 @@ class Abund:
                     out += "\n"
             return out
 
-    def __add__(self, other):
-        if isinstance(other, Abund):
-            self._pattern += other._pattern
-        else:
-            self._pattern += other
-        return self
-
-    def __mul__(self, other):
-        self._pattern *= other
-        return self
-
-    def __rmul__(self, other):
-        return self.__mul__(other)
+    def _get_index(self, elem):
+        try:
+            return self._elem_dict[elem]
+        except KeyError:
+            raise KeyError(
+                f"Got element abreviation {elem}, expected one of {self._elem}"
+            )
 
     @staticmethod
     def fromtype(pattern, fromtype, raw=False):
@@ -149,7 +115,7 @@ class Abund:
             abund = np.array(pattern, dtype=float)
 
         if np.isnan(abund[0]):
-            raise ValueError("pattern must define abundance of H")
+            raise ValueError("Pattern must define abundance of H")
 
         type = fromtype.lower()
         if type == "h=12":
@@ -335,15 +301,24 @@ class Abund:
         self._monh = monh
 
     @property
-    @apply(np.copy)
     def pattern(self):
-        """array: Abundance pattern
-        returns a copy to protect the data
-        Use update_pattern if you want to change the values
-        """
-        return self._pattern
+        """array: Abundance pattern in the initial format"""
+        return self.get_pattern(self.type, raw=False)
 
     def set_pattern_by_name(self, pattern_name):
+        """Set the abundance pattern to one of the predefined options
+
+        Parameters
+        ----------
+        pattern_name : str
+            Name of the predefined option to use. One of 'asplund2009', 'grevesse2007',
+            'lodders2003', 'empty'
+
+        Raises
+        ------
+        ValueError
+            If an undefined pattern_name was given
+        """
         if pattern_name.lower() == "asplund2009":
             self._pattern = np.array(self._asplund2009, dtype=float)
         elif pattern_name.lower() == "grevesse2007":
@@ -354,31 +329,53 @@ class Abund:
             self._pattern = self.empty_pattern()
         else:
             raise ValueError(
-                "got abundance pattern name '{}',".format(pattern_name)
-                + " should be 'Asplund2009', 'Grevesse2007', 'Lodders2003', 'empty'."
+                f"Got abundance pattern name {pattern_name} should be one of"
+                "'asplund2009', 'grevesse2007', 'lodders2003', or 'empty'."
             )
 
     def set_pattern_by_value(self, pattern, type):
         self._pattern = self.fromtype(pattern, type, raw=True)
+        self.type = type
 
     def update_pattern(self, updates):
-        for key in updates:
-            if key in self._elem:
-                pos = self._elem_dict[key]
-                self._pattern[pos] = updates[key]
-            else:
-                raise KeyError(
-                    "got element abbreviation '{}'".format(key)
-                    + ", should be one of "
-                    + ", ".join(self._elem)
-                )
+        """Update the abundance pattern for several elements at once
 
-    def get_pattern(self, type="sme", raw=False):
+        The abundance is first converted into the initially specified format,
+        before being converted back to the internal format
+
+        Parameters
+        ----------
+        updates : dict{str:float}
+            the elements to update
+
+        Raises
+        ------
+        KeyError
+            If any of the element keys is not valid
+        """
+        pattern = self.get_pattern(type=self.type, raw=True)
+        for key in updates:
+            pos = self._get_index(elem)
+            pattern[pos] = updates[key]
+        self.set_pattern_by_value(pattern, self.type)
+
+    def get_pattern(self, type=None, raw=False):
         """
         Transform the specified abundance pattern from type used
         internally by SME to the requested type. Valid abundance pattern
         types are: 'sme', 'n/nTot', 'n/nH', 'H=12'
+
+        Parameters
+        ----------
+        type : str
+            The pattern format to retrieve the pattern as. Defaults to the
+            original input format.
+        raw : bool
+            If True will return the pattern as a numpy array, with indices as defined in elem dict.
+            Otherwise the return value is a dictionary, with the elements as keys.
         """
+        if type is None:
+            type = self.type
         return self.totype(self._pattern, type, raw=raw)
 
     def empty_pattern(self):
@@ -389,6 +386,7 @@ class Abund:
         return pattern
 
     def save(self, file, folder="abund"):
+        """ Save the data to a file handler """
         if folder != "" or folder[-1] != "/":
             folder += "/"
 
@@ -402,6 +400,7 @@ class Abund:
 
     @staticmethod
     def load(file, names, folder=""):
+        """ Load the data from a file handler """
         for name in names:
             if name.endswith("info.json"):
                 info = file.read(name)
@@ -418,7 +417,6 @@ class Abund:
 
     @staticmethod
     def solar():
-        """ Return solar abundances """
+        """ Return solar abundances of asplund 2009 """
         solar = Abund(0, "asplund2009")
         return solar
-

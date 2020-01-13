@@ -1359,15 +1359,14 @@ class SME_Struct(Param):
         if len(key) > 5 and key[:5].casefold() == "abund":
             element = key[5:].strip()
             element = element.capitalize()
-            self.abund.update_pattern({element: value})
-            return
-        if len(key) > 8 and key[:8].casefold() == "linelist":
+            self.abund[element] = value
+        elif len(key) > 8 and key[:8].casefold() == "linelist":
             _, idx, field = key[8:].split(" ", 2)
             idx = int(idx)
             field = field.casefold()
             self.linelist[field][idx] = value
-            return
-        return super().__setitem__(key, value)
+        else:
+            super().__setitem__(key, value)
 
     def __convert_cscale__(self):
         """
