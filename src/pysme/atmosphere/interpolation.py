@@ -411,6 +411,7 @@ def train_grid(atmo):
         nlayers, normalize, log10_params, activation, optimizer, parameters=parameters
     )
 
+    # Replace the training and sample creation with this if data exists
     # data = np.load("test_data.npz")
     # x_train, y_train, x_test, y_test = data["x_train"], data["y_train"], data["x_test"], data["y_test"]
     # model.load_model(model.outmodel_file)
