@@ -94,7 +94,7 @@ class SME_DLL:
         """
         Checks if required data files for the SME library exist.
         If they dont exist, SME will just segfault, without any hint.
-        
+
         Raises
         ------
         FileNotFoundError

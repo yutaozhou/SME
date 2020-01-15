@@ -89,9 +89,9 @@ def get_dtype(type):
 
 
 def idl_call_external(funcname, *args, restype="str", type=None):
-    """
+    r"""
     Call an external C library (here the SME lib) function that uses the IDL type interface
-    i.e. restype func(int n, void \*args[]), where n is the number of arguments, and args is a list of pointers to the arguments
+    i.e. restype func(int n, void *args[]), where n is the number of arguments, and args is a list of pointers to the arguments
 
     Input arrays will be converted to the required datatype for the C function (see type keyword),
     and any changes to input arrays will be written back if possible.

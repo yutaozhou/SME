@@ -417,7 +417,20 @@ class SME_Solver:
         # Just as in IDL SME, this increases the relative error for points inside lines
         uncs /= spec
 
-        logger.info("Fitting Spectrum with Parameters: " + ",".join(param_names))
+        logger.info("Fitting Spectrum with Parameters: %s", ",".join(param_names))
+
+        if (
+            sme.wran.min() * (1 - 100 / 3e5) > sme.linelist.wlcent.min()
+            or sme.wran.max() * (1 + 100 / 3e5) < sme.linelist.wlcent.max()
+        ):
+            logger.warning(
+                "The linelist extends far beyond the requested wavelength range."
+                " This will slow down the calculation, consider using only relevant lines"
+            )
+            logger.warning(
+                f"Wavelength range: {sme.wran.min()} - {sme.wran.max()} Å"
+                f" ; Linelist range: {sme.linelist.wlcent.min()} - {sme.linelist.wlcent.max()} Å"
+            )
 
         # Setup LineList only once
         self.dll.SetLibraryPath()
@@ -879,6 +892,7 @@ def synthesize_spectrum(
             sme.wave = np.zeros(npoints)
         if "synth" not in sme:
             sme.synth = np.zeros_like(sme.wob)
+        if "cont" not in sme:
             sme.cont = np.zeros_like(sme.wob)
 
         for s in segments:
