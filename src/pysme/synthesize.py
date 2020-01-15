@@ -66,13 +66,14 @@ class Synthesizer:
             prev_msdi = None
 
         if atmo.method == "grid":
-            reload = msdi_save is None or atmo.source != prev_msdi[1]
-            atmo = interp_atmo_grid(
-                sme.teff, sme.logg, sme.monh, sme.atmo, self.lfs_atmo, reload=reload
-            )
-            prev_msdi = [atmo.method, atmo.source, atmo.depth, atmo.interp]
-            setattr(func, "prev_msdi", prev_msdi)
-            setattr(func, "msdi_save", True)
+            atmo = interpolate_grid(sme.atmo, sme.teff, sme.logg, sme.monh)
+            # reload = msdi_save is None or atmo.source != prev_msdi[1]
+            # atmo = interp_atmo_grid(
+            #     sme.teff, sme.logg, sme.monh, sme.atmo, self.lfs_atmo, reload=reload
+            # )
+            # prev_msdi = [atmo.method, atmo.source, atmo.depth, atmo.interp]
+            # setattr(func, "prev_msdi", prev_msdi)
+            # setattr(func, "msdi_save", True)
         elif atmo.method == "routine":
             atmo = atmo.source(sme, atmo)
         elif atmo.method == "embedded":
