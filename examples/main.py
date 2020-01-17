@@ -11,9 +11,10 @@ from pysme.gui import plot_plotly, plot_pyplot
 from pysme import sme as SME
 from pysme import util
 from pysme.abund import Abund
-from pysme.solve import synthesize_spectrum, SME_Solver
+from pysme.solve import SME_Solver
 from pysme.continuum_and_radial_velocity import match_rv_continuum
 from pysme.vald import ValdFile
+from pysme.synthesize import synthesize_spectrum
 
 if __name__ == "__main__":
     target = "k2-3_2"
@@ -49,12 +50,12 @@ if __name__ == "__main__":
         else:
             fitparameters = ["teff", "logg", "monh"]
 
-    # sme.teff = 3800
-    # sme.logg = 4.7
-    # sme.monh = -0.4
-    # sme.vsini = 0
-    # sme.vmic = 1
-    # sme.vmac = 1
+    sme.teff = 3800
+    sme.logg = 4.7
+    sme.monh = -0.4
+    sme.vsini = 0
+    sme.vmic = 1
+    sme.vmac = 1
 
     # sme.cscale_flag = "none"
     # sme.cscale = 1
@@ -67,10 +68,10 @@ if __name__ == "__main__":
     SME.SME_Struct.load("k2-3.sme")
 
     # Start SME solver
-    # sme = synthesize_spectrum(sme, segments=[0])
+    sme = synthesize_spectrum(sme)
 
-    solver = SME_Solver(filename=f"test2.sme")
-    sme = solver.solve(sme, fitparameters)
+    # solver = SME_Solver(filename=f"test2.sme")
+    # sme = solver.solve(sme, fitparameters)
 
     try:
         # Calculate stellar age based on abundances
@@ -103,15 +104,8 @@ if __name__ == "__main__":
         pass
 
     # Plot results
-    sme.mask = None
-    fig = plot_plotly.FinalPlot(sme, segment=11)
-    fig.fig.layout["xaxis"]["range"] = [6134, 6140]
-    fig.fig.layout["yaxis"]["range"] = [0, 1.1]
-
-    fig.fig.layout["font"]["family"] = "Roboto"
-
-    fig.fig.update()
-    fig.save(filename=f"{target}.svg")
+    fig = plot_plotly.FinalPlot(sme)
+    fig.save(filename=f"{target}.html")
 
     # # if "synth" in sme:
     # #     plt.plot(sme.wob, sme.sob - sme.smod, label="Residual Python")

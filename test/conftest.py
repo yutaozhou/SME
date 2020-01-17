@@ -8,7 +8,7 @@ from scipy.constants import speed_of_light
 # then run test on all of the relevant ones
 from pysme.sme import SME_Struct
 from pysme.vald import ValdFile
-from pysme.solve import synthesize_spectrum
+from pysme.synthesize import synthesize_spectrum
 
 
 @pytest.fixture

@@ -506,6 +506,74 @@ class SME_DLL:
         check_error("GetNelec", length, array, type="sd")
         return array
 
+    def Synthesize(
+        self,
+        wfirst,
+        wlast,
+        mu,
+        accrt,
+        accwi,
+        keep_lineop=False,
+        long_continuum=True,
+        nwmax=400_000,
+        wave=None,
+    ):
+        keep_lineop = 1 if keep_lineop else 0
+        long_continuum = 1 if long_continuum else 0
+
+        if wave is None:
+            nw = 0
+            wint_seg = np.zeros(nwmax)
+        else:
+            nwmax = nw = len(wave)
+            wint_seg = np.asarray(wave)
+
+        mu = np.asarray(mu)
+        nmu = np.size(mu)
+
+        # Prepare data:
+        sint_seg = np.zeros((nwmax, nmu))  # line+continuum intensities
+        cint_seg = np.zeros((nwmax, nmu))  # all continuum intensities
+        cintr_seg = np.zeros((nmu))  # red continuum intensity
+
+        assert (
+            wfirst < wlast
+        ), "Input Wavelength range is wrong, first wavelength is larger than last"
+
+        self.wfirst = wfirst
+        self.wlast = wlast
+
+        type = "ddsdddiiddddss"  # s: short, d:double, i:int, u:unicode (string)
+        check_error(
+            "Synthesize",
+            wfirst,
+            wlast,
+            nmu,
+            mu,
+            cint_seg,
+            cintr_seg,
+            nwmax,
+            nw,
+            wint_seg,
+            sint_seg,
+            accrt,
+            accwi,
+            keep_lineop,
+            long_continuum,
+            type=type,
+        )
+
+        if nw == 0:
+            nw = np.count_nonzero(wint_seg)
+
+        wint_seg = wint_seg[:nw]
+        sint_seg = sint_seg[:nw, :].T
+        cint_seg = cint_seg[:nw, :].T
+
+        self.nmu = nmu
+
+        return nw, wint_seg, sint_seg, cint_seg
+
     def Transf(
         self,
         mu,

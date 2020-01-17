@@ -11,7 +11,7 @@ from pysme.iliffe_vector import Iliffe_vector
 from pysme.vald import ValdFile
 from pysme.sme_synth import SME_DLL
 from pysme.nlte import nlte
-from pysme.solve import get_atmosphere, synthesize_spectrum
+from pysme.synthesize import Synthesizer, synthesize_spectrum
 from pysme.config import Config
 
 from .test_largefilestorage import skipif_lfs, lfs_nlte, lfs_atmo
@@ -105,7 +105,8 @@ def test_dll(lfs_atmo, lfs_nlte):
     libsme = SME_DLL()
     libsme.ResetNLTE()
 
-    sme = get_atmosphere(sme, lfs_atmo)
+    syn = Synthesizer(None, lfs_atmo=lfs_atmo, lfs_nlte=lfs_nlte)
+    sme = syn.get_atmosphere(sme)
     libsme.InputLineList(sme.linelist)
     libsme.InputModel(sme.teff, sme.logg, sme.vmic, sme.atmo)
 

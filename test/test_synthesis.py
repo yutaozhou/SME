@@ -2,7 +2,7 @@
 import pytest
 import numpy as np
 
-from pysme.solve import synthesize_spectrum
+from pysme.synthesize import synthesize_spectrum
 from pysme.iliffe_vector import Iliffe_vector
 
 

@@ -17,6 +17,8 @@ import wget
 import requests
 import json
 
+from .config import Config
+
 logger = logging.getLogger(__name__)
 
 # We are lazy and want a simple check if a file is in the Path
@@ -186,3 +188,35 @@ class Server:
         except:
             return False
         return False
+
+
+def setup_atmo(config=None):
+    if config is None:
+        config = Config()
+    server = config["data.file_server"]
+    storage = config["data.atmospheres"]
+    cache = config["data.cache.atmospheres"]
+    pointers = config["data.pointers.atmospheres"]
+    lfs_atmo = LargeFileStorage(server, pointers, storage, cache)
+    return lfs_atmo
+
+
+def setup_nlte(config=None):
+    if config is None:
+        config = Config()
+    server = config["data.file_server"]
+    storage = config["data.nlte_grids"]
+    cache = config["data.cache.nlte_grids"]
+    pointers = config["data.pointers.nlte_grids"]
+    lfs_nlte = LargeFileStorage(server, pointers, storage, cache)
+    return lfs_nlte
+
+
+def setup_lfs(config=None, lfs_atmo=None, lfs_nlte=None):
+    if config is None:
+        config = Config()
+    if lfs_atmo is None:
+        lfs_atmo = setup_atmo(config)
+    if lfs_nlte is None:
+        lfs_nlte = setup_nlte(config)
+    return config, lfs_atmo, lfs_nlte

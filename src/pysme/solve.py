@@ -23,12 +23,13 @@ from .atmosphere import AtmosphereError, interp_atmo_grid, krz_file
 from .config import Config
 from .continuum_and_radial_velocity import match_rv_continuum
 from .integrate_flux import integrate_flux
-from .large_file_storage import LargeFileStorage
+from .large_file_storage import setup_lfs
 from .iliffe_vector import Iliffe_vector
 from .nlte import update_nlte_coefficients
 from .sme_synth import SME_DLL
 from .uncertainties import uncertainties
 from .util import safe_interpolation, print_to_log
+from .synthesize import Synthesizer
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,12 @@ class SME_Solver:
     def __init__(self, filename=None):
         self.dll = SME_DLL()
         self.config, self.lfs_atmo, self.lfs_nlte = setup_lfs()
+        self.synthesizer = Synthesizer(
+            config=self.config,
+            lfs_atmo=self.lfs_atmo,
+            lfs_nlte=self.lfs_nlte,
+            dll=self.dll,
+        )
 
         # Various parameters to keep track of during solving
         self.filename = filename
@@ -104,7 +111,7 @@ class SME_Solver:
             sme[name] = value
         # run spectral synthesis
         try:
-            result = synthesize_spectrum(
+            result = self.synthesizer.synthesize_spectrum(
                 sme,
                 updateStructure=update,
                 reuse_wavelength_grid=reuse_wavelength_grid,
@@ -112,10 +119,6 @@ class SME_Solver:
                 passLineList=False,
                 updateLineList=self.update_linelist,
                 radial_velocity_mode=radial_velocity_mode,
-                config=self.config,
-                lfs_atmo=self.lfs_atmo,
-                lfs_nlte=self.lfs_nlte,
-                dll=self.dll,
             )
         except AtmosphereError as ae:
             # Something went wrong (left the grid? Don't go there)
@@ -132,7 +135,7 @@ class SME_Solver:
             fname = f"{fname}_tmp{__file_ending__}"
             sme.save(fname)
 
-        segments = check_segments(sme, segments)
+        segments = Synthesizer.check_segments(sme, segments)
 
         # Get the correct results for the comparison
         synth = sme.synth if update else result[1]
@@ -361,6 +364,35 @@ class SME_Solver:
         # punc3 = uncertainties(res.jac, res.fun, uncs, param_names, plot=False)
         return sme
 
+    def sanitize_parameter_names(self, sme, param_names):
+        # Sanitize parameter names
+        param_names = [p.casefold() for p in param_names]
+        param_names = [p.capitalize() if p[:5] == "abund" else p for p in param_names]
+
+        param_names = [p if p != "grav" else "logg" for p in param_names]
+        param_names = [p if p != "feh" else "monh" for p in param_names]
+
+        # Parameters are unique
+        # But keep the order the same
+        param_names, index = np.unique(param_names, return_index=True)
+        param_names = param_names[np.argsort(index)]
+        param_names = list(param_names)
+
+        if "vrad" in param_names:
+            param_names.remove("vrad")
+            sme.vrad_flag = "each"
+            logger.info(
+                "Removed fit parameter 'vrad', instead set radial velocity flag to 'each'"
+            )
+
+        if "cont" in param_names:
+            param_names.remove("cont")
+            sme.cscale_flag = "linear"
+            logger.info(
+                "Removed fit parameter 'cont', instead set continuum flag to 'linear'"
+            )
+        return param_names
+
     def solve(self, sme, param_names=None, segments="all"):
         """
         Find the least squares fit parameters to an observed spectrum
@@ -388,12 +420,12 @@ class SME_Solver:
             sme.uncs = np.ones_like(sme.sob)
             logger.warning("SME Structure has no uncertainties, using all ones instead")
 
-        segments = check_segments(sme, segments)
+        segments = Synthesizer.check_segments(sme, segments)
 
         # Clean parameter values
         if param_names is None:
             param_names = sme.fitparameters
-        self.parameter_names = sanitize_parameter_names(sme, param_names)
+        self.parameter_names = self.sanitize_parameter_names(sme, param_names)
 
         self.update_linelist = False
         for name in self.parameter_names:
@@ -470,7 +502,7 @@ class SME_Solver:
             # We could try to reuse the already calculated synthetic spectrum (if it already exists)
             # However it is much lower resolution then the newly synthethized one (usually)
             # Therefore the radial velocity wont be as good as when redoing the whole thing
-            sme = synthesize_spectrum(sme, segments)
+            sme = self.synthesizer.synthesize_spectrum(sme, segments)
         else:
             raise ValueError("No fit parameters given")
 
@@ -484,432 +516,3 @@ def solve(sme, param_names=("teff", "logg", "monh"), segments="all", filename=No
     solver = SME_Solver(filename=filename)
     return solver.solve(sme, param_names, segments)
 
-
-def linelist_errors(dll, wave, spec, linelist):
-    """ make linelist errors, based on the effective wavelength range
-    of each line and the uncertainty value of that line """
-    rel_error = linelist.error
-    width = dll.GetLineRange()
-
-    sig_syst = np.zeros(wave.size, dtype=float)
-
-    for i, line_range in enumerate(width):
-        # find closest wavelength region
-        w = (wave >= line_range[0]) & (wave <= line_range[1])
-        sig_syst[w] += rel_error[i]
-
-    sig_syst *= np.clip(1 - spec, 0, 1)
-    return sig_syst
-
-
-def sanitize_parameter_names(sme, param_names):
-    # Sanitize parameter names
-    param_names = [p.casefold() for p in param_names]
-    param_names = [p.capitalize() if p[:5] == "abund" else p for p in param_names]
-
-    param_names = [p if p != "grav" else "logg" for p in param_names]
-    param_names = [p if p != "feh" else "monh" for p in param_names]
-
-    # Parameters are unique
-    # But keep the order the same
-    param_names, index = np.unique(param_names, return_index=True)
-    param_names = param_names[np.argsort(index)]
-    param_names = list(param_names)
-
-    if "vrad" in param_names:
-        param_names.remove("vrad")
-        sme.vrad_flag = "each"
-        logger.info(
-            "Removed fit parameter 'vrad', instead set radial velocity flag to 'each'"
-        )
-
-    if "cont" in param_names:
-        param_names.remove("cont")
-        sme.cscale_flag = "linear"
-        logger.info(
-            "Removed fit parameter 'cont', instead set continuum flag to 'linear'"
-        )
-    return param_names
-
-
-# region synthethize
-
-
-def setup_lfs(config=None, lfs_atmo=None, lfs_nlte=None):
-    if config is None:
-        config = Config()
-    if lfs_atmo is None:
-        server = config["data.file_server"]
-        storage = config["data.atmospheres"]
-        cache = config["data.cache.atmospheres"]
-        pointers = config["data.pointers.atmospheres"]
-        lfs_atmo = LargeFileStorage(server, pointers, storage, cache)
-
-    if lfs_nlte is None:
-        server = config["data.file_server"]
-        storage = config["data.nlte_grids"]
-        cache = config["data.cache.nlte_grids"]
-        pointers = config["data.pointers.nlte_grids"]
-        lfs_nlte = LargeFileStorage(server, pointers, storage, cache)
-    return config, lfs_atmo, lfs_nlte
-
-
-def get_atmosphere(sme, lfs_atmo):
-    """
-    Return an atmosphere based on specification in an SME structure
-
-    sme.atmo.method defines mode of action:
-        "grid"
-            interpolate on atmosphere grid
-        "embedded"
-            No change
-        "routine"
-            calls sme.atmo.source(sme, atmo)
-
-    Parameters
-    ---------
-        sme : SME_Struct
-            sme structure with sme.atmo = atmosphere specification
-
-    Returns
-    -------
-    sme : SME_Struct
-        sme structure with updated sme.atmo
-    """
-
-    # Handle atmosphere grid or user routine.
-    atmo = sme.atmo
-    self = get_atmosphere
-
-    if hasattr(self, "msdi_save"):
-        msdi_save = self.msdi_save
-        prev_msdi = self.prev_msdi
-    else:
-        msdi_save = None
-        prev_msdi = None
-
-    if atmo.method == "grid":
-        reload = msdi_save is None or atmo.source != prev_msdi[1]
-        atmo = interp_atmo_grid(
-            sme.teff, sme.logg, sme.monh, sme.atmo, lfs_atmo, reload=reload
-        )
-        prev_msdi = [atmo.method, atmo.source, atmo.depth, atmo.interp]
-        setattr(self, "prev_msdi", prev_msdi)
-        setattr(self, "msdi_save", True)
-    elif atmo.method == "routine":
-        atmo = atmo.source(sme, atmo)
-    elif atmo.method == "embedded":
-        # atmo structure already extracted in sme_main
-        pass
-    else:
-        raise AttributeError("Source must be 'grid', 'routine', or 'embedded'")
-
-    sme.atmo = atmo
-    return sme
-
-
-def get_wavelengthrange(wran, vrad, vsini):
-    """
-    Determine wavelengthrange that needs to be calculated
-    to include all lines within velocity shift vrad + vsini
-    """
-    # 30 km/s == maximum barycentric velocity
-    vrad_pad = 30.0 + 0.5 * np.clip(vsini, 0, None)  # km/s
-    vbeg = vrad_pad + np.clip(vrad, 0, None)  # km/s
-    vend = vrad_pad - np.clip(vrad, None, 0)  # km/s
-
-    wbeg = wran[0] * (1 - vbeg / clight)
-    wend = wran[1] * (1 + vend / clight)
-    return wbeg, wend
-
-
-def new_wavelength_grid(wint):
-    """ Generate new wavelength grid within bounds of wint"""
-    # Determine step size for a new model wavelength scale, which must be uniform
-    # to facilitate convolution with broadening kernels. The uniform step size
-    # is the larger of:
-    #
-    # [1] smallest wavelength step in WINT_SEG, which has variable step size
-    # [2] 10% the mean dispersion of WINT_SEG
-    # [3] 0.05 km/s, which is 1% the width of solar line profiles
-
-    wbeg, wend = wint[[0, -1]]
-    wmid = 0.5 * (wend + wbeg)  # midpoint of segment
-    wspan = wend - wbeg  # width of segment
-    diff = wint[1:] - wint[:-1]
-    jmin = np.argmin(diff)
-    vstep1 = diff[jmin] / wint[jmin] * clight  # smallest step
-    vstep2 = 0.1 * wspan / (len(wint) - 1) / wmid * clight  # 10% mean dispersion
-    vstep3 = 0.05  # 0.05 km/s step
-    vstep = max(vstep1, vstep2, vstep3)  # select the largest
-
-    # Generate model wavelength scale X, with uniform wavelength step.
-    nx = int(
-        np.abs(np.log10(wend / wbeg)) / np.log10(1 + vstep / clight) + 1
-    )  # number of wavelengths
-    if nx % 2 == 0:
-        nx += 1  # force nx to be odd
-
-    # Resolution
-    # IDL way
-    # resol_out = 1 / ((wend / wbeg) ** (1 / (nx - 1)) - 1)
-    # vstep = clight / resol_out
-    # x_seg = wbeg * (1 + 1 / resol_out) ** np.arange(nx)
-
-    # Python way (not identical, as IDL endpoint != wend)
-    # difference approx 1e-7
-    x_seg = np.geomspace(wbeg, wend, num=nx)
-    resol_out = 1 / np.diff(np.log(x_seg[:2]))[0]
-    vstep = clight / resol_out
-    return x_seg, vstep
-
-
-def check_segments(sme, segments):
-    if isinstance(segments, str) and segments == "all":
-        segments = range(sme.nseg)
-    else:
-        segments = np.atleast_1d(segments)
-        if np.any(segments < 0) or np.any(segments >= sme.nseg):
-            raise IndexError("Segment(s) out of range")
-    return segments
-
-
-def apply_radial_velocity_and_continuum(wave, wmod, smod, cmod, vrad, cscale, segments):
-    for il in segments:
-        if vrad[il] is not None:
-            rv_factor = np.sqrt((1 + vrad[il] / clight) / (1 - vrad[il] / clight))
-            wmod[il] *= rv_factor
-        smod[il] = safe_interpolation(wmod[il], smod[il], wave[il])
-        if cmod is not None:
-            cmod[il] = safe_interpolation(wmod[il], cmod[il], wave[il])
-
-        if cscale[il] is not None and not np.all(cscale[il] == 0):
-            x = wave[il] - wave[il][0]
-            smod[il] *= np.polyval(cscale[il], x)
-    return smod
-
-
-def synthesize_spectrum(
-    sme,
-    segments="all",
-    passLineList=True,
-    passAtmosphere=True,
-    passNLTE=True,
-    updateStructure=True,
-    updateLineList=False,
-    reuse_wavelength_grid=False,
-    radial_velocity_mode="robust",
-    config=None,
-    lfs_atmo=None,
-    lfs_nlte=None,
-    dll=None,
-):
-    """
-    Calculate the synthetic spectrum based on the parameters passed in the SME structure
-    The wavelength range of each segment is set in sme.wran
-    The specific wavelength grid is given by sme.wave, or is generated on the fly if sme.wave is None
-
-    Will try to fit radial velocity RV and continuum to observed spectrum, depending on vrad_flag and cscale_flag
-
-    Other important fields:
-    sme.iptype: instrument broadening type
-
-    Parameters
-    ----------
-    sme : SME_Struct
-        sme structure, with all necessary parameters for the calculation
-    setLineList : bool, optional
-        wether to pass the linelist to the c library (default: True)
-    passAtmosphere : bool, optional
-        wether to pass the atmosphere to the c library (default: True)
-    passNLTE : bool, optional
-        wether to pass NLTE departure coefficients to the c library (default: True)
-    reuse_wavelength_grid : bool, optional
-        wether to use sme.wint as the output grid of the function or create a new grid (default: False)
-
-    Returns
-    -------
-    sme : SME_Struct
-        same sme structure with synthetic spectrum in sme.smod
-    """
-
-    if dll is None:
-        dll = SME_DLL()
-    config, lfs_atmo, lfs_nlte = setup_lfs(config, lfs_atmo, lfs_nlte)
-
-    # Define constants
-    n_segments = sme.nseg
-    nmu = sme.nmu
-    cscale_degree = sme.cscale_degree
-
-    # fix impossible input
-    if "spec" not in sme:
-        sme.vrad_flag = "none"
-        sme.cscale_flag = "none"
-    else:
-        for i in range(sme.nseg):
-            sme.mask[i, ~np.isfinite(sme.spec[i])] = 0
-
-    if "wint" not in sme:
-        reuse_wavelength_grid = False
-    if radial_velocity_mode != "robust" and ("cscale" not in sme or "vrad" not in sme):
-        radial_velocity_mode = "robust"
-
-    segments = check_segments(sme, segments)
-
-    # Prepare arrays
-    wran = sme.wran
-
-    wint = [None for _ in range(n_segments)]
-    sint = [None for _ in range(n_segments)]
-    cint = [None for _ in range(n_segments)]
-    vrad = np.zeros(n_segments)
-
-    cscale = np.zeros((n_segments, cscale_degree + 1))
-    cscale[:, -1] = 1
-    wave = [None for _ in range(n_segments)]
-    smod = [[] for _ in range(n_segments)]
-    cmod = [[] for _ in range(n_segments)]
-    wmod = [[] for _ in range(n_segments)]
-    wind = np.zeros(n_segments + 1, dtype=int)
-
-    # If wavelengths are already defined use those as output
-    if "wave" in sme:
-        wave = [w for w in sme.wave]
-        wind = [0, *np.diff(sme.wind)]
-
-    # Input Model data to C library
-    dll.SetLibraryPath()
-    if passLineList:
-        dll.InputLineList(sme.linelist)
-    if updateLineList:
-        # TODO Currently Updates the whole linelist, could be improved to only change affected lines
-        dll.UpdateLineList(sme.atomic, sme.species, np.arange(len(sme.linelist)))
-    if passAtmosphere:
-        sme = get_atmosphere(sme, lfs_atmo)
-        dll.InputModel(sme.teff, sme.logg, sme.vmic, sme.atmo)
-        dll.InputAbund(sme.abund)
-        dll.Ionization(0)
-        dll.SetVWscale(sme.gam6)
-        dll.SetH2broad(sme.h2broad)
-    if passNLTE:
-        update_nlte_coefficients(sme, dll, lfs_nlte)
-
-    # Loop over segments
-    #   Input Wavelength range and Opacity
-    #   Calculate spectral synthesis for each
-    #   Interpolate onto geomspaced wavelength grid
-    #   Apply instrumental and turbulence broadening
-    for il in tqdm(segments, desc="Segment", leave=False):
-        logger.debug("Segment %i", il)
-        # Input Wavelength range and Opacity
-        vrad_seg = sme.vrad[il] if sme.vrad[il] is not None else 0
-        wbeg, wend = get_wavelengthrange(wran[il], vrad_seg, sme.vsini)
-
-        dll.InputWaveRange(wbeg, wend)
-        dll.Opacity()
-
-        # Reuse adaptive wavelength grid in the jacobians
-        wint_seg = sme.wint[il] if reuse_wavelength_grid else None
-        # Only calculate line opacities in the first segment
-        keep_line_opacity = il != segments[0]
-        #   Calculate spectral synthesis for each
-        _, wint[il], sint[il], cint[il] = dll.Transf(
-            sme.mu,
-            sme.accrt,  # threshold line opacity / cont opacity
-            sme.accwi,
-            keep_lineop=keep_line_opacity,
-            wave=wint_seg,
-        )
-
-        # Create new geomspaced wavelength grid, to be used for intermediary steps
-        wgrid, vstep = new_wavelength_grid(wint[il])
-
-        # Continuum
-        # rtint = Radiative Transfer Integration
-        cont_flux = integrate_flux(sme.mu, cint[il], 1, 0, 0)
-        cont_flux = np.interp(wgrid, wint[il], cont_flux)
-
-        # Broaden Spectrum
-        y_integrated = np.empty((nmu, len(wgrid)))
-        for imu in range(nmu):
-            y_integrated[imu] = np.interp(wgrid, wint[il], sint[il][imu])
-
-        # Turbulence broadening
-        # Apply macroturbulent and rotational broadening while integrating intensities
-        # over the stellar disk to produce flux spectrum Y.
-        flux = integrate_flux(sme.mu, y_integrated, vstep, sme.vsini, sme.vmac)
-        # instrument broadening
-        if "iptype" in sme:
-            ipres = sme.ipres if np.size(sme.ipres) == 1 else sme.ipres[il]
-            flux = broadening.apply_broadening(
-                ipres, wgrid, flux, type=sme.iptype, sme=sme
-            )
-
-        # Divide calculated spectrum by continuum
-        if sme.normalize_by_continuum:
-            flux /= cont_flux
-        cmod[il] = cont_flux
-        smod[il] = flux
-        wmod[il] = wgrid
-
-        # Create a wavelength array if it doesn't exist
-        if "wave" not in sme or len(sme.wave[il]) == 0:
-            # trim padding
-            wbeg, wend = wran[il]
-            itrim = (wgrid > wbeg) & (wgrid < wend)
-            # Force endpoints == wavelength range
-            wave[il] = np.concatenate(([wbeg], wgrid[itrim], [wend]))
-            wind[il + 1] = len(wave[il])
-
-    # Fit continuum and radial velocity
-    # And interpolate the flux onto the wavelength grid
-    # cscale, vrad = match_rv_continuum(sme, segments, wmod, smod)
-
-    if radial_velocity_mode == "robust":
-        cscale, cscale_unc, vrad, vrad_unc = match_rv_continuum(
-            sme, segments, wmod, smod
-        )
-        logger.debug("Radial velocity: %s", str(vrad))
-        logger.debug("Continuum coefficients: %s", str(cscale))
-    elif radial_velocity_mode == "fast":
-        cscale, vrad = sme.cscale, sme.vrad
-    else:
-        raise ValueError("Radial Velocity mode not understood")
-
-    smod = apply_radial_velocity_and_continuum(
-        wave, wmod, smod, cmod, vrad, cscale, segments
-    )
-
-    # Merge all segments
-    # if sme already has a wavelength this should be the same
-    if updateStructure:
-        sme.wind = wind = np.cumsum(wind)
-        sme.wint = wint
-
-        if "wave" not in sme:
-            npoints = sum([len(wave[s]) for s in segments])
-            sme.wave = np.zeros(npoints)
-        if "synth" not in sme:
-            sme.synth = np.zeros_like(sme.wob)
-        if "cont" not in sme:
-            sme.cont = np.zeros_like(sme.wob)
-
-        for s in segments:
-            sme.wave[s] = wave[s]
-            sme.synth[s] = smod[s]
-            sme.cont[s] = cmod[s]
-
-        if sme.cscale_flag not in ["fix", "none"]:
-            for s in segments:
-                sme.cscale[s] = cscale[s]
-            sme.cscale_unc = cscale_unc
-
-        sme.vrad = np.asarray(vrad)
-        sme.vrad_unc = np.asarray(vrad_unc)
-        sme.nlte.flags = dll.GetNLTEflags()
-        return sme
-    else:
-        wave = Iliffe_vector(values=wave)
-        smod = Iliffe_vector(values=smod)
-        return wave, smod

@@ -5,7 +5,8 @@ import os.path
 from pysme.gui import plot_plotly
 from pysme import sme as SME
 from pysme import util
-from pysme.solve import solve, synthesize_spectrum
+from pysme.solve import solve
+from pysme.synthesize import synthesize_spectrum
 
 if __name__ == "__main__":
 
