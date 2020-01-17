@@ -137,9 +137,8 @@ class LineList:
 
         return (linedata, lineformat)
 
-    def __init__(self, *args, **kwargs):
-        lineformat = kwargs.pop("lineformat", "short")
-
+    def __init__(self, *args, lineformat="short", medium=None, **kwargs):
+        linedata = []
         if len(args) == 0:
             if len(kwargs) == 0:
                 linedata = pd.DataFrame(data=[], columns=self._base_columns)
@@ -149,40 +148,46 @@ class LineList:
             else:
                 raise NotImplementedError
                 linedata = None
-        else:
-            linedata = args[0]
-            if isinstance(linedata, (list, np.ndarray)):
-                # linedata = np.atleast_2d(linedata)
-                linedata = pd.DataFrame(
-                    data=[[*linedata, 0, 0]], columns=self._base_columns
-                )
+        elif args[0] is not None:
+            if isinstance(args[0], LineList):
+                linedata = args[0]._lines
+                lineformat = args[0].lineformat
+                medium = args[0]._medium
+            else:
+                linedata = args[0]
 
-            if "atom_number" in kwargs.keys():
-                linedata["atom_number"] = kwargs["atom_number"]
-            elif "atom_number" not in linedata.columns:
-                linedata["atom_number"] = np.ones(len(linedata), dtype=float)
+                if isinstance(linedata, (list, np.ndarray)):
+                    # linedata = np.atleast_2d(linedata)
+                    linedata = pd.DataFrame(
+                        data=[[*linedata, 0, 0]], columns=self._base_columns
+                    )
 
-            if "ionization" in kwargs.keys():
-                linedata["ionization"] = kwargs["ionization"]
-            elif "ionization" not in linedata.columns:
-                linedata["ionization"] = np.array(
-                    [int(s[-1]) for s in linedata["species"]], dtype=float
-                )
+                if "atom_number" in kwargs.keys():
+                    linedata["atom_number"] = kwargs["atom_number"]
+                elif "atom_number" not in linedata:
+                    linedata["atom_number"] = np.ones(len(linedata), dtype=float)
 
-            if "term_upper" in kwargs.keys():
-                linedata["term_upper"] = kwargs["term_upper"]
-            if "term_lower" in kwargs.keys():
-                linedata["term_lower"] = kwargs["term_lower"]
-            if "reference" in kwargs.keys():
-                linedata["reference"] = kwargs["reference"]
-            if "error" in kwargs.keys():
-                linedata["error"] = kwargs["error"]
+                if "ionization" in kwargs.keys():
+                    linedata["ionization"] = kwargs["ionization"]
+                elif "ionization" not in linedata:
+                    linedata["ionization"] = np.array(
+                        [int(s[-1]) for s in linedata["species"]], dtype=float
+                    )
+
+                if "term_upper" in kwargs.keys():
+                    linedata["term_upper"] = kwargs["term_upper"]
+                if "term_lower" in kwargs.keys():
+                    linedata["term_lower"] = kwargs["term_lower"]
+                if "reference" in kwargs.keys():
+                    linedata["reference"] = kwargs["reference"]
+                if "error" in kwargs.keys():
+                    linedata["error"] = kwargs["error"]
 
         #:{"short", "long"}: Defines how much information is available
         self.lineformat = lineformat
         #:pandas.DataFrame: DataFrame that contains all the data
         self._lines = linedata  # should have all the fields (20)
-        self._medium = kwargs.pop("medium", None)
+        self._medium = medium
 
     def __len__(self):
         return len(self._lines)
