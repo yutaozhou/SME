@@ -1,3 +1,6 @@
+"""
+Spectral Synthesis Module of SME
+"""
 import logging
 import warnings
 
@@ -223,15 +226,10 @@ class Synthesizer:
         segments = Synthesizer.check_segments(sme, segments)
 
         # Prepare arrays
-        wran = sme.wran
-
-        wint = [None for _ in range(n_segments)]
-        sint = [None for _ in range(n_segments)]
-        cint = [None for _ in range(n_segments)]
         vrad = np.zeros(n_segments)
-
         cscale = np.zeros((n_segments, cscale_degree + 1))
         cscale[:, -1] = 1
+
         wave = [None for _ in range(n_segments)]
         smod = [[] for _ in range(n_segments)]
         cmod = [[] for _ in range(n_segments)]
@@ -305,7 +303,6 @@ class Synthesizer:
         # if sme already has a wavelength this should be the same
         if updateStructure:
             sme.wind = wind = np.cumsum(wind)
-            sme.wint = wint
 
             if "wave" not in sme:
                 npoints = sum([len(wave[s]) for s in segments])
@@ -335,8 +332,32 @@ class Synthesizer:
             return wave, smod
 
     def synthesize_segment(
-        self, sme, segment, reuse_wavelength_grid, keep_line_opacity
+        self, sme, segment, reuse_wavelength_grid=False, keep_line_opacity=False
     ):
+        """Create the synthetic spectrum of a single segment
+
+        Parameters
+        ----------
+        sme : SME_Struct
+            The SME strcuture containing all relevant parameters
+        segment : int
+            the segment to synthesize
+        reuse_wavelength_grid : bool
+            Whether to keep the current wavelength grid for the synthesis
+            or create a new one, depending on the linelist. Default: False
+        keep_line_opacity : bool
+            Whether to reuse existing line opacities or not. This should be
+            True iff the opacities have been calculated in another segment.
+
+        Returns
+        -------
+        wgrid : array of shape (npoints,)
+            Wavelength grid of the synthesized spectrum
+        flux : array of shape (npoints,)
+            The Flux of the synthesized spectrum
+        cont_flux : array of shape (npoints,)
+            The continuum Flux of the synthesized spectrum
+        """
         logger.debug("Segment %i", segment)
 
         # Input Wavelength range and Opacity
