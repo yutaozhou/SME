@@ -57,6 +57,8 @@ if __name__ == "__main__":
     sme.vmic = 1
     sme.vmac = 1
 
+    sme.nlte.set_nlte("Fe")
+
     # sme.cscale_flag = "none"
     # sme.cscale = 1
     sme.vrad_flag = "each"

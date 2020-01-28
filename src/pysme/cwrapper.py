@@ -10,6 +10,7 @@ import ctypes as ct
 import platform
 import sys
 from pathlib import Path
+import warnings
 
 import numpy as np
 
@@ -88,7 +89,14 @@ def get_dtype(type):
         raise ValueError(f"Data type {type} not understood")
 
 
-def idl_call_external(funcname, *args, restype="str", type=None):
+def load_library():
+    localdir = Path(__file__).parent
+    libfile = get_lib_name()
+    libfile = localdir / "dll" / libfile
+    return ct.CDLL(libfile)
+
+
+def idl_call_external(funcname, *args, restype="str", type=None, lib=None):
     r"""
     Call an external C library (here the SME lib) function that uses the IDL type interface
     i.e. restype func(int n, void *args[]), where n is the number of arguments, and args is a list of pointers to the arguments
@@ -117,11 +125,8 @@ def idl_call_external(funcname, *args, restype="str", type=None):
     """
 
     # Load library if that wasn't done yet
-    if not hasattr(idl_call_external, "lib"):
-        localdir = Path(__file__).parent
-        libfile = get_lib_name()
-        libfile = localdir / "dll" / libfile
-        idl_call_external.lib = ct.CDLL(libfile)
+    if lib is None:
+        lib = load_library()
 
     # prepare input arguments
     args = list(args)
@@ -185,7 +190,7 @@ def idl_call_external(funcname, *args, restype="str", type=None):
             raise TypeError("Argument type not understood")
 
     # Load function and define parameters
-    func = getattr(idl_call_external.lib, funcname)
+    func = getattr(lib, funcname)
     func.argtypes = (ct.c_int, ct.POINTER(ct.c_void_p))
     if restype in ["str", str]:
         func.restype = ct.c_char_p
@@ -229,3 +234,45 @@ def idl_call_external(funcname, *args, restype="str", type=None):
                     )
 
     return res
+
+
+class IDL_DLL:
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = object.__new__(cls)
+        return cls._instance
+
+    def __init__(self):
+        self.lib = load_library()
+
+    def __getattr__(self, name):
+        return lambda *args, **kwargs: self.call(name, *args, **kwargs)
+
+    def call(self, name, *args, raise_error=True, raise_warning=False, **kwargs):
+        """
+        run idl_call_external and check for errors in the output
+
+        Parameters
+        ----------
+        name : str
+            name of the external C function to call
+        args
+            parameters for the function
+        kwargs
+            keywords for the function
+
+        Raises
+        --------
+        ValueError
+            If the returned string is not empty, it means an error occured in the C library
+        """
+        error = idl_call_external(name, *args, lib=self.lib, **kwargs)
+        error = error.decode()
+        if error != "":
+            if raise_error:
+                raise ValueError(f"{name} (call external): {error}")
+            if raise_warning:
+                warnings.warn(f"{name} (call external): {error}")
+        return error

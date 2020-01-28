@@ -252,7 +252,7 @@ class Param(Collection):
         abtype : str
             Abundance description format of the input. One of the valid values as described in Abund
         """
-        self._abund = Abund(monh, abpatt, abtype)
+        self._abund = Abund(monh=monh, pattern=abpatt, type=abtype)
 
     @property
     def vmac(self):
@@ -361,6 +361,10 @@ class NLTE(Collection):
     @oftype(dict)
     def grids(self, value):
         self._grids = value
+
+    def citation(self, format="string"):
+        citations = [self.grids[el] for el in self.elements]
+        return citations
 
     def set_nlte(self, element, grid=None):
         """
@@ -515,6 +519,12 @@ class Atmo(Param):
         self.geom = None
         self.method = None
         super().__init__(**kwargs)
+
+    def citation(self, format="string"):
+        if self.source is None:
+            return []
+        # Get the data from the file
+        return [self.source]
 
     @property
     def rhox(self):
@@ -1391,6 +1401,14 @@ class SME_Struct(Param):
             self.cscale = self.cscale / np.sqrt(2)
         elif self.cscale_flag == "constant":
             self.cscale = np.sqrt(1 / self.cscale)
+
+    def citation(self, format="string"):
+        # Other formats should be: latex, various styles?
+        # Probably easiest if underlying data is in latex
+        citation = ["SME citation", "PySME citation"]
+        citation += self.atmo.citation(format=format)
+        citation += self.nlte.citation(format=format)
+        return citation
 
     @staticmethod
     def load(filename="sme.npy"):

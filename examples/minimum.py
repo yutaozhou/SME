@@ -35,6 +35,8 @@ if __name__ == "__main__":
     # linelist and p is the line parameter (e.g. 'linelist 17 gflog')
     fitparameters = ["teff", "logg", "monh"]
 
+    print(sme.citation())
+
     # Start SME solver
     # sme = synthesize_spectrum(sme)
     sme = solve(sme, fitparameters)

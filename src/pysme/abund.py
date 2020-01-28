@@ -6,12 +6,12 @@ import json
 import logging
 
 import numpy as np
-from .util import apply, oftype
+from .persistence import IPersist
 
 logger = logging.getLogger(__name__)
 
 
-class Abund:
+class Abund(IPersist):
     """Elemental abundance data and methods.
     Valid abundance pattern types are:
 
@@ -38,7 +38,17 @@ class Abund:
         10.9, and 1.05.
     """
 
-    def __init__(self, monh, pattern, type=None):
+    def __new__(cls, pattern="empty", monh=0, type=None):
+        if isinstance(pattern, cls):
+            return pattern
+        self = object.__new__(cls)
+        return self
+
+    def __init__(self, pattern="empty", monh=0, type="sme"):
+        if isinstance(pattern, self.__class__):
+            # If we got an object of the correct type we ignore it
+            # That is handled in __new__
+            return
         self.monh = monh
         # The internal type is fixed to this value
         self._type_internal = "H=12"
@@ -312,9 +322,8 @@ class Abund:
         return self._monh
 
     @monh.setter
-    @oftype(float)
     def monh(self, monh):
-        self._monh = monh
+        self._monh = float(monh)
 
     @property
     def pattern(self):
@@ -402,7 +411,7 @@ class Abund:
         pattern[0] = 0
         return pattern
 
-    def save(self, file, folder="abund"):
+    def _save(self, file, folder="abund"):
         """ Save the data to a file handler """
         if folder != "" or folder[-1] != "/":
             folder += "/"
@@ -416,7 +425,7 @@ class Abund:
         file.writestr(f"{folder}pattern.npy", b.getvalue())
 
     @staticmethod
-    def load(file, names, folder=""):
+    def _load(file, names, folder=""):
         """ Load the data from a file handler """
         for name in names:
             if name.endswith("info.json"):
@@ -430,10 +439,10 @@ class Abund:
                 b = io.BytesIO(file.read(name))
                 pattern = np.load(b)
 
-        return Abund(monh, pattern, abund_format)
+        return Abund(monh=monh, pattern=pattern, type=abund_format)
 
     @staticmethod
     def solar():
         """ Return solar abundances of asplund 2009 """
-        solar = Abund(0, "asplund2009")
+        solar = Abund(pattern="asplund2009", monh=0)
         return solar

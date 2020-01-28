@@ -7,6 +7,9 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
+# Update this if the names in sme change
+updates = {"abund": "abundance"}
+
 
 def toBaseType(value):
     if value is None:
@@ -74,7 +77,7 @@ def saves(file, data, folder=""):
 
     for key, value in others.items():
         if value is not None:
-            value.save(file, f"{folder}{key}")
+            value._save(file, f"{folder}{key}")
 
 
 def load(filename, data):
@@ -106,12 +109,29 @@ def loads(file, data, names=None, folder=""):
             info = file.read(name)
             info = json.loads(info)
             for key, value in info.items():
+                key = updates.get(key, key)
                 data[key] = value
         elif name.endswith(".npy") or name.endswith(".npz"):
             b = io.BytesIO(file.read(name))
-            data[name[len(folder) : -4]] = np.load(b)
+            key = name[len(folder) : -4]
+            key = updates.get(key, key)
+            data[key] = np.load(b)
 
     for key, value in subdirs.items():
-        data[key] = data[key].load(file, value, folder=folder + key)
+        data_key = updates.get(key, key)
+        data[data_key] = data[data_key]._load(file, value, folder=folder + key)
 
     return data
+
+
+class IPersist:
+    def _save(self, file, folder=""):
+        saves(file, self, folder)
+
+    @classmethod
+    def _load(cls, file, names, folder=""):
+        logger.setLevel(logging.INFO)
+        data = cls()  # TODO Suppress warnings
+        data = loads(file, data, names, folder)
+        logger.setLevel(logging.NOTSET)
+        return data

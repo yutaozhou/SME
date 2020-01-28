@@ -1,42 +1,24 @@
 """ Wrapper for sme_synth.so C library """
 import os
-import warnings
 import logging
 from pathlib import Path
 
 import numpy as np
 
-from .cwrapper import get_lib_name, idl_call_external
+from .cwrapper import get_lib_name, IDL_DLL
 
 logger = logging.getLogger(__name__)
 
 
-def check_error(name, *args, **kwargs):
-    """
-    run idl_call_external and check for errors in the output
-
-    Parameters
-    ----------
-    name : str
-        name of the external C function to call
-    args
-        parameters for the function
-    kwargs
-        keywords for the function
-
-    Raises
-    --------
-    ValueError
-        If the returned string is not empty, it means an error occured in the C library
-    """
-    error = idl_call_external(name, *args, **kwargs)
-    error = error.decode()
-    if error != "":
-        raise ValueError(f"{name} (call external): {error}")
-
-
 class SME_DLL:
     """ Object Oriented interface for the SME C library """
+
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = object.__new__(cls)
+        return cls._instance
 
     def __init__(self):
         #:LineList: Linelist passed to the library
@@ -51,8 +33,8 @@ class SME_DLL:
         self.wlast = None
         #:float: Van der Waals broadening parameter set in the library
         self.vw_scale = None
-        #:bool: Wether the library uses H2 broadening or not
-        self.H2broad = False
+        #:bool: Whether the library uses H2 broadening or not
+        self.h2broad = False
         #:float: Effective temperature set in the model
         self.teff = None
         #:float: Surface gravity set in the model
@@ -63,6 +45,9 @@ class SME_DLL:
         self.atmo = None
         #:dict: NLTE subgrids for nlte coefficient interpolation
         self._nlte_grids = {}
+        self.ion = None
+
+        self.lib = IDL_DLL()
 
         self.check_data_files_exist()
 
@@ -125,13 +110,13 @@ class SME_DLL:
         version : str
             SME library version
         """
-        version = idl_call_external("SMELibraryVersion")
-        return version.decode()
+        version = self.lib.call("SMELibraryVersion", raise_error=False)
+        return version
 
     def SetLibraryPath(self):
         """ Set the path to the library """
         libpath = self.directory
-        check_error("SetLibraryPath", libpath)
+        self.lib.SetLibraryPath(libpath)
 
     def InputWaveRange(self, wfirst, wlast):
         """
@@ -149,7 +134,7 @@ class SME_DLL:
         assert (
             wfirst < wlast
         ), "Input Wavelength range is wrong, first wavelength is larger than last"
-        check_error("InputWaveRange", wfirst, wlast, type="double")
+        self.lib.InputWaveRange(wfirst, wlast, type="double")
 
         self.wfirst = wfirst
         self.wlast = wlast
@@ -163,21 +148,21 @@ class SME_DLL:
         gamma6 : float
             van der Waals scaling factor
         """
-        check_error("SetVWscale", gamma6, type="double")
+        self.lib.SetVWscale(gamma6, type="double")
         self.vw_scale = gamma6
 
     def SetH2broad(self, h2_flag=True):
         """ Set flag for H2 molecule """
         if h2_flag:
-            check_error("SetH2broad")
-            self.H2broad = True
+            self.lib.SetH2broad()
+            self.h2broad = True
         else:
             self.ClearH2broad()
 
     def ClearH2broad(self):
         """ Clear flag for H2 molecule """
-        check_error("ClearH2broad")
-        self.H2broad = False
+        self.lib.ClearH2broad()
+        self.h2broad = False
 
     def InputLineList(self, linelist):
         """
@@ -207,8 +192,8 @@ class SME_DLL:
             atomic.shape[0] == 8
         ), f"Got wrong Linelist shape, expected ({nlines}, 8) but got {atomic.shape}"
 
-        check_error(
-            "InputLineList", nlines, species, atomic, type=("int", "string", "double")
+        self.lib.InputLineList(
+            nlines, species, atomic, type=("int", "string", "double")
         )
 
         self.linelist = linelist
@@ -225,7 +210,7 @@ class SME_DLL:
         """
         nlines = self.nlines
         atomic = np.zeros((nlines, 6))
-        check_error("OutputLineList", nlines, atomic, type=("int", "double"))
+        self.lib.OutputLineList(nlines, atomic, type=("int", "double"))
         return atomic
 
     def UpdateLineList(self, atomic, species, index):
@@ -256,13 +241,8 @@ class SME_DLL:
 
         atomic = atomic.T
 
-        check_error(
-            "UpdateLineList",
-            nlines,
-            species,
-            atomic,
-            index,
-            type=("int", "str", "double", "short"),
+        self.lib.UpdateLineList(
+            nlines, species, atomic, index, type=("int", "str", "double", "short")
         )
 
     def InputModel(self, teff, grav, vturb, atmo):
@@ -324,7 +304,7 @@ class SME_DLL:
         except AttributeError:
             raise TypeError("atmo has to be an Atmo type")
 
-        check_error("InputModel", *args, type=type)
+        self.lib.InputModel(*args, type=type)
 
         self.teff = teff
         self.grav = grav
@@ -349,7 +329,7 @@ class SME_DLL:
         # metallicity is included in the abundance class, ignored in function call
         abund = abund("sme", raw=True)
         assert isinstance(abund, np.ndarray)
-        check_error("InputAbund", abund, type="double")
+        self.lib.InputAbund(abund, type="double")
 
         self.abund = abund
 
@@ -387,7 +367,7 @@ class SME_DLL:
                 args += [copstd]
                 type += ["d"]
 
-        check_error("Opacity", *args, type=type)
+        self.lib.Opacity(*args, type=type)
 
         return args[1:]
 
@@ -436,7 +416,7 @@ class SME_DLL:
                 args += [species]
                 type += ["u"]
 
-        check_error("GetOpacity", *args, type=type)
+        self.lib.GetOpacity(*args, type=type)
         return result
 
     def Ionization(self, ion=0):
@@ -458,10 +438,7 @@ class SME_DLL:
         ion : int
             flag that determines the behaviour of the C function
         """
-        error = idl_call_external("Ionization", ion, type="short")
-        if error != b"":
-            warnings.warn(f"{__name__} (call external): {error.decode()}")
-
+        self.lib.Ionization(ion, type="short", raise_error=False, raise_warning=True)
         self.ion = ion
 
     def GetDensity(self):
@@ -475,7 +452,7 @@ class SME_DLL:
         """
         length = self.ndepth
         array = np.zeros(length, dtype=float)
-        check_error("GetDensity", length, array, type="sd")
+        self.lib.GetDensity(length, array, type="sd")
         return array
 
     def GetNatom(self):
@@ -489,7 +466,7 @@ class SME_DLL:
         """
         length = self.ndepth
         array = np.zeros(length, dtype=float)
-        check_error("GetNatom", length, array, type="sd")
+        self.lib.GetNatom(length, array, type="sd")
         return array
 
     def GetNelec(self):
@@ -503,76 +480,8 @@ class SME_DLL:
         """
         length = self.ndepth
         array = np.zeros(length, dtype=float)
-        check_error("GetNelec", length, array, type="sd")
+        self.lib.GetNelec(length, array, type="sd")
         return array
-
-    def Synthesize(
-        self,
-        wfirst,
-        wlast,
-        mu,
-        accrt,
-        accwi,
-        keep_lineop=False,
-        long_continuum=True,
-        nwmax=400_000,
-        wave=None,
-    ):
-        keep_lineop = 1 if keep_lineop else 0
-        long_continuum = 1 if long_continuum else 0
-
-        if wave is None:
-            nw = 0
-            wint_seg = np.zeros(nwmax)
-        else:
-            nwmax = nw = len(wave)
-            wint_seg = np.asarray(wave)
-
-        mu = np.asarray(mu)
-        nmu = np.size(mu)
-
-        # Prepare data:
-        sint_seg = np.zeros((nwmax, nmu))  # line+continuum intensities
-        cint_seg = np.zeros((nwmax, nmu))  # all continuum intensities
-        cintr_seg = np.zeros((nmu))  # red continuum intensity
-
-        assert (
-            wfirst < wlast
-        ), "Input Wavelength range is wrong, first wavelength is larger than last"
-
-        self.wfirst = wfirst
-        self.wlast = wlast
-
-        type = "ddsdddiiddddss"  # s: short, d:double, i:int, u:unicode (string)
-        check_error(
-            "Synthesize",
-            wfirst,
-            wlast,
-            nmu,
-            mu,
-            cint_seg,
-            cintr_seg,
-            nwmax,
-            nw,
-            wint_seg,
-            sint_seg,
-            accrt,
-            accwi,
-            keep_lineop,
-            long_continuum,
-            type=type,
-        )
-
-        if nw == 0:
-            nw = np.count_nonzero(wint_seg)
-
-        wint_seg = wint_seg[:nw]
-        sint_seg = sint_seg[:nw, :].T
-        cint_seg = cint_seg[:nw, :].T
-
-        self.nmu = nmu
-
-        return nw, wint_seg, sint_seg, cint_seg
 
     def Transf(
         self,
@@ -640,8 +549,7 @@ class SME_DLL:
 
         type = "sdddiiddddss"  # s: short, d:double, i:int, u:unicode (string)
 
-        check_error(
-            "Transf",
+        self.lib.Transf(
             nmu,
             mu,
             cint_seg,
@@ -691,8 +599,7 @@ class SME_DLL:
         nwsize = self.nlines
         table = np.zeros(nwsize)
 
-        check_error("CentralDepth", nmu, mu, nwsize, table, accrt, type="idifd")
-
+        self.lib.CentralDepth(nmu, mu, nwsize, table, accrt, type="idifd")
         self.nmu = nmu
 
         return table
@@ -726,7 +633,7 @@ class SME_DLL:
         tsf = np.zeros(nmu)
         csf = np.zeros(nmu)
         type = "dsddddd"
-        check_error("GetLineOpacity", wave, nmu, lop, cop, scr, tsf, csf, type=type)
+        self.lib.GetLineOpacity(wave, nmu, lop, cop, scr, tsf, csf, type=type)
         return lop, cop, scr, tsf, csf
 
     def GetLineRange(self):
@@ -746,7 +653,7 @@ class SME_DLL:
         nlines = self.nlines
         linerange = np.zeros((nlines, 2))
 
-        check_error("GetLineRange", linerange, nlines, type=("double", "int"))
+        self.lib.GetLineRange(linerange, nlines, type=("double", "int"))
 
         return linerange
 
@@ -780,14 +687,12 @@ class SME_DLL:
         if not isinstance(lineindex, (int, np.integer)):
             raise TypeError("Lineindex is not an integer type")
 
-        if not (0 <= lineindex < nlines):
+        if not 0 <= lineindex < nlines:
             raise ValueError(
                 f"Lineindex out of range, expected value between 0 and {nlines}, but got {lineindex} instead"
             )
 
-        check_error(
-            "InputDepartureCoefficients", bmat, lineindex, type=("double", "int")
-        )
+        self.lib.InputDepartureCoefficients(bmat, lineindex, type=("double", "int"))
 
     def GetNLTE(self, line):
         """ Get the NLTE departure coefficients as stored in the C library
@@ -805,14 +710,14 @@ class SME_DLL:
         nrhox = self.ndepth
 
         bmat = np.full((2, nrhox), -1.0, dtype=float)
-        check_error(
-            "GetDepartureCoefficients", bmat, nrhox, line, type=("double", "int", "int")
+        self.lib.GetDepartureCoefficients(
+            bmat, nrhox, line, type=("double", "int", "int")
         )
         return bmat
 
     def ResetNLTE(self):
         """ Reset departure coefficients from any previous call, to ensure LTE as default """
-        check_error("ResetDepartureCoefficients")
+        self.lib.ResetDepartureCoefficients()
 
     def GetNLTEflags(self):
         """Get an array that tells us which lines have been used with NLTE correction
@@ -831,7 +736,7 @@ class SME_DLL:
         nlte_flags = np.zeros(nlines, dtype=np.int16)
 
         try:
-            check_error("GetNLTEflags", nlte_flags, nlines, type=("short", "int"))
+            self.lib.GetNLTEflags(nlte_flags, nlines, type=("short", "int"))
         except AttributeError:
             logger.warning("Using deprecated SME C library")
 

@@ -344,14 +344,14 @@ class Grid:
         sme_species = self.species[self.lineindices]
 
         # Extract data from linelist
-        parts_low = self.linelist["term_lower"][self.lineindices]
-        parts_upp = self.linelist["term_upper"][self.lineindices]
+        low = self.linelist["term_lower"][self.lineindices]
+        upp = self.linelist["term_upper"][self.lineindices]
         # Remove quotation marks (if any are there)
         # parts_low = [s.replace("'", "") for s in parts_low]
         # parts_upp = [s.replace("'", "") for s in parts_upp]
         # Get only the relevant part
-        parts_low = np.array([s.rsplit(" ", 1) for s in parts_low])
-        parts_upp = np.array([s.rsplit(" ", 1) for s in parts_upp])
+        parts_low = np.char.partition(low, " ")[:, (0, 2)]
+        parts_upp = np.char.partition(upp, " ")[:, (0, 2)]
 
         # Transform into term symbol J (2*S+1) ?
         extra = self.linelist.extra[self.lineindices]
@@ -362,6 +362,7 @@ class Grid:
         rotnum = np.rint(2 * rotnum + 1).astype(int)
 
         # Create record arrays for each set of labels
+        names = ["species", "configuration", "term", "J"]
         dtype = [
             ("species", sme_species.dtype),
             ("configuration", parts_upp.dtype),
@@ -384,11 +385,14 @@ class Grid:
         # Loop through the NLTE levels
         # and match line levels
         for i, level in enumerate(level_labels):
-            idx_l = line_label_low == level
+            # If j < 0 (i.e. undefined) ignore it for the comparison
+            j = level[-1]
+            ic = slice(None, 3, None) if j < 0 else slice(None, None, None)
+            idx_l = line_label_low[names[ic]] == level[ic]
             self.linerefs[idx_l, 0] = i
             iused[i] = iused[i] or np.any(idx_l)
 
-            idx_u = line_label_upp == level
+            idx_u = line_label_upp[names[ic]] == level[ic]
             self.linerefs[idx_u, 1] = i
             iused[i] = iused[i] or np.any(idx_u)
 

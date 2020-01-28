@@ -234,12 +234,10 @@ class Synthesizer:
         smod = [[] for _ in range(n_segments)]
         cmod = [[] for _ in range(n_segments)]
         wmod = [[] for _ in range(n_segments)]
-        wind = np.zeros(n_segments + 1, dtype=int)
 
         # If wavelengths are already defined use those as output
         if "wave" in sme:
             wave = [w for w in sme.wave]
-            wind = [0, *np.diff(sme.wind)]
 
         # Input Model data to C library
         self.dll.SetLibraryPath()
@@ -269,7 +267,7 @@ class Synthesizer:
         # TODO Parallelization
         # This requires changes in the C code however, since SME uses global parameters
         # for the wavelength range (and opacities) which change within each segment
-        for il in tqdm(segments, desc="Segment"):
+        for il in tqdm(segments, desc="Segment", leave=False):
             wmod[il], smod[il], cmod[il] = self.synthesize_segment(
                 sme, il, reuse_wavelength_grid, il != segments[0]
             )
@@ -302,8 +300,6 @@ class Synthesizer:
         # Merge all segments
         # if sme already has a wavelength this should be the same
         if updateStructure:
-            sme.wind = wind = np.cumsum(wind)
-
             if "wave" not in sme:
                 npoints = sum([len(wave[s]) for s in segments])
                 sme.wave = np.zeros(npoints)
@@ -406,6 +402,8 @@ class Synthesizer:
         # Divide calculated spectrum by continuum
         if sme.normalize_by_continuum:
             flux /= cont_flux
+
+        logger.critical("Don't forget to cite your sources. Use sme.citation()")
 
         return wgrid, flux, cont_flux
 

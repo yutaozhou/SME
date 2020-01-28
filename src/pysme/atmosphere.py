@@ -28,6 +28,7 @@ class sav_file(np.recarray):
         atmo_grid_natmo = krz2["atmo_grid_natmo"]
         atmo_grid_vers = krz2["atmo_grid_vers"]
         atmo_grid_file = filename
+        atmo_grid_intro = krz2["atmo_grid_intro"]
 
         # Keep values around for next run
         data = atmo_grid.view(cls)
@@ -35,6 +36,7 @@ class sav_file(np.recarray):
         data.natmo = atmo_grid_natmo
         data.vers = atmo_grid_vers
         data.file = atmo_grid_file
+        data.intro = atmo_grid_intro
 
         return data
 
@@ -45,6 +47,7 @@ class sav_file(np.recarray):
         self.natmo = getattr(self, "natmo", None)
         self.vers = getattr(self, "vers", None)
         self.file = getattr(self, "file", None)
+        self.intro = getattr(self, "intro", None)
 
     def load(self, filename, reload=False):
         """ load a new file if necessary """

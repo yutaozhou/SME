@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 
 from .util import air2vac, vac2air
+from .persistence import IPersist
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ class FileError(Exception):
     """Raise when attempt to read a line data file fails"""
 
 
-class LineList:
+class LineList(IPersist):
     """Atomic data for a list of spectral lines
     """
 
@@ -35,6 +36,7 @@ class LineList:
         "atom_number",
         "ionization",
     ]
+    string_columns = ["species", "term_lower", "term_upper", "reference"]
 
     @staticmethod
     def parse_line_error(error_flags, values):
@@ -92,7 +94,7 @@ class LineList:
         atomic = np.asarray(kwargs.pop("atomic"), dtype="<f8")
         lande = np.asarray(kwargs.pop("lande"), dtype="<f8")
         depth = np.asarray(kwargs.pop("depth"), dtype="<f8")
-        lineref = kwargs.pop("reference").astype("U")
+        lineref = kwargs.pop("lineref").astype("U")
         short_line_format = kwargs.pop("short_line_format")
         if short_line_format == 2:
             line_extra = np.asarray(kwargs.pop("line_extra"), dtype="<f8")
@@ -200,7 +202,10 @@ class LineList:
 
     def __getitem__(self, index):
         if isinstance(index, (list, str)):
-            return self._lines[index].values
+            values = self._lines[index].values
+            if index in self.string_columns:
+                values = values.astype(str)
+            return values
         else:
             if isinstance(index, int):
                 index = slice(index, index + 1)
@@ -336,7 +341,7 @@ class LineList:
         }
         self._lines = self._lines.append([linedata])
 
-    def save(self, file, folder="linelist"):
+    def _save(self, file, folder="linelist"):
         if folder != "" and folder[-1] != "/":
             folder = folder + "/"
 
@@ -350,7 +355,7 @@ class LineList:
         file.writestr(f"{folder}data.feather", b.getvalue())
 
     @staticmethod
-    def load(file, names, folder=""):
+    def _load(file, names, folder=""):
         for name in names:
             if name.endswith("info.json"):
                 info = file.read(name)
