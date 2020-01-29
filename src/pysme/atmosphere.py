@@ -7,7 +7,7 @@ from scipy.interpolate import interp1d
 from scipy.io import readsav
 from scipy.optimize import curve_fit
 
-from .sme import Atmo
+from .sme import Atmosphere as Atmo
 
 logger = logging.getLogger(__name__)
 
@@ -346,8 +346,7 @@ def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
 
     # Loop through atmosphere vectors.
     pars = np.zeros((nvtag, npar))
-    for ivtag in range(nvtag):
-        vtag = vtags[ivtag]
+    for ivtag, vtag in enumerate(vtags):
 
         # Find vector in each structure.
         if vtag not in tags1:
@@ -406,9 +405,7 @@ def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
 
     # Loop through atmosphere vectors.
     vects = np.zeros((nvtag, ndep))
-    for ivtag in range(nvtag):
-        vtag = vtags[ivtag]
-        par = pars[ivtag]
+    for ivtag, (vtag, par) in enumerate(zip(vtags, pars)):
 
         # Extract data
         vect1 = np.log10(atmo1[vtag][itop1 : ibot1 + 1])
@@ -442,7 +439,7 @@ def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
 
     # Construct output structure with interpolated atmosphere.
     # Might be wise to interpolate abundances, in case those ever change.
-    atmo = Atmo()
+    atmo = Atmo(interp=interpvar)
     stags = ["TEFF", "LOGG", "MONH", "VTURB", "LONH", "ABUND"]
     ndep_orig = len(atmo1.temp)
     for tag in tags1:
@@ -579,7 +576,7 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
         self.atmo_grid = atmo_grid = self.atmo_grid.load(atmo_file, reload=reload)
 
     # Get field names in ATMO and ATMO_GRID structures.
-    atags = [s.upper() for s in atmo_in.names]
+    atags = [s for s in atmo_in.dtype.names]
     gtags = [s for s in atmo_grid.dtype.names]
 
     # Determine ATMO.DEPTH radiative transfer depth variable. Order of precedence:
@@ -591,7 +588,7 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
     #
     if "DEPTH" in atags and atmo_in.depth is not None:
         depth = str.upper(atmo_in.depth)
-    elif "DEPTH" in gtags and atmo_grid[0].depth is not None:
+    elif "DEPTH" in gtags and atmo_grid.depth is not None:
         depth = str.upper(atmo_grid.depth)
     elif "RHOX" in gtags:
         depth = "RHOX"
@@ -877,10 +874,6 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
     t1 = atmo1.teff
     tfrac = 0 if t0 == t1 else (Teff - t0) / (t1 - t0)
     krz = interp_atmo_pair(atmo0, atmo1, tfrac, interpvar=interp)
-    ktags = krz.names
-
-    # Set model type to depth variable that should be used for radiative transfer.
-    krz.modtyp = depth
 
     # If all interpolated models were spherical, the interpolated model should
     # also be reported as spherical. This enables spherical-symmetric radiative
@@ -904,32 +897,24 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
         geom = "PP"
 
     # Add standard ATMO input fields, if they are missing from ATMO_IN.
-    atmo = atmo_in
-
-    # Create ATMO.DEPTH, if necessary, and set value.
+    atmo = krz
     atmo.depth = depth
-
-    # Create ATMO.INTERP, if necessary, and set value.
     atmo.interp = interp
 
     # Create ATMO.GEOM, if necessary, and set value.
     if "GEOM" in atags:
-        if atmo.geom != "" and atmo.geom != geom:
-            if atmo.geom == "SPH":
+        if atmo_in.geom != geom:
+            if atmo_in.geom == "SPH":
                 raise AtmosphereError(
-                    "Input ATMO.GEOM='%s' not valid for requested model." % atmo.geom
+                    "Input ATMO.GEOM='%s' not valid for requested model." % atmo_in.geom
                 )
             else:
                 logger.info(
-                    "Input ATMO.GEOM='%s' overrides '%s' from grid.", atmo.geom, geom
+                    "Input ATMO.GEOM='%s' overrides '%s' from grid.", atmo_in.geom, geom
                 )
     atmo.geom = geom
-
-    # Copy most fields from KRZ interpolation result to output ATMO.
-    discard = ["MODTYP", "SPHERE", "NDEP"]
-    for tag in ktags:
-        if tag not in discard:
-            setattr(atmo, tag, krz[tag])
+    atmo.source = atmo_in.source
+    atmo.method = atmo_in.method
 
     return atmo
 

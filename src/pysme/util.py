@@ -48,7 +48,15 @@ class DummyTqdmFile(object):
 @contextlib.contextmanager
 def print_to_log():
     original_print = builtins.print
-    builtins.print = lambda *args, **kwargs: logger.info(*args, **kwargs)
+
+    def logprint(*args, file=None, **kwargs):
+        # The debugger freaks out if we dont give it what it wants
+        if file is not None:
+            original_print(*args, **kwargs, file=file)
+        else:
+            logger.info(*args, **kwargs)
+
+    builtins.print = logprint
     try:
         yield None
     finally:
@@ -243,7 +251,7 @@ def vac2air(wl_vac, copy=True):
     else:
         wl_air = np.asarray(wl_vac)
     wl_vac = np.asarray(wl_vac)
-    
+
     # Only works for wavelengths above 2000 Angstrom
     ii = np.where(wl_vac > 2e3)
 

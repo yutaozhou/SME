@@ -46,6 +46,7 @@ class SME_DLL:
         #:dict: NLTE subgrids for nlte coefficient interpolation
         self._nlte_grids = {}
         self.ion = None
+        self.first = True
 
         self.lib = IDL_DLL()
 
@@ -274,11 +275,8 @@ class SME_DLL:
             xna = atmo.xna
             rho = atmo.rho
             vt = np.full(ndepth, vturb) if np.size(vturb) == 1 else vturb
-            wlstd = atmo.get("wlstd", 5000.0)
-            opflag = atmo.get(
-                "opflag",
-                np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0]),
-            )
+            wlstd = atmo.wlstd
+            opflag = atmo.opflag
             args = [
                 ndepth,
                 teff,
@@ -301,8 +299,8 @@ class SME_DLL:
                 motype = "SPH"
                 args = args[:5] + [radius] + args[5:] + [height]
                 type = type[:5] + "d" + type[5:] + "d"
-        except AttributeError:
-            raise TypeError("atmo has to be an Atmo type")
+        except AttributeError as ae:
+            raise TypeError(f"atmo has to be an Atmo type, {ae}")
 
         self.lib.InputModel(*args, type=type)
 
@@ -738,6 +736,8 @@ class SME_DLL:
         try:
             self.lib.GetNLTEflags(nlte_flags, nlines, type=("short", "int"))
         except AttributeError:
-            logger.warning("Using deprecated SME C library")
+            if self.first:
+                logger.warning("Using deprecated SME C library")
+                self.first = False
 
         return nlte_flags.astype(bool)

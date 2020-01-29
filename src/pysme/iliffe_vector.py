@@ -2,10 +2,12 @@ import io
 import logging
 import numpy as np
 
+from .persistence import IPersist
+
 logger = logging.getLogger(__name__)
 
 
-class Iliffe_vector:
+class Iliffe_vector(IPersist):
     """
     Illiffe vectors are multidimensional (here 2D) but not necessarily rectangular
     Instead the index is a pointer to segments of a 1D array with varying sizes
@@ -389,7 +391,7 @@ class Iliffe_vector:
         """
         self._values.append(other)
 
-    def save(self, file, folder=""):
+    def _save(self, file, folder=""):
         """
         Creates a npz structure, representing the vector
 
@@ -403,7 +405,7 @@ class Iliffe_vector:
         file.writestr(f"{folder}.npz", b.getvalue())
 
     @staticmethod
-    def load(file):
+    def _load(file):
         # file: npzfile
         names = file.files
         values = [file[n] for n in names]

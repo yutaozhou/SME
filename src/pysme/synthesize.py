@@ -29,6 +29,7 @@ class Synthesizer:
             config, lfs_atmo, lfs_nlte
         )
         self.dll = dll if dll is not None else SME_DLL()
+        self.first = True
 
     def get_atmosphere(self, sme):
         """
@@ -304,9 +305,9 @@ class Synthesizer:
                 npoints = sum([len(wave[s]) for s in segments])
                 sme.wave = np.zeros(npoints)
             if "synth" not in sme:
-                sme.synth = np.zeros_like(sme.wob)
+                sme.synth = np.zeros(sme.wave.size, sme.wave.dtype)
             if "cont" not in sme:
-                sme.cont = np.zeros_like(sme.wob)
+                sme.cont = np.zeros(sme.wave.size, sme.wave.dtype)
 
             for s in segments:
                 sme.wave[s] = wave[s]
@@ -403,8 +404,9 @@ class Synthesizer:
         if sme.normalize_by_continuum:
             flux /= cont_flux
 
-        logger.critical("Don't forget to cite your sources. Use sme.citation()")
-
+        if self.first:
+            logger.critical("Don't forget to cite your sources. Use sme.citation()")
+            self.first = False
         return wgrid, flux, cont_flux
 
 

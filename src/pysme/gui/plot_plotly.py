@@ -53,7 +53,6 @@ class FinalPlot:
         self.smod = sme.synth
         self.nsegments = len(self.wave)
         self.segment = segment
-        self.wind = sme.wind
         self.wran = sme.wran
         self.lines = sme.linelist
         self.vrad = sme.vrad
@@ -244,7 +243,9 @@ class FinalPlot:
 
                 # Keep only the 100 stongest lines for performance
                 lines.sort("depth", ascending=False)
-                lines = lines[:20,]
+                lines = lines[
+                    :20,
+                ]
 
                 x = lines.wlcent * (1 + self.vrad[seg] / clight)
                 if self.spec is not None:
