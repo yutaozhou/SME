@@ -8,6 +8,7 @@ from scipy.io import readsav
 from scipy.optimize import curve_fit
 
 from .sme import Atmosphere as Atmo
+from .abund import Abund
 
 logger = logging.getLogger(__name__)
 
@@ -128,7 +129,7 @@ class krz_file(Atmo):
         # parse abundance
         pattern = np.genfromtxt(abund).flatten()[:-1]
         pattern[1] = 10 ** pattern[1]
-        self.set_abund(0, pattern, "sme")
+        self.abund = Abund(monh=0, pattern=pattern, type="sme")
 
         # parse table
         self.table = np.genfromtxt(table, delimiter=",", usecols=(0, 1, 2, 3, 4))

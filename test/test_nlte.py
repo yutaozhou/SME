@@ -6,13 +6,14 @@ from os.path import dirname
 
 import numpy as np
 
-from pysme.sme import SME_Struct
+from pysme.sme import SME_Structure as SME_Struct
 from pysme.iliffe_vector import Iliffe_vector
 from pysme.vald import ValdFile
 from pysme.sme_synth import SME_DLL
 from pysme.nlte import nlte
 from pysme.synthesize import Synthesizer, synthesize_spectrum
 from pysme.config import Config
+from pysme.abund import Abund
 
 from .test_largefilestorage import skipif_lfs, lfs_nlte, lfs_atmo
 
@@ -26,7 +27,7 @@ def make_minimum_structure():
     sme.vmic = 1
     sme.vmac = 1
     sme.vsini = 1
-    sme.set_abund(0, "asplund2009", "")
+    sme.abund = Abund.solar()
     sme.linelist = ValdFile(f"{cwd}/testcase3.lin").linelist
     sme.atmo.source = "marcs2012p_t2.0.sav"
     sme.atmo.method = "grid"

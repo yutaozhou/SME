@@ -38,14 +38,14 @@ class Abund(IPersist):
         10.9, and 1.05.
     """
 
-    def __new__(cls, pattern="empty", monh=0, type=None):
-        if isinstance(pattern, cls):
-            return pattern
+    def __new__(cls, monh=0, pattern="empty", type=None):
+        if isinstance(monh, cls):
+            return monh
         self = object.__new__(cls)
         return self
 
-    def __init__(self, pattern="empty", monh=0, type="sme"):
-        if isinstance(pattern, self.__class__):
+    def __init__(self, monh=0, pattern="empty", type="sme"):
+        if isinstance(monh, self.__class__):
             # If we got an object of the correct type we ignore it
             # That is handled in __new__
             return

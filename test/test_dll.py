@@ -3,7 +3,7 @@ from os.path import dirname
 import pytest
 import numpy as np
 
-from pysme.sme import SME_Struct
+from pysme.sme import SME_Structure as SME_Struct
 from pysme.abund import Abund
 from pysme.atmosphere import krz_file
 from pysme.linelist import LineList
@@ -83,7 +83,7 @@ def atmo(cwd):
 
 @pytest.fixture
 def abund():
-    return Abund(0, "Asplund2009")
+    return Abund(monh=0, pattern="Asplund2009")
 
 
 def test_basic(libsme, wfirst, wlast, vw_scale):
@@ -93,13 +93,13 @@ def test_basic(libsme, wfirst, wlast, vw_scale):
     libsme.SetVWscale(vw_scale)
     libsme.SetH2broad()
 
-    print(libsme.file, libsme.wfirst, libsme.wlast, libsme.vw_scale, libsme.H2broad)
+    print(libsme.file, libsme.wfirst, libsme.wlast, libsme.vw_scale, libsme.h2broad)
 
     # assert libsme.file
     assert libsme.wfirst == wfirst
     assert libsme.wlast == wlast
     assert libsme.vw_scale == vw_scale
-    assert libsme.H2broad
+    assert libsme.h2broad
 
 
 def test_linelist(libsme, linelist):
@@ -148,7 +148,7 @@ def test_abund(libsme, abund):
     libsme.InputAbund(abund)
 
     # TODO: What should be the expected behaviour?
-    empty = Abund(0, "empty")
+    empty = Abund(monh=0, pattern="empty")
     empty.update_pattern({"H": 12})
     libsme.InputAbund(empty)
 

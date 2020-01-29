@@ -231,7 +231,7 @@ class Synthesizer:
         cscale = np.zeros((n_segments, cscale_degree + 1))
         cscale[:, -1] = 1
 
-        wave = [None for _ in range(n_segments)]
+        wave = [np.zeros(0) for _ in range(n_segments)]
         smod = [[] for _ in range(n_segments)]
         cmod = [[] for _ in range(n_segments)]
         wmod = [[] for _ in range(n_segments)]
@@ -302,12 +302,12 @@ class Synthesizer:
         # if sme already has a wavelength this should be the same
         if updateStructure:
             if "wave" not in sme:
-                npoints = sum([len(wave[s]) for s in segments])
-                sme.wave = np.zeros(npoints)
+                # TODO: what if not all segments are there?
+                sme.wave = wave
             if "synth" not in sme:
-                sme.synth = np.zeros(sme.wave.size, sme.wave.dtype)
+                sme.synth = smod
             if "cont" not in sme:
-                sme.cont = np.zeros(sme.wave.size, sme.wave.dtype)
+                sme.cont = cmod
 
             for s in segments:
                 sme.wave[s] = wave[s]

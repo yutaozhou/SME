@@ -13,14 +13,12 @@ def test_synthesis_simple(sme_2segments):
     # Check if a result is there it has the expected data type
     assert sme2.synth is not None
     assert isinstance(sme2.synth, Iliffe_vector)
-    assert isinstance(sme2.smod, np.ndarray)
-    assert np.all(sme2.smod != 0)
+    assert np.all(sme2.synth.ravel() != 0)
 
     assert sme.wave is not None
     assert isinstance(sme2.wave, Iliffe_vector)
-    assert isinstance(sme2.wob, np.ndarray)
-    assert np.issubdtype(sme2.wob.dtype, np.floating)
-    assert np.all(sme2.wob != 0)
+    assert np.issubdtype(sme2.wave.dtype, np.floating)
+    assert np.all(sme2.wave.ravel() != 0)
 
     assert sme.spec is None
 

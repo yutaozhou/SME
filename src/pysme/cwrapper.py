@@ -268,8 +268,15 @@ class IDL_DLL:
         ValueError
             If the returned string is not empty, it means an error occured in the C library
         """
-        error = idl_call_external(name, *args, lib=self.lib, **kwargs)
-        error = error.decode()
+        error = ""
+        try:
+            error = idl_call_external(name, *args, lib=self.lib, **kwargs)
+            error = error.decode()
+        except AttributeError:
+            error = "Using obsolete SME Library"
+            raise_error = False
+            raise_warning = True
+
         if error != "":
             if raise_error:
                 raise ValueError(f"{name} (call external): {error}")

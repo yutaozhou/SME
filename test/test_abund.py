@@ -12,13 +12,10 @@ types = ["H=12", "n/nH", "n/nTot", "SME"]
 def test_init_with_too_few_args():
     """Test that __init__ raise an error if too few arguments are passed.
     """
-    # Passing zero arguments to __init__() raises an error.
-    with pytest.raises(TypeError):
-        Abund()
-
-    # Passing one argument to __init__() raises an error.
-    with pytest.raises(TypeError):
-        Abund(0)
+    Abund()
+    Abund(monh=0)
+    Abund(pattern="asplund2009")
+    Abund(type="H=12")
 
 
 def test_init_using_pattern_names():
@@ -26,24 +23,24 @@ def test_init_using_pattern_names():
     """
     # Each abundance pattern name yields an Abund object.
     for pattern_name in pattern_names:
-        assert isinstance(Abund(0, pattern_name), Abund)
+        assert isinstance(Abund(pattern=pattern_name, monh=0), Abund)
 
     # The 'Empty' abundance pattern has a value of None for all elements.
-    abund = Abund(0, "Empty")
+    abund = Abund(monh=0, pattern="Empty")
     pattern = abund.get_pattern(raw=True)
     assert pattern[0] == 0
     assert np.all(np.isnan(pattern[1:]))
 
     # An invalid abundance pattern name raises an error.
     with pytest.raises(ValueError):
-        Abund(0, "INVALID")
+        Abund(monh=0, pattern="INVALID")
 
 
 def test_call_returns_abund_in_odict():
     """Test return value, which is an ordered dictionary with element
     abbreviations as the keys and abundances as the values.
     """
-    abund = Abund(0, pattern_names[0])
+    abund = Abund(pattern=pattern_names[0], monh=0)
     assert isinstance(abund(), dict)
     assert tuple(abund().keys()) == abund.elem
 
@@ -52,7 +49,7 @@ def test_getitem_returns_abund_values():
     """Test getitem method, which return computed abundance values for
     the specified element or list of elements.
     """
-    abund = Abund(0, pattern_names[0])
+    abund = Abund(pattern=pattern_names[0], monh=0)
     assert abund["H"] == 12
 
 
@@ -60,7 +57,7 @@ def test_monh_property_set_and_get():
     """Test setting and getting monh property. Set converts input to float.
     """
     # Input str convertable to float yields a float with the specified value.
-    abund = Abund("-6e-1", pattern_names[0])
+    abund = Abund(pattern=pattern_names[0], monh="-6e-1")
     assert isinstance(abund.monh, float)
     assert abund.monh == -0.6
 
@@ -76,7 +73,7 @@ def test_monh_property_set_and_get():
 
     # Input str that cannot be converted to float raises an error.
     with pytest.raises(ValueError):
-        abund = Abund("ABC", pattern_names[0])
+        abund = Abund(pattern=pattern_names[0], monh="ABC")
 
     # Input that is not a string or a number raises an error.
     with pytest.raises(TypeError):
@@ -87,7 +84,7 @@ def test_pattern_property_set_and_get():
     """Test setting and getting pattern property. Set is not allowed.
     """
     # Raise error is user tries to set pattern
-    abund = Abund(0, "Empty")
+    abund = Abund(pattern="Empty", monh=0)
     with pytest.raises(AttributeError):
         abund.pattern = 0.0
 
@@ -97,7 +94,7 @@ def test_update_pattern():
     for the specified element(s).
     """
     # Update for one element yields float with the specified value.
-    abund = Abund(0, "Empty")
+    abund = Abund(pattern="Empty", monh=0)
     assert np.isnan(abund["Fe"])
     abund.update_pattern({"Fe": "3.14"})
     assert isinstance(abund["Fe"], float)
@@ -117,7 +114,7 @@ def test_totype_fromtype():
     from the specified abudnance pattern type.
     """
     # Round trip tests that compare copy=fromtype(totype()) with original.
-    orig = Abund(0, pattern_names[0])()
+    orig = Abund(pattern=pattern_names[0], monh=0)()
     for type in types:
         pattern = Abund.totype(orig, type)
         copy = Abund.fromtype(pattern, type)

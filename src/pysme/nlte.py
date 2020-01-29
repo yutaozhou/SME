@@ -387,12 +387,12 @@ class Grid:
         for i, level in enumerate(level_labels):
             # If j < 0 (i.e. undefined) ignore it for the comparison
             j = level[-1]
-            ic = slice(None, 3, None) if j < 0 else slice(None, None, None)
-            idx_l = line_label_low[names[ic]] == level[ic]
+            ic = names[:3] if j < 0 else names
+            idx_l = line_label_low[ic] == level[ic]
             self.linerefs[idx_l, 0] = i
             iused[i] = iused[i] or np.any(idx_l)
 
-            idx_u = line_label_upp[names[ic]] == level[ic]
+            idx_u = line_label_upp[ic] == level[ic]
             self.linerefs[idx_u, 1] = i
             iused[i] = iused[i] or np.any(idx_u)
 

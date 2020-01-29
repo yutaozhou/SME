@@ -27,6 +27,13 @@ def dont(x):
     raise NotImplementedError("Can't set this value directly")
 
 
+def notNone(func):
+    def f(value):
+        return func(value) if value is not None else None
+
+    return f
+
+
 def uppercase(func):
     def f(value):
         try:
@@ -91,15 +98,18 @@ def vector(self, value):
     elif isinstance(value, Iliffe_vector):
         pass
     elif isinstance(value, np.lib.npyio.NpzFile):
-        value = Iliffe_vector.load(value)
+        value = Iliffe_vector._load(value)
     else:
         raise TypeError("Input value is of the wrong type")
 
     return value
 
 
+# TODO: change all fset functions to func(self, value)
+# TODO: use a decorator on the class and replace __new__
+
 # fget = lambda name, func: lambda self: func(getattr(self, f"_{name}"))
-# fset = lambda name, func: lambda self, value: setattr(self, f"_{name}", func(value))
+# fset = lambda name, func: lambda self, value: setattr(self, f"_{name}", func(self, value))
 
 
 def fget(name, func):
@@ -386,6 +396,10 @@ class Version(Collection):
     ]
     # fmt: on
 
+    def __init__(self, data=None, **kwargs):
+        self.update()
+        super().__init__(data=data, **kwargs)
+
     def update(self):
         """ Update version info with current machine data """
         self.arch = platform.machine()
@@ -471,7 +485,7 @@ class SME_Structure(Parameters):
             with mu = cos(theta), where theta is the angle of the observation,
             i.e. mu = 1 at the center of the disk and 0 at the edge
             """),
-        ("wran", None, np.atleast_2d, this,
+        ("wran", None, this, this,
             "array of size (nseg, 2): beginning and end wavelength points of each segment"),
         ("wave", None, vector, this,
             "Iliffe_vector of shape (nseg, ...): wavelength"),
@@ -537,6 +551,7 @@ class SME_Structure(Parameters):
         self.normalize_by_continuum = kwargs.get("cscale_flag", "") != "fix"
 
         self.system_info = Version(**kwargs.get("idlver", {}))
+        self.system_info.update()
         self.atmo = Atmosphere(
             **kwargs.get("atmo", {}),
             abund=kwargs.get("abund", "empty"),
@@ -579,6 +594,30 @@ class SME_Structure(Parameters):
 
     # Additional constraints on fields
     @property
+    def _wran(self):
+        if self.wave is not None:
+            nseg = self.wave.shape[0]
+            values = np.zeros((nseg, 2))
+            for i in range(nseg):
+                if self.wave[i] is not None and len(self.wave[i]) >= 2:
+                    values[i] = [self.wave[i][0], self.wave[i][-1]]
+                else:
+                    values[i] = self.__wran[i]
+            return values
+        return self.__wran
+
+    @_wran.setter
+    def _wran(self, value):
+        try:
+            if self.wave is not None:
+                logger.warning(
+                    "The wavelength range is overriden by the existing wavelength grid"
+                )
+        except:
+            pass
+        self.__wran = np.atleast_2d(value) if value is not None else None
+
+    @property
     def _vrad(self):
         """array of size (nseg,): Radial velocity in km/s for each wavelength region"""
         nseg = self.nseg if self.nseg is not None else 1
@@ -602,7 +641,7 @@ class SME_Structure(Parameters):
 
     @_vrad.setter
     def _vrad(self, value):
-        self.__vrad = np.atleast_1d(value)
+        self.__vrad = np.atleast_1d(value) if value is not None else None
 
     @property
     def _vrad_flag(self):
@@ -651,7 +690,7 @@ class SME_Structure(Parameters):
 
     @_cscale.setter
     def _cscale(self, value):
-        self.__cscale = np.atleast_2d(value)
+        self.__cscale = np.atleast_2d(value) if value is not None else None
 
     @property
     def _cscale_flag(self):
@@ -688,7 +727,7 @@ class SME_Structure(Parameters):
     def nseg(self):
         """int: Number of wavelength segments """
         if self.wran is None:
-            return None
+            return 0
         else:
             return len(self.wran)
 

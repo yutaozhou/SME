@@ -46,7 +46,6 @@ class SME_DLL:
         #:dict: NLTE subgrids for nlte coefficient interpolation
         self._nlte_grids = {}
         self.ion = None
-        self.first = True
 
         self.lib = IDL_DLL()
 
@@ -733,11 +732,6 @@ class SME_DLL:
         nlines = self.nlines
         nlte_flags = np.zeros(nlines, dtype=np.int16)
 
-        try:
-            self.lib.GetNLTEflags(nlte_flags, nlines, type=("short", "int"))
-        except AttributeError:
-            if self.first:
-                logger.warning("Using deprecated SME C library")
-                self.first = False
+        self.lib.GetNLTEflags(nlte_flags, nlines, type=("short", "int"))
 
         return nlte_flags.astype(bool)

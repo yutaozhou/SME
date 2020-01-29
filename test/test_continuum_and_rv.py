@@ -5,7 +5,7 @@ from os.path import dirname
 import pytest
 import numpy as np
 
-from pysme.sme import SME_Struct
+from pysme.sme import SME_Structure as SME_Struct
 from pysme.continuum_and_radial_velocity import determine_rv_and_cont
 
 

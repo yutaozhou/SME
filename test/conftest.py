@@ -6,9 +6,10 @@ from scipy.constants import speed_of_light
 
 # TODO create various kinds of default sme structures
 # then run test on all of the relevant ones
-from pysme.sme import SME_Struct
+from pysme.sme import SME_Structure as SME_Struct
 from pysme.vald import ValdFile
 from pysme.synthesize import synthesize_spectrum
+from pysme.abund import Abund
 
 
 @pytest.fixture
@@ -55,7 +56,7 @@ def sme_2segments():
     sme.vmic = 1
     sme.vmac = 1
     sme.vsini = 1
-    sme.set_abund(0, "asplund2009", "")
+    sme.abund = Abund(monh=0, pattern="asplund2009")
     sme.linelist = ValdFile(f"{cwd}/testcase1.lin").linelist
     sme.atmo.source = "marcs2012p_t2.0.sav"
     sme.atmo.method = "grid"

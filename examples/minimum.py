@@ -4,6 +4,7 @@ import os.path
 
 from pysme.gui import plot_plotly
 from pysme import sme as SME
+from pysme.sme import Atmosphere
 from pysme import util
 from pysme.solve import solve
 from pysme.synthesize import synthesize_spectrum
@@ -23,11 +24,13 @@ if __name__ == "__main__":
     util.start_logging(log_file)
 
     # Load your existing SME structure or create your own
-    sme = SME.SME_Struct.load(in_file)
+    sme = SME.SME_Structure.load(in_file)
 
     # Change parameters if your want
     sme.vsini = 0
-    sme.vrad_flag = "each"
+    sme.vrad = 0.35
+    sme.vrad_flag = "fix"
+    sme.cscale_flag = "none"
 
     # Define any fitparameters you want
     # For abundances use: 'abund {El}', where El is the element (e.g. 'abund Fe')
