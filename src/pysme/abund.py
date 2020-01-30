@@ -38,17 +38,7 @@ class Abund(IPersist):
         10.9, and 1.05.
     """
 
-    def __new__(cls, monh=0, pattern="empty", type=None):
-        if isinstance(monh, cls):
-            return monh
-        self = object.__new__(cls)
-        return self
-
     def __init__(self, monh=0, pattern="empty", type="sme"):
-        if isinstance(monh, self.__class__):
-            # If we got an object of the correct type we ignore it
-            # That is handled in __new__
-            return
         self.monh = monh
         # The internal type is fixed to this value
         self._type_internal = "H=12"

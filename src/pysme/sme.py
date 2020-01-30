@@ -1,63 +1,57 @@
 import logging
+import os.path
 import platform
 import sys
-import os.path
+from copy import copy
 from datetime import datetime as dt
-from functools import wraps
 
 import numpy as np
 from scipy.io import readsav
 
-from . import __version__, __file_ending__
-from . import echelle
+from . import __file_ending__, __version__, echelle, persistence
 from .abund import Abund
 from .iliffe_vector import Iliffe_vector
 from .linelist import LineList
-from . import persistence
 
 logger = logging.getLogger(__name__)
 
 
-def this(x):
+def this(self, x):
     """ This just returns the input """
     return x
 
 
-def dont(x):
-    raise NotImplementedError("Can't set this value directly")
-
-
 def notNone(func):
-    def f(value):
-        return func(value) if value is not None else None
+    def f(self, value):
+        return func(self, value) if value is not None else None
 
     return f
 
 
 def uppercase(func):
-    def f(value):
+    def f(self, value):
         try:
             value = value.upper()
         except AttributeError:
             pass
-        return func(value)
+        return func(self, value)
 
     return f
 
 
 def lowercase(func):
-    def f(value):
+    def f(self, value):
         try:
             value = value.casefold()
         except AttributeError:
             pass
-        return func(value)
+        return func(self, value)
 
     return f
 
 
 def oneof(*options):
-    def f(value):
+    def f(self, value):
         if value not in options:
             raise ValueError(f"Received {value} but expected one of {options}")
         return value
@@ -65,8 +59,23 @@ def oneof(*options):
     return f
 
 
+def astype(func):
+    def f(self, value):
+        if isinstance(value, func):
+            return value
+        return func(value)
+
+    return f
+
+
+asfloat = astype(float)
+asstr = astype(str)
+asbool = astype(bool)
+absolute = lambda self, value: abs(value)
+
+
 def array(shape, dtype, allow_None=True):
-    def f(value):
+    def f(self, value):
         if value is not None:
             value = np.asarray(value, dtype=dtype)
             value = np.atleast_1d(value)
@@ -105,9 +114,7 @@ def vector(self, value):
     return value
 
 
-# TODO: change all fset functions to func(self, value)
-# TODO: use a decorator on the class and replace __new__
-
+# Shorter versions, but less obvious (also "_name" is calculated each time, instead of once?)
 # fget = lambda name, func: lambda self: func(getattr(self, f"_{name}"))
 # fset = lambda name, func: lambda self, value: setattr(self, f"_{name}", func(self, value))
 
@@ -116,7 +123,7 @@ def fget(name, func):
     name = f"_{name}"
 
     def f(self):
-        return func(getattr(self, name))
+        return func(self, getattr(self, name))
 
     return f
 
@@ -125,39 +132,29 @@ def fset(name, func):
     name = f"_{name}"
 
     def f(self, value):
-        try:
-            setattr(self, name, func(value))
-        except TypeError:
-            setattr(self, name, func(self, value))
+        setattr(self, name, func(self, value))
 
     return f
 
 
+def CollectionFactory(cls):
+    """ Decorator that turns Collection _fields into properties """
+
+    # Add properties to the class
+    for name, _, setter, getter, doc in cls._fields:
+        setattr(cls, name, property(fget(name, getter), fset(name, setter), None, doc))
+    cls._names = [f[0] for f in cls._fields]
+
+    return cls
+
+
+@CollectionFactory
 class Collection(persistence.IPersist):
     _fields = []  # [("name", "default", str, this, "doc")]
 
-    def __new__(cls, data=None, **kwargs):
-        if data is not None and isinstance(data, cls):
-            # If we get an object, try to convert it to this class
-            return data
-        # Add properties to the class
-        for name, _, setter, getter, doc in cls._fields:
-            setattr(
-                cls, name, property(fget(name, getter), fset(name, setter), None, doc)
-            )
-        cls._names = [f[0] for f in cls._fields]
-
-        # Initialize a new object
-        self = object.__new__(cls)
-        return self
-
-    def __init__(self, data=None, **kwargs):
-        if data is not None and isinstance(data, self.__class__):
-            # If we got an object of the correct type we ignore it
-            # That is handled in __new__
-            return
+    def __init__(self, **kwargs):
         for name, default, *_ in self._fields:
-            setattr(self, name, default)
+            setattr(self, name, copy(default))
 
         for key, value in kwargs.items():
             if key in self._names:
@@ -182,22 +179,23 @@ class Collection(persistence.IPersist):
         return []
 
 
+@CollectionFactory
 class Parameters(Collection):
     # fmt: off
     _fields = Collection._fields + [
-        ("teff", 5770, float, this, "float: effective temperature in Kelvin"),
-        ("logg", 4.0, float, this, "float: surface gravity in log10(cgs)"),
-        ("abundance", Abund.solar(), Abund, this, "Abund: elemental abundances"),
-        ("vmic", 0, abs, this, "float: micro turbulence in km/s"),
-        ("vmac", 0, abs, this, "float: macro turbulence in km/s"),
-        ("vsini", 0, abs, this, "float: projected rotational velocity in km/s"),
+        ("teff", 5770, asfloat, this, "float: effective temperature in Kelvin"),
+        ("logg", 4.0, asfloat, this, "float: surface gravity in log10(cgs)"),
+        ("abundance", Abund.solar(), astype(Abund), this, "Abund: elemental abundances"),
+        ("vmic", 0, absolute, this, "float: micro turbulence in km/s"),
+        ("vmac", 0, absolute, this, "float: macro turbulence in km/s"),
+        ("vsini", 0, absolute, this, "float: projected rotational velocity in km/s"),
     ]
     # fmt: on
 
-    def __init__(self, data=None, **kwargs):
+    def __init__(self, **kwargs):
         monh = kwargs.pop("monh", kwargs.pop("feh", 0))
         abund = kwargs.pop("abund", "empty")
-        super().__init__(data=data, **kwargs)
+        super().__init__(**kwargs)
         self.abund = Abund(monh=monh, pattern=abund, type="sme")
 
     @property
@@ -213,6 +211,7 @@ class Parameters(Collection):
         return self.abund.citation()
 
 
+@CollectionFactory
 class Atmosphere(Parameters):
     """
     Atmosphere structure
@@ -223,18 +222,18 @@ class Atmosphere(Parameters):
 
     # fmt: off
     _fields = Parameters._fields + [
-        ("vturb", 0, abs, this, "float: turbulence velocity in km/s"),
-        ("lonh", 0, float, this, "float: ?"),
-        ("source", None, str, this, "str: datafile name of this data"),
+        ("vturb", 0, absolute, this, "float: turbulence velocity in km/s"),
+        ("lonh", 0, asfloat, this, "float: ?"),
+        ("source", None, asstr, this, "str: datafile name of this data"),
         ("method", None, lowercase(oneof(None, "grid", "embedded")), this, 
             "str: whether the data source is a grid or a fixed atmosphere"),
         ("geom", None, uppercase(oneof(None, "PP", "SPH")), this,
             "str: the geometry of the atmopshere model"),
-        ("radius", 0, float, this, "float: radius of the spherical model"),
-        ("height", 0, float, this, "float: height of the spherical model"),
+        ("radius", 0, asfloat, this, "float: radius of the spherical model"),
+        ("height", 0, asfloat, this, "float: height of the spherical model"),
         ("opflag", [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0], array(None, int), this,
             "array: opacity flags"),
-        ("wlstd", 5000, float, this, "float: wavelength standard deviation"),
+        ("wlstd", 5000, asfloat, this, "float: wavelength standard deviation"),
         ("depth", None, uppercase(oneof(None, "RHOX", "TAU")), this,
             "str: flag that determines whether to use RHOX or TAU for calculations"),
         ("interp", None, uppercase(oneof(None, "RHOX", "TAU")), this,
@@ -282,12 +281,13 @@ class Atmosphere(Parameters):
         return [self.source]
 
 
+@CollectionFactory
 class NLTE(Collection):
     # fmt: off
     _fields = Collection._fields + [
-        ("elements", [], list, this,
+        ("elements", [], astype(list), this,
             "list: elements for which nlte calculations will be performed"),
-        ("grids", {}, dict, this,
+        ("grids", {}, astype(dict), this,
             "dict: nlte grid datafiles for each element"),
         ("subgrid_size", [2, 2, 2, 2], array(4, int), this,
             "array of shape (4,): defines size of nlte grid cache."
@@ -310,8 +310,8 @@ class NLTE(Collection):
         "Ti": "marcs2012s_t2.0_Ti.grd",
     }
 
-    def __init__(self, data=None, **kwargs):
-        super().__init__(data=data)
+    def __init__(self, **kwargs):
+        super().__init__()
 
         # Convert IDL keywords to Python
         if "nlte_elem_flags" in kwargs.keys():
@@ -358,7 +358,8 @@ class NLTE(Collection):
             grid = NLTE._default_grids[element]
             logger.info("Using default grid %s for element %s", grid, element)
 
-        self.elements += [element]
+        if element not in self.elements:
+            self.elements += [element]
         self.grids[element] = grid
 
     def remove_nlte(self, element):
@@ -382,23 +383,23 @@ class NLTE(Collection):
         return citations
 
 
+@CollectionFactory
 class Version(Collection):
     # fmt: off
     _fields = Collection._fields + [
-        ("arch", "", str, this, "str: system architecture"),
-        ("os", "", str, this, "str: operating system"),
-        ("os_family", "", str, this, "str: operating system family"),
-        ("os_name", "", str, this, "str: os name"),
-        ("release", "", str, this, "str: python version"),
-        ("build_date", "", str, this, "str: build date of the Python version used"),
-        ("memory_bits", 64, int, this, "int: Platform architecture bit size (usually 32 or 64)"),
-        ("host", "", str, this, "str: name of the machine that created the SME Structure")
+        ("arch", "", asstr, this, "str: system architecture"),
+        ("os", "", asstr, this, "str: operating system"),
+        ("os_family", "", asstr, this, "str: operating system family"),
+        ("os_name", "", asstr, this, "str: os name"),
+        ("release", "", asstr, this, "str: python version"),
+        ("build_date", "", asstr, this, "str: build date of the Python version used"),
+        ("memory_bits", 64, astype(int), this, "int: Platform architecture bit size (usually 32 or 64)"),
+        ("host", "", asstr, this, "str: name of the machine that created the SME Structure")
     ]
     # fmt: on
 
-    def __init__(self, data=None, **kwargs):
-        self.update()
-        super().__init__(data=data, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def update(self):
         """ Update version info with current machine data """
@@ -412,11 +413,12 @@ class Version(Collection):
         self.host = platform.node()
 
 
+@CollectionFactory
 class Fitresults(Collection):
     # fmt: off
     _fields = Collection._fields + [
-        ("maxiter", 100, int, this, "int: maximum number of iterations in the solver"),
-        ("chisq", 0, float, this, "float: reduced chi-square of the solution"),
+        ("maxiter", 100, astype(int), this, "int: maximum number of iterations in the solver"),
+        ("chisq", 0, asfloat, this, "float: reduced chi-square of the solution"),
         ("uncertainties", None, array(None, float), this, "array of size(nfree,): uncertainties of the free parameters"),
         ("covariance", None, array(None, float), this, "array of size (nfree, nfree): covariance matrix"),
         ("gradient", None, array(None, float), this, "array of size (nfree,): final gradients of the free parameters on the cost function"),
@@ -437,11 +439,12 @@ class Fitresults(Collection):
         self.resid = None
 
 
+@CollectionFactory
 class SME_Structure(Parameters):
     # fmt: off
     _fields = Parameters._fields + [
-        ("id", dt.now(), str, this, "str: DateTime when this structure was created"),
-        ("object", "", str, this, "str: Name of the observed/simulated object"),
+        ("id", dt.now(), asstr, this, "str: DateTime when this structure was created"),
+        ("object", "", asstr, this, "str: Name of the observed/simulated object"),
         ("version", __version__, this, this, "str: PySME version used to create this structure"),
         ("vrad", 0, array(None, float), this, "array of size (nseg,): radial velocity of each segment in km/s"),
         ("vrad_flag", "none", lowercase(oneof(-2, -1, 0, "none", "each", "whole", "fix")), this,
@@ -467,16 +470,16 @@ class SME_Structure(Parameters):
                 * "linear": First order polynomial, i.e. approximate continuum by a straight line
                 * "quadratic": Second order polynomial, i.e. approximate continuum by a quadratic polynomial
             """),
-        ("normalize_by_continuum", True, bool, this,
+        ("normalize_by_continuum", True, asbool, this,
             "bool: Whether to normalize the synthetic spectrum by the synthetic continuum spectrum or not"),
-        ("gam6", 1, float, this, "float: van der Waals scaling factor"),
-        ("h2broad", True, bool, this, "bool: Whether to use H2 broadening or not"),
-        ("accwi", 0.003, float, this,
+        ("gam6", 1, asfloat, this, "float: van der Waals scaling factor"),
+        ("h2broad", True, asbool, this, "bool: Whether to use H2 broadening or not"),
+        ("accwi", 0.003, asfloat, this,
             "float: minimum accuracy for linear spectrum interpolation vs. wavelength. Values below 1e-4 are not meaningful."),
-        ("accrt", 0.001, float, this,
+        ("accrt", 0.001, asfloat, this,
             "float: minimum accuracy for synthethized spectrum at wavelength grid points in sme.wint. Values below 1e-4 are not meaningful."),
         ("iptype", None, lowercase(oneof(None, "gauss", "sinc", "table")), this, "str: instrumental broadening type"),
-        ("ipres", 0, float, this, "float: Instrumental resolution for instrumental broadening"),
+        ("ipres", 0, asfloat, this, "float: Instrumental resolution for instrumental broadening"),
         ("ip_x", None, this, this, "array: Instrumental broadening table in x direction"),
         ("ip_y", None, this, this, "array: Instrumental broadening table in y direction"),
         ("mu", np.geomspace(0.01, 1, 7), array(None, float), this,
@@ -499,11 +502,11 @@ class SME_Structure(Parameters):
             "Iliffe_vector of shape (nseg, ...): synthetic spectrum"),
         ("cont", None, vector, this,
             "Iliffe_vector of shape (nseg, ...): continuum intensities"),
-        ("linelist", None, LineList, this, "LineList: spectral line information"),
-        ("fitparameters", [], list, this, "list: parameters to fit"),
-        ("atmo", None, Atmosphere, this, "Atmosphere: model atmosphere data"),
-        ("nlte", None, NLTE, this, "NLTE: nlte calculation data"),
-        ("system_info", None, Version, this,
+        ("linelist", LineList(), astype(LineList), this, "LineList: spectral line information"),
+        ("fitparameters", [], astype(list), this, "list: parameters to fit"),
+        ("atmo", Atmosphere(), astype(Atmosphere), this, "Atmosphere: model atmosphere data"),
+        ("nlte", NLTE(), astype(NLTE), this, "NLTE: nlte calculation data"),
+        ("system_info", Version(), astype(Version), this,
             "Version: information about the host system running the calculation for debugging"),
     ]
     # fmt: on
@@ -511,13 +514,17 @@ class SME_Structure(Parameters):
     #:dict(str, int): Mask value specifier used in mob
     mask_values = {"bad": 0, "line": 1, "continuum": 2}
 
-    def __init__(self, data=None, **kwargs):
-        self.wind = kwargs.get("wind", None)
-        if self.wind is not None:
-            self.wind = np.array([0, *(self.wind + 1)])
+    def __init__(self, **kwargs):
+        wind = kwargs.get("wind", None)
 
-        super().__init__(data=data, **kwargs)
-        del self.wind
+        atmo = kwargs.pop("atmo", {})
+        nlte = kwargs.pop("nlte", {})
+        idlver = kwargs.pop("idlver", {})
+        super().__init__(**kwargs)
+
+        if wind is not None and self.wave is not None:
+            wind = np.array([0, *(wind + 1)])
+            self.wave = Iliffe_vector(values=self.wave.ravel(), index=wind)
 
         self.spec = kwargs.get("sob", None)
         self.uncs = kwargs.get("uob", None)
@@ -542,22 +549,21 @@ class SME_Structure(Parameters):
         self.fitparameters = np.unique(fitparameters)
 
         self.fitresults = Fitresults(
-            maxiter=kwargs.pop("maxiter", 0),
-            chisq=kwargs.pop("chisq", 0),
-            uncertainties=kwargs.pop("punc", None),
-            covar=kwargs.pop("covar", None),
+            maxiter=kwargs.get("maxiter", 0),
+            chisq=kwargs.get("chisq", 0),
+            uncertainties=kwargs.get("punc", None),
+            covar=kwargs.get("covar", None),
         )
 
         self.normalize_by_continuum = kwargs.get("cscale_flag", "") != "fix"
 
-        self.system_info = Version(**kwargs.get("idlver", {}))
-        self.system_info.update()
+        self.system_info = Version(**idlver)
         self.atmo = Atmosphere(
-            **kwargs.get("atmo", {}),
+            **atmo,
             abund=kwargs.get("abund", "empty"),
             monh=kwargs.get("monh", kwargs.get("feh", 0)),
         )
-        self.nlte = NLTE(**kwargs.get("nlte", {}))
+        self.nlte = NLTE(**nlte)
 
         # Apply final conversions from IDL to Python version
         if "wave" in self:

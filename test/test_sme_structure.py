@@ -63,7 +63,7 @@ def test_empty_structure():
     assert np.isnan(empty.abund()["Mg"])
 
     assert empty.system_info is not None
-    assert empty.system_info.arch != ""
+    assert empty.system_info.arch == ""
 
     assert len(empty.fitparameters) == 0
     assert empty.fitresults is not None

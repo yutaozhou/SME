@@ -10,6 +10,7 @@ from pysme.continuum_and_radial_velocity import determine_rv_and_cont
 
 
 def test_match_both(testcase1):
+    # TODO: This test sometimes fails due to randomness
     sme, x_syn, y_syn, rv = testcase1
 
     vrad_options = ["fix", "none", "each", "whole"]

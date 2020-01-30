@@ -385,9 +385,8 @@ class Grid:
         # Loop through the NLTE levels
         # and match line levels
         for i, level in enumerate(level_labels):
-            # If j < 0 (i.e. undefined) ignore it for the comparison
-            j = level[-1]
-            ic = names[:3] if j < 0 else names
+            # If j = level[-1] < 0 (i.e. undefined) ignore it for the comparison
+            ic = names[:3] if level[-1] < 0 else names
             idx_l = line_label_low[ic] == level[ic]
             self.linerefs[idx_l, 0] = i
             iused[i] = iused[i] or np.any(idx_l)
