@@ -31,7 +31,7 @@ if __name__ == "__main__":
         fitparameters = []
 
     # Load files
-    sme = SME.SME_Struct.load(in_file)
+    sme = SME.SME_Structure.load(in_file)
     # sme.save("test.npz", compressed=False, for_idl=True)
 
     if vald_file is not None:
