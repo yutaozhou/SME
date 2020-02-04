@@ -185,7 +185,7 @@ class Parameters(Collection):
     _fields = Collection._fields + [
         ("teff", 5770, asfloat, this, "float: effective temperature in Kelvin"),
         ("logg", 4.0, asfloat, this, "float: surface gravity in log10(cgs)"),
-        ("abundance", Abund.solar(), astype(Abund), this, "Abund: elemental abundances"),
+        ("abund", Abund.solar(), this, this, "Abund: elemental abundances"),
         ("vmic", 0, absolute, this, "float: micro turbulence in km/s"),
         ("vmac", 0, absolute, this, "float: macro turbulence in km/s"),
         ("vsini", 0, absolute, this, "float: projected rotational velocity in km/s"),
@@ -197,6 +197,20 @@ class Parameters(Collection):
         abund = kwargs.pop("abund", "empty")
         super().__init__(**kwargs)
         self.abund = Abund(monh=monh, pattern=abund, type="sme")
+
+    @property
+    def _abund(self):
+        return self.__abund
+
+    @_abund.setter
+    def _abund(self, value):
+        if isinstance(value, Abund):
+            self.__abund = value
+        else:
+            logger.warning("Abundance set using just a pattern, assuming that"
+                            f"it has format {self.__abund.type}."
+                            "If that is incorrect, try changing the format first.")
+            self.__abund = Abund(monh=self.monh, pattern=value, type=self.__abund.type)
 
     @property
     def monh(self):
@@ -231,8 +245,8 @@ class Atmosphere(Parameters):
             "str: the geometry of the atmopshere model"),
         ("radius", 0, asfloat, this, "float: radius of the spherical model"),
         ("height", 0, asfloat, this, "float: height of the spherical model"),
-        ("opflag", [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0], array(None, int), this,
-            "array: opacity flags"),
+        ("opflag", [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0], array(20, int), this,
+            "array of size (20,): opacity flags"),
         ("wlstd", 5000, asfloat, this, "float: wavelength standard deviation"),
         ("depth", None, uppercase(oneof(None, "RHOX", "TAU")), this,
             "str: flag that determines whether to use RHOX or TAU for calculations"),
