@@ -11,8 +11,8 @@ import logging
 import numpy as np
 import pandas as pd
 
-from .util import air2vac, vac2air
-from .persistence import IPersist
+from ..util import air2vac, vac2air
+from ..persistence import IPersist
 
 logger = logging.getLogger(__name__)
 
@@ -139,9 +139,8 @@ class LineList(IPersist):
 
         return (linedata, lineformat)
 
-    def __init__(self, *args, lineformat="short", medium=None, **kwargs):
-        linedata = []
-        if len(args) == 0:
+    def __init__(self, linedata=None, lineformat="short", medium=None, **kwargs):
+        if linedata is None:
             if len(kwargs) == 0:
                 linedata = pd.DataFrame(data=[], columns=self._base_columns)
             elif "atomic" in kwargs.keys():
@@ -149,15 +148,12 @@ class LineList(IPersist):
                 linedata, lineformat = LineList.from_IDL_SME(**kwargs)
             else:
                 raise NotImplementedError
-                linedata = None
-        elif args[0] is not None:
-            if isinstance(args[0], LineList):
-                linedata = args[0]._lines
-                lineformat = args[0].lineformat
-                medium = args[0]._medium
+        else:
+            if isinstance(linedata, LineList):
+                linedata = linedata._lines
+                lineformat = linedata.lineformat
+                medium = linedata._medium
             else:
-                linedata = args[0]
-
                 if isinstance(linedata, (list, np.ndarray)):
                     # linedata = np.atleast_2d(linedata)
                     linedata = pd.DataFrame(

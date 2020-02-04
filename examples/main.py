@@ -13,7 +13,7 @@ from pysme import util
 from pysme.abund import Abund
 from pysme.solve import SME_Solver
 from pysme.continuum_and_radial_velocity import match_rv_continuum
-from pysme.vald import ValdFile
+from pysme.linelist.vald import ValdFile
 from pysme.synthesize import synthesize_spectrum
 
 if __name__ == "__main__":
@@ -36,7 +36,7 @@ if __name__ == "__main__":
 
     if vald_file is not None:
         vald = ValdFile(vald_file)
-        sme.linelist = vald.linelist
+        sme.linelist = vald
 
     if atmo_file is not None:
         sme.atmo.source = atmo_file
@@ -67,7 +67,7 @@ if __name__ == "__main__":
     fitparameters = ["logg", "teff", "monh"]
 
     sme.save("k2-3.sme")
-    SME.SME_Struct.load("k2-3.sme")
+    SME.SME_Structure.load("k2-3.sme")
 
     # Start SME solver
     sme = synthesize_spectrum(sme)

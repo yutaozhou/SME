@@ -19,7 +19,8 @@ from scipy.optimize._numdiff import approx_derivative
 
 from . import __file_ending__, broadening
 from .abund import Abund
-from .atmosphere import AtmosphereError, interp_atmo_grid, krz_file
+from .atmosphere.atmosphere import AtmosphereError, krz_file
+from .atmosphere.interpolation import interp_atmo_grid
 from .config import Config
 from .continuum_and_radial_velocity import match_rv_continuum
 from .integrate_flux import integrate_flux

@@ -11,9 +11,8 @@ import numpy as np
 import pandas as pd
 from astropy import units as u
 
-from .abund import Abund
+from ..abund import Abund
 from .linelist import FileError, LineList
-from .util import air2vac, vac2air
 
 logger = logging.getLogger(__name__)
 
@@ -22,49 +21,25 @@ class ValdError(FileError):
     """ Vald Data File Error """
 
 
-class ValdFile:
+class ValdFile(LineList):
     """Atomic data for a list of spectral lines.
     """
 
     def __init__(self, filename, medium=None):
-        self._filename = filename
-        self._wavelo = None
-        self._wavehi = None
-        self._nlines = None
-        self._nlines_proc = None
-        self._vmicro = None
-        self.medium = None
-        self.desired_medium = medium
+        self.filename = filename
+        self.atmo = None
+        self.abund = None
         self.unit = None
-        self._read(filename)
+        self.energy_unit = None
+        linelist = self.loads(filename)
 
-    @property
-    def filename(self):
-        """str: Source filename """
-        return self._filename
-
-    @property
-    def n(self):
-        """int: number of spectral lines """
-        return self._nlines
-
-    @property
-    def linelist(self):
-        """LineList: LineList data """
-        return self._linelist
-
-    @property
-    def valdatmo(self):
-        """str: Atmopshere used by Vald """
-        return self._valdatmo
-
-    @property
-    def abund(self):
-        """Abund: Elemental abundances used by Vald """
-        return self._abund
+        super().__init__(linelist, lineformat=self.lineformat, medium=self.medium)
+        # Convert to desired medium
+        if medium is not None:
+            self.medium = medium
 
     @staticmethod
-    def read(filename):
+    def load(filename):
         """
         Read line data file from the VALD extract stellar service
 
@@ -80,7 +55,7 @@ class ValdFile:
         """
         return ValdFile(filename)
 
-    def _read(self, filename):
+    def loads(self, filename):
         logger.info("Loading VALD file %s", filename)
 
         with open(filename, "r") as file:
@@ -90,24 +65,26 @@ class ValdFile:
         self.parse_columns(lines[2])
         # TODO how to recognise extended format
         fmt = "long" if lines[4][:2] == "' " else "short"
+        n = self.nlines
 
         try:
             if fmt == "long":
-                linedata = lines[3 : 3 + self.n * 4]
-                atmodata = lines[3 + self.n * 4]
-                abunddata = lines[4 + self.n * 4 : 22 + self.n * 4]
+                linedata = lines[3 : 3 + n * 4]
+                atmodata = lines[3 + n * 4]
+                abunddata = lines[4 + n * 4 : 22 + n * 4]
             elif fmt == "short":
-                linedata = lines[3 : 3 + self.n]
-                atmodata = lines[3 + self.n]
-                abunddata = lines[4 + self.n : 22 + self.n]
+                linedata = lines[3 : 3 + n]
+                atmodata = lines[3 + n]
+                abunddata = lines[4 + n : 22 + n]
         except IndexError:
             msg = "Linelist file is shorter than it should be according to the number of lines. Is it incomplete?"
             logger.error(msg)
             raise IOError(msg)
 
-        self._linelist = self.parse_linedata(linedata, fmt=fmt)
-        self._valdatmo = self.parse_valdatmo(atmodata)
-        self._abund = self.parse_abund(abunddata)
+        linelist = self.parse_linedata(linedata, fmt=fmt)
+        self.atmo = self.parse_valdatmo(atmodata)
+        self.abund = self.parse_abund(abunddata)
+        return linelist
 
     def parse_header(self, line):
         """
@@ -128,35 +105,33 @@ class ValdFile:
         if len(words) < 5 or words[5] != "Wavelength region":
             raise ValdError(f"{self._filename} is not a VALD line data file")
         try:
-            self._wavelo = float(words[0])
-            self._wavehi = float(words[1])
-            self._nlines = int(words[2])
-            self._nlines_proc = int(words[3])
-            self._vmicro = float(words[4])
+            self.nlines = int(words[2])
+            # self._wavelo = float(words[0])
+            # self._wavehi = float(words[1])
+            # self._nlines_proc = int(words[3])
+            # self._vmicro = float(words[4])
+            pass
         except:
             raise ValdError(f"{self._filename} is not a VALD line data file")
 
     def parse_columns(self, line):
-        match = re.search("WL_(air|vac)\((.*?)\)", line)
+        match = re.search(r"WL_(air|vac)\((.*?)\)", line)
         medium = match.group(1)
         unit = match.group(2)
 
-        match = re.search("E_low\((.*?)\)", line)
+        match = re.search(r"E_low\((.*?)\)", line)
         if match is None:
-            match = re.search("Excit\((.*?)\)", line)
+            match = re.search(r"Excit\((.*?)\)", line)
         energy_unit = match.group(1)
 
         if medium == "air":
-            self.medium = "air"
+            self._medium = "air"
         elif medium == "vac":
-            self.medium = "vac"
+            self._medium = "vac"
         else:
             raise ValueError(
                 "Could not determine the medium that the wavelength is based on (air or vacuum)"
             )
-
-        if self.desired_medium is None:
-            self.desired_medium = self.medium
 
         if unit == "A":
             self.unit = u.AA
@@ -273,15 +248,7 @@ class ValdFile:
         factor = self.unit.to(u.AA)
         linelist["wlcent"] *= factor
         self.unit = "Angstrom"
-
-        if self.medium == "air" and self.desired_medium == "vac":
-            linelist["wlcent"] = air2vac(linelist["wlcent"])
-            self.medium = "vac"
-        elif self.medium == "vac" and self.desired_medium == "air":
-            linelist["wlcent"] = vac2air(linelist["wlcent"])
-            self.medium = "air"
-
-        linelist = LineList(linelist, lineformat=fmt, medium=self.medium)
+        self.lineformat = fmt
 
         return linelist
 

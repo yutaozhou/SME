@@ -9,7 +9,7 @@ from tqdm import tqdm
 from scipy.constants import speed_of_light
 
 from . import broadening
-from .atmosphere import interp_atmo_grid
+from .atmosphere.interpolation import interp_atmo_grid
 from .continuum_and_radial_velocity import match_rv_continuum
 from .integrate_flux import integrate_flux
 from .large_file_storage import setup_lfs

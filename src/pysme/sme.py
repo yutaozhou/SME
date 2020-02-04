@@ -10,173 +10,13 @@ from scipy.io import readsav
 
 from . import __file_ending__, __version__, echelle, persistence
 from .abund import Abund
+from .atmosphere.atmosphere import Atmosphere
 from .iliffe_vector import Iliffe_vector
-from .linelist import LineList
+from .linelist.linelist import LineList
+
+from .data_structure import *
 
 logger = logging.getLogger(__name__)
-
-
-def this(self, x):
-    """ This just returns the input """
-    return x
-
-
-def notNone(func):
-    def f(self, value):
-        return func(self, value) if value is not None else None
-
-    return f
-
-
-def uppercase(func):
-    def f(self, value):
-        try:
-            value = value.upper()
-        except AttributeError:
-            pass
-        return func(self, value)
-
-    return f
-
-
-def lowercase(func):
-    def f(self, value):
-        try:
-            value = value.casefold()
-        except AttributeError:
-            pass
-        return func(self, value)
-
-    return f
-
-
-def oneof(*options):
-    def f(self, value):
-        if value not in options:
-            raise ValueError(f"Received {value} but expected one of {options}")
-        return value
-
-    return f
-
-
-def astype(func):
-    def f(self, value):
-        if isinstance(value, func):
-            return value
-        return func(value)
-
-    return f
-
-
-asfloat = astype(float)
-asstr = astype(str)
-asbool = astype(bool)
-absolute = lambda self, value: abs(value)
-
-
-def array(shape, dtype, allow_None=True):
-    def f(self, value):
-        if value is not None:
-            value = np.asarray(value, dtype=dtype)
-            value = np.atleast_1d(value)
-            if shape is not None:
-                value = value.reshape(shape)
-        elif not allow_None:
-            raise ValueError(f"Received None but expected datatype {dtype}")
-        return value
-
-    return f
-
-
-def vector(self, value):
-    if value is None:
-        return None
-    elif np.isscalar(value):
-        wind = [0, *np.cumsum(self.wave.sizes)] if self.wave is not None else None
-        values = np.full(self.wave.size, value)
-        value = Iliffe_vector(values=values, index=wind)
-    elif isinstance(value, np.ndarray):
-        value = np.require(value, requirements="W")
-        if value.ndim == 1:
-            wind = [0, *np.cumsum(self.wave.sizes)] if self.wave is not None else None
-            value = Iliffe_vector(values=value, index=wind)
-        else:
-            value = Iliffe_vector(nseg=len(value), values=value)
-    elif isinstance(value, list):
-        value = Iliffe_vector(nseg=len(value), values=value)
-    elif isinstance(value, Iliffe_vector):
-        pass
-    elif isinstance(value, np.lib.npyio.NpzFile):
-        value = Iliffe_vector._load(value)
-    else:
-        raise TypeError("Input value is of the wrong type")
-
-    return value
-
-
-# Shorter versions, but less obvious (also "_name" is calculated each time, instead of once?)
-# fget = lambda name, func: lambda self: func(getattr(self, f"_{name}"))
-# fset = lambda name, func: lambda self, value: setattr(self, f"_{name}", func(self, value))
-
-
-def fget(name, func):
-    name = f"_{name}"
-
-    def f(self):
-        return func(self, getattr(self, name))
-
-    return f
-
-
-def fset(name, func):
-    name = f"_{name}"
-
-    def f(self, value):
-        setattr(self, name, func(self, value))
-
-    return f
-
-
-def CollectionFactory(cls):
-    """ Decorator that turns Collection _fields into properties """
-
-    # Add properties to the class
-    for name, _, setter, getter, doc in cls._fields:
-        setattr(cls, name, property(fget(name, getter), fset(name, setter), None, doc))
-    cls._names = [f[0] for f in cls._fields]
-
-    return cls
-
-
-@CollectionFactory
-class Collection(persistence.IPersist):
-    _fields = []  # [("name", "default", str, this, "doc")]
-
-    def __init__(self, **kwargs):
-        for name, default, *_ in self._fields:
-            setattr(self, name, copy(default))
-
-        for key, value in kwargs.items():
-            if key in self._names:
-                if isinstance(value, bytes):
-                    value = value.decode()
-                elif isinstance(value, np.ndarray) and value.dtype == np.dtype("O"):
-                    value = value.astype(str)
-                setattr(self, key, value)
-
-    def __getitem__(self, key):
-        key = key.casefold()
-        return getattr(self, key)
-
-    def __setitem__(self, key, value):
-        key = key.casefold()
-        setattr(self, key, value)
-
-    def __contains__(self, key):
-        return key in dir(self) and getattr(self, key) is not None
-
-    def citation(self, format="string"):
-        return []
 
 
 @CollectionFactory
@@ -207,9 +47,11 @@ class Parameters(Collection):
         if isinstance(value, Abund):
             self.__abund = value
         else:
-            logger.warning("Abundance set using just a pattern, assuming that"
-                            f"it has format {self.__abund.type}."
-                            "If that is incorrect, try changing the format first.")
+            logger.warning(
+                "Abundance set using just a pattern, assuming that"
+                f"it has format {self.__abund.type}."
+                "If that is incorrect, try changing the format first."
+            )
             self.__abund = Abund(monh=self.monh, pattern=value, type=self.__abund.type)
 
     @property
@@ -223,76 +65,6 @@ class Parameters(Collection):
 
     def citation(self, format="string"):
         return self.abund.citation()
-
-
-@CollectionFactory
-class Atmosphere(Parameters):
-    """
-    Atmosphere structure
-    contains all information to describe the solar atmosphere
-    i.e. temperature etc in the different layers
-    as well as stellar parameters and abundances
-    """
-
-    # fmt: off
-    _fields = Parameters._fields + [
-        ("vturb", 0, absolute, this, "float: turbulence velocity in km/s"),
-        ("lonh", 0, asfloat, this, "float: ?"),
-        ("source", None, asstr, this, "str: datafile name of this data"),
-        ("method", None, lowercase(oneof(None, "grid", "embedded")), this, 
-            "str: whether the data source is a grid or a fixed atmosphere"),
-        ("geom", None, uppercase(oneof(None, "PP", "SPH")), this,
-            "str: the geometry of the atmopshere model"),
-        ("radius", 0, asfloat, this, "float: radius of the spherical model"),
-        ("height", 0, asfloat, this, "float: height of the spherical model"),
-        ("opflag", [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0], array(20, int), this,
-            "array of size (20,): opacity flags"),
-        ("wlstd", 5000, asfloat, this, "float: wavelength standard deviation"),
-        ("depth", None, uppercase(oneof(None, "RHOX", "TAU")), this,
-            "str: flag that determines whether to use RHOX or TAU for calculations"),
-        ("interp", None, uppercase(oneof(None, "RHOX", "TAU")), this,
-            "str: flag that determines whether to use RHOX or TAU for interpolation"),
-        ("rhox", None, array(None, "f8"), this,
-            "array: mass column density"),
-        ("tau", None, array(None, "f8"), this, 
-            "array: continuum optical depth"),
-        ("temp", None, array(None, "f8"), this,
-            "array: temperature profile in Kelvin"),
-        ("rho", None, array(None, "f8"), this,
-            "array: density profile"),
-        ("xna", None, array(None, "f8"), this,
-            "array: number density of atoms in 1/cm**3"),
-        ("xne", None, array(None, "f8"), this,
-            "array: number density of electrons in 1/cm**3")
-    ]
-    # fmt: on
-
-    @property
-    def names(self):
-        return self._names
-
-    @property
-    def dtype(self):
-        obj = lambda: None
-        obj.names = [n.upper() for n in self.names]
-        return obj
-
-    @property
-    def ndep(self):
-        scale = self.temp
-        if scale is not None:
-            return scale.shape[0]
-        return None
-
-    @ndep.setter
-    def ndep(self, value):
-        pass
-
-    def citation(self, format="string"):
-        if self.source is None:
-            return []
-        # TODO Get the data from the file
-        return [self.source]
 
 
 @CollectionFactory
