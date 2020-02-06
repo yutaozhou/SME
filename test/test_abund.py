@@ -1,9 +1,8 @@
-import pytest
-from pysme.abund import Abund
 from collections import OrderedDict
 
 import numpy as np
-
+import pytest
+from pysme.abund import Abund
 
 pattern_names = ["Asplund2009", "Grevesse2007", "Empty"]
 types = ["H=12", "n/nH", "n/nTot", "SME"]

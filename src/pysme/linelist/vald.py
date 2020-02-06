@@ -4,20 +4,20 @@ Module for handling linelist data from the VALD3 database (http://vald.astro.uu.
 
 """
 import logging
-from io import StringIO
 import re
+from io import StringIO
 
 import numpy as np
 import pandas as pd
 from astropy import units as u
 
 from ..abund import Abund
-from .linelist import FileError, LineList
+from .linelist import LineListError, LineList
 
 logger = logging.getLogger(__name__)
 
 
-class ValdError(FileError):
+class ValdError(LineListError):
     """ Vald Data File Error """
 
 

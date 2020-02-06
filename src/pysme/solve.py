@@ -19,7 +19,9 @@ from scipy.optimize._numdiff import approx_derivative
 
 from . import __file_ending__, broadening
 from .abund import Abund
-from .atmosphere.atmosphere import AtmosphereError, krz_file
+from .atmosphere.atmosphere import AtmosphereError
+from .atmosphere.savfile import SavFile
+from .atmosphere.krzfile import KrzFile
 from .atmosphere.interpolation import interp_atmo_grid
 from .config import Config
 from .continuum_and_radial_velocity import match_rv_continuum
@@ -245,7 +247,7 @@ class SME_Solver:
             atmo_file = self.lfs_atmo.get(atmo_file)
 
             if ext == ".sav":
-                atmo_grid = readsav(atmo_file)["atmo_grid"]
+                atmo_grid = SavFile(atmo_file)
 
                 teff = np.unique(atmo_grid.teff)
                 teff = np.min(teff), np.max(teff)
@@ -261,7 +263,7 @@ class SME_Solver:
             elif ext == ".krz":
                 # krz atmospheres are fixed to one parameter set
                 # allow just "small" area around that
-                atmo = krz_file(atmo_file)
+                atmo = KrzFile(atmo_file)
                 bounds["teff"] = atmo.teff - 500, atmo.teff + 500
                 bounds["logg"] = atmo.logg - 1, atmo.logg + 1
                 bounds["monh"] = atmo.monh - 1, atmo.monh + 1

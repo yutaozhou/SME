@@ -3,8 +3,8 @@ from os.path import dirname, join
 import numpy as np
 import pytest
 
-from pysme.linelist import LineList
-from pysme.vald import ValdFile, ValdError
+from pysme.linelist.linelist import LineList
+from pysme.linelist.vald import ValdFile, ValdError
 from pysme.abund import Abund
 
 
@@ -71,9 +71,7 @@ def test_valdfile():
     """Test class to read a VALD line data file.
     """
     testdir = dirname(__file__)
-    vf = ValdFile(join(testdir, "testcase1.lin"))
-
-    linelist = vf.linelist
+    linelist = ValdFile(join(testdir, "testcase1.lin"))
 
     assert len(linelist) == 44
     assert linelist.lineformat == "short"
@@ -90,14 +88,12 @@ def test_medium():
     testdir = dirname(__file__)
     vf = ValdFile(join(testdir, "testcase1.lin"), medium="vac")
 
-    assert vf.linelist.medium == "vac"
+    assert vf.medium == "vac"
 
 
 def test_short_format():
     testdir = Path(__file__).parent
-    vf = ValdFile(testdir / "testcase1.lin")
-
-    linelist = vf.linelist
+    linelist = ValdFile(testdir / "testcase1.lin")
 
     assert linelist.lineformat == "short"
     assert len(linelist) == 44
@@ -110,15 +106,13 @@ def test_short_format():
     with pytest.raises(AttributeError):
         _ = linelist.extra
 
-    assert isinstance(vf.abund, Abund)
-    assert isinstance(vf.valdatmo, str)
+    assert isinstance(linelist.abund, Abund)
+    assert isinstance(linelist.atmo, str)
 
 
 def test_long_format():
     testdir = Path(__file__).parent
-    vf = ValdFile(testdir / "testcase3.lin")
-
-    linelist = vf.linelist
+    linelist = ValdFile(testdir / "testcase3.lin")
 
     assert linelist.lineformat == "long"
     assert len(linelist) == 67
@@ -132,6 +126,6 @@ def test_long_format():
     assert linelist.term_lower is not None
     assert linelist.term_upper is not None
 
-    assert isinstance(vf.abund, Abund)
-    assert isinstance(vf.valdatmo, str)
+    assert isinstance(linelist.abund, Abund)
+    assert isinstance(linelist.atmo, str)
 

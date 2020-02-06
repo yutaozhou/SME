@@ -8,7 +8,7 @@ import numpy as np
 
 from pysme.sme import SME_Structure as SME_Struct
 from pysme.iliffe_vector import Iliffe_vector
-from pysme.vald import ValdFile
+from pysme.linelist.vald import ValdFile
 from pysme.sme_synth import SME_DLL
 from pysme.nlte import nlte
 from pysme.synthesize import Synthesizer, synthesize_spectrum
@@ -28,7 +28,7 @@ def make_minimum_structure():
     sme.vmac = 1
     sme.vsini = 1
     sme.abund = Abund.solar()
-    sme.linelist = ValdFile(f"{cwd}/testcase3.lin").linelist
+    sme.linelist = ValdFile(f"{cwd}/testcase3.lin")
     sme.atmo.source = "marcs2012p_t2.0.sav"
     sme.atmo.method = "grid"
 

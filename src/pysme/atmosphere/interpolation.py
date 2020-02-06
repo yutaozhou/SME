@@ -6,8 +6,8 @@ import numpy as np
 from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
 
-from .atmosphere import Atmosphere as Atmo
-from .atmosphere import sav_file
+from .atmosphere import Atmosphere as Atmo, AtmosphereError
+from .atmosphere.savfile import SavFile
 
 logger = logging.getLogger(__name__)
 
@@ -61,8 +61,8 @@ def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
     ------
     atmo : Atmosphere
         interpolated atmosphere
-        .rhox (vector[ndep]) mass column density (g/cm^2)
-        .tau  (vector[ndep]) reference optical depth (at 5000 Å)
+        .RHOX (vector[ndep]) mass column density (g/cm^2)
+        .TAU  (vector[ndep]) reference optical depth (at 5000 Å)
         .temp (vector[ndep]) temperature (K)
         .xne  (vector[ndep]) electron number density (1/cm^3)
         .xna  (vector[ndep]) atomic number density (1/cm^3)
@@ -74,7 +74,7 @@ def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
     2004-Apr-15 Valenti
         Initial coding.
     MB
-        interpolation on tau scale
+        interpolation on TAU scale
     2012-Oct-30 TN
         Rewritten to use either column mass (RHOX) or
         reference optical depth (TAU) as vertical scale. Shift-interpolation
@@ -94,8 +94,8 @@ def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
         using one variable (e.g., TAU) and radiative transfer using a different
         variable (e.g. RHOX). The atmosphere array could only store one depth
         variable, meaning the radiative transfer variable had to be the same
-        as the interpolation variable. Returns atmo.rhox if available and also
-        atmo.tau if available. Since both depth variables are returned, if
+        as the interpolation variable. Returns atmo.RHOX if available and also
+        atmo.TAU if available. Since both depth variables are returned, if
         available, this routine no longer needs to know which depth variable
         will be used for radiative transfer. Only the interpolation variable
         is important. Thus, the interpvar= keyword argument replaces the
@@ -115,9 +115,9 @@ def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
     """
 
     # Internal program parameters.
-    min_drhox = 0.01  # minimum fractional step in rhox
-    min_dtau = 0.01  # minimum fractional step in tau
-
+    min_drhox = min_dtau = 0.01  # minimum fractional step in RHOX
+    # min_dtau = 0.01  # minimum fractional step in TAU
+    interpvar = interpvar.lower()
     ##
     ## Select interpolation variable (RHOX vs. TAU)
     ##
@@ -125,8 +125,8 @@ def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
     # Check which depth scales are available in both input atmospheres.
     tags1 = atmo1.dtype.names
     tags2 = atmo2.dtype.names
-    ok_tau = "TAU" in tags1 and "TAU" in tags2
-    ok_rhox = "RHOX" in tags1 and "RHOX" in tags2
+    ok_tau = "tau" in tags1 and "tau" in tags2
+    ok_rhox = "rhox" in tags1 and "rhox" in tags2
     if not ok_tau and not ok_rhox:
         raise AtmosphereError(
             "atmo1 and atmo2 structures must both contain RHOX or TAU"
@@ -134,11 +134,8 @@ def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
 
     # Set interpolation variable, if not specified by keyword argument.
     if interpvar is None:
-        if ok_tau:
-            interpvar = "TAU"
-        else:
-            interpvar = "RHOX"
-    if interpvar != "TAU" and interpvar != "RHOX":
+        interpvar = "tau" if ok_tau else "rhox"
+    if interpvar != "tau" and interpvar != "rhox":
         raise AtmosphereError("interpvar must be 'TAU' (default) or 'RHOX'")
 
     ##
@@ -147,35 +144,21 @@ def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
 
     # Define depth scale for atmosphere #1
     itop1 = itop
-    if interpvar == "RHOX":
-        while atmo1.rhox[itop1 + 1] / atmo1.rhox[itop1] - 1 <= min_drhox:
-            itop1 += 1
-    elif interpvar == "TAU":
-        while atmo1.tau[itop1 + 1] / atmo1.tau[itop1] - 1 <= min_dtau:
-            itop1 += 1
+    while atmo1[interpvar][itop1 + 1] / atmo1[interpvar][itop1] - 1 <= min_drhox:
+        itop1 += 1
 
-    ibot1 = atmo1.ndep - 1
+    ibot1 = atmo1[interpvar].size - 1
     ndep1 = ibot1 - itop1 + 1
-    if interpvar == "RHOX":
-        depth1 = np.log10(atmo1.rhox[itop1 : ibot1 + 1])
-    elif interpvar == "TAU":
-        depth1 = np.log10(atmo1.tau[itop1 : ibot1 + 1])
+    depth1 = np.log10(atmo1[interpvar][itop : ibot1 + 1])
 
     # Define depth scale for atmosphere #2
     itop2 = itop
-    if interpvar == "RHOX":
-        while atmo2.rhox[itop2 + 1] / atmo2.rhox[itop2] - 1 <= min_drhox:
-            itop2 += 1
-    elif interpvar == "TAU":
-        while atmo2.tau[itop2 + 1] / atmo2.tau[itop2] - 1 <= min_dtau:
-            itop2 += 1
+    while atmo2[interpvar][itop2 + 1] / atmo2[interpvar][itop2] - 1 <= min_drhox:
+        itop2 += 1
 
-    ibot2 = atmo2.ndep - 1
+    ibot2 = atmo2[interpvar].size - 1
     ndep2 = ibot2 - itop2 + 1
-    if interpvar == "RHOX":
-        depth2 = np.log10(atmo2.rhox[itop2 : ibot2 + 1])
-    elif interpvar == "TAU":
-        depth2 = np.log10(atmo2.tau[itop2 : ibot2 + 1])
+    depth2 = np.log10(atmo2[interpvar][itop2 : ibot2 + 1])
 
     ##
     ## Prepare to find best shift parameters for each atmosphere vector.
@@ -183,7 +166,7 @@ def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
 
     # List of atmosphere vectors that need to be shifted.
     # The code below assumes 'TEMP' is the first vtag in the list.
-    vtags = ["TEMP", "XNE", "XNA", "RHO", interpvar]
+    vtags = ["temp", "xne", "xna", "rho", interpvar]
     if interpvar == "RHOX" and ok_tau:
         vtags += ["TAU"]
     if interpvar == "TAU" and ok_rhox:
@@ -313,13 +296,13 @@ def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
     # Construct output structure with interpolated atmosphere.
     # Might be wise to interpolate abundances, in case those ever change.
     atmo = Atmo(interp=interpvar)
-    stags = ["TEFF", "LOGG", "MONH", "VTURB", "LONH", "ABUND"]
+    stags = ["teff", "logg", "monh", "vturb", "lonh", "abund"]
     ndep_orig = len(atmo1.temp)
     for tag in tags1:
 
         # Default is to copy value from atmo1. Trim vectors.
         value = atmo1[tag]
-        if np.size(value) == ndep_orig and tag != "ABUND":
+        if np.size(value) == ndep_orig and tag != "abund":
             value = value[:ndep]
 
         # Vector quantities that have already been interpolated.
@@ -335,11 +318,11 @@ def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
                 value = atmo1[tag]
 
         # Remaining cases.
-        if tag == "NDEP":
+        if tag == "ndep":
             value = ndep
 
         # Abundances
-        if tag == "ABUND":
+        if tag == "abund":
             value = (1 - frac) * atmo1[tag] + frac * atmo2[tag]
 
         # Create or add to output structure.
@@ -398,8 +381,8 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
     20-May-12 UH
         Use _extra to pass grid file name.
     30-Oct-12 TN
-        Rewritten to interpolate on either the tau (optical depth)
-        or the rhox (column mass) scales. Renamed from interpkrz2/3
+        Rewritten to interpolate on either the TAU (optical depth)
+        or the RHOX (column mass) scales. Renamed from interpkrz2/3
         to be used as a general routine, called via interfaces.
     29-Apr-13 TN
         krz3 structure renamed to the generic name atmo_grid.
@@ -439,15 +422,13 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
 
     # Internal parameters.
     nb = 2  # number of bracket points
-    itop = 1  # index of top depth to use on rhox scale
+    itop = 1  # index of top depth to use on RHOX scale
 
     atmo_file = atmo_in.source
     self = interp_atmo_grid
     if not hasattr(self, "atmo_grid"):
-        self.atmo_grid = atmo_grid = sav_file(atmo_file, lfs_atmo)
-    else:
-        self.atmo_grid = atmo_grid = self.atmo_grid.load(atmo_file, reload=reload)
-
+        self.atmo_grid = SavFile(atmo_file, lfs_atmo)
+    atmo_grid = self.atmo_grid
     # Get field names in ATMO and ATMO_GRID structures.
     atags = [s for s in atmo_in.dtype.names]
     gtags = [s for s in atmo_grid.dtype.names]
@@ -459,19 +440,19 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
     # (4) 'TAU', if ATMO_GRID.TAU exists
     # Check that INTERP is valid and the corresponding field exists in ATMO.
     #
-    if "DEPTH" in atags and atmo_in.depth is not None:
-        depth = str.upper(atmo_in.depth)
-    elif "DEPTH" in gtags and atmo_grid.depth is not None:
-        depth = str.upper(atmo_grid.depth)
-    elif "RHOX" in gtags:
+    if "depth" in atags and atmo_in.depth is not None:
+        depth = atmo_in.depth
+    elif "depth" in gtags and atmo_grid.depth is not None:
+        depth = atmo_grid.depth
+    elif "rhox" in gtags:
         depth = "RHOX"
-    elif "TAU" in gtags:
+    elif "tau" in gtags:
         depth = "TAU"
     else:
         raise AtmosphereError("no value for ATMO.DEPTH")
     if depth != "TAU" and depth != "RHOX":
         raise AtmosphereError("ATMO.DEPTH must be 'TAU' or 'RHOX', not '%s'" % depth)
-    if depth not in gtags:
+    if depth.lower() not in gtags:
         raise AtmosphereError(
             "ATMO.DEPTH='%s', but ATMO. %s does not exist" % (depth, depth)
         )
@@ -483,19 +464,19 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
     # (4) 'RHOX', if ATMO_GRID.RHOX exists
     # Check that INTERP is valid and the corresponding field exists in ATMO.
     #
-    if "INTERP" in atags and atmo_in.interp is not None:
-        interp = str.upper(atmo_in.interp)
-    elif "INTERP" in gtags and atmo_grid[0].interp is not None:
-        interp = str.upper(atmo_grid.interp)
-    elif "TAU" in gtags:
+    if atmo_in.interp is not None:
+        interp = atmo_in.interp
+    elif atmo_grid.interp is not None:
+        interp = atmo_grid.interp
+    elif "tau" in gtags:
         interp = "TAU"
-    elif "RHOX" in gtags:
+    elif "rhox" in gtags:
         interp = "RHOX"
     else:
         raise AtmosphereError("no value for ATMO.INTERP")
     if interp not in ["TAU", "RHOX"]:
         raise AtmosphereError("ATMO.INTERP must be 'TAU' or 'RHOX', not '%s'" % interp)
-    if interp not in gtags:
+    if interp.lower() not in gtags:
         raise AtmosphereError(
             "ATMO.INTERP='%s', but ATMO. %s does not exist" % (interp, interp)
         )
@@ -756,7 +737,7 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
     #  log(M/Msol) = log g - log g_sol - 2*log(R_sol / R)
     #  2 * log(R / R_sol) = log g_sol - log g + log(M / M_sol)
     #
-    if "RADIUS" in gtags and np.min(atmo_grid[icor].radius) > 1 and "HEIGHT" in gtags:
+    if "radius" in gtags and np.min(atmo_grid[icor].radius) > 1 and "height" in gtags:
         solR = 69.550e9  # radius of sun in cm
         sollogg = 4.44  # solar log g [cm s^-2]
         mass_cor = (
@@ -775,16 +756,15 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
     atmo.interp = interp
 
     # Create ATMO.GEOM, if necessary, and set value.
-    if "GEOM" in atags:
-        if atmo_in.geom != geom:
-            if atmo_in.geom == "SPH":
-                raise AtmosphereError(
-                    "Input ATMO.GEOM='%s' not valid for requested model." % atmo_in.geom
-                )
-            else:
-                logger.info(
-                    "Input ATMO.GEOM='%s' overrides '%s' from grid.", atmo_in.geom, geom
-                )
+    if "geom" in atags and atmo_in.geom != geom:
+        if atmo_in.geom == "SPH":
+            raise AtmosphereError(
+                "Input ATMO.GEOM='%s' not valid for requested model." % atmo_in.geom
+            )
+        else:
+            logger.info(
+                "Input ATMO.GEOM='%s' overrides '%s' from grid.", atmo_in.geom, geom
+            )
     atmo.geom = geom
     atmo.source = atmo_in.source
     atmo.method = atmo_in.method

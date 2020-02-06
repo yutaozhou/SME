@@ -195,6 +195,8 @@ class Abund(IPersist):
         else:
             return {el: abund[Abund._elem_dict[el]] for el in elem}
 
+    _formats = ["H=12", "sme", "n/nTot", "n/nH"]
+
     # fmt: off
     _elem = (
         "H", "He",

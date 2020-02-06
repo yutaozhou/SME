@@ -5,8 +5,8 @@ import numpy as np
 
 from pysme.sme import SME_Structure as SME_Struct
 from pysme.abund import Abund
-from pysme.atmosphere import krz_file
-from pysme.linelist import LineList
+from pysme.atmosphere.atmosphere import KrzFile
+from pysme.linelist.linelist import LineList
 from pysme.sme_synth import SME_DLL
 from pysme.nlte import nlte
 
@@ -78,7 +78,7 @@ def linelist():
 
 @pytest.fixture
 def atmo(cwd):
-    return krz_file(cwd + "/testatmo1.krz")
+    return KrzFile(cwd + "/testatmo1.krz")
 
 
 @pytest.fixture

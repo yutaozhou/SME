@@ -160,10 +160,12 @@ class Grid:
 
         #:DirectAccessFile: The NLTE data file
         self.directory = DirectAccessFile(self.fname)
+        # The possible labels
         self._teff = self.directory["teff"]
         self._grav = self.directory["grav"]
         self._feh = self.directory["feh"]
         self._xfe = self.directory["abund"]
+        # The position of the models in the datafile
         self._keys = self.directory["models"].astype("U")
         self._depth = self.directory[depth_name]
 

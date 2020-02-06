@@ -11,13 +11,13 @@ import logging
 import numpy as np
 import pandas as pd
 
-from ..util import air2vac, vac2air
 from ..persistence import IPersist
+from ..util import air2vac, vac2air
 
 logger = logging.getLogger(__name__)
 
 
-class FileError(Exception):
+class LineListError(Exception):
     """Raise when attempt to read a line data file fails"""
 
 

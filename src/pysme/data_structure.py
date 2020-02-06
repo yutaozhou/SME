@@ -66,6 +66,7 @@ def astype(func):
     return f
 
 
+asint = astype(int)
 asfloat = astype(float)
 asstr = astype(str)
 asbool = astype(bool)
