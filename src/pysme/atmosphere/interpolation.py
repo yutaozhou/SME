@@ -7,7 +7,7 @@ from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
 
 from .atmosphere import Atmosphere as Atmo, AtmosphereError
-from .atmosphere.savfile import SavFile
+from .savfile import SavFile
 
 logger = logging.getLogger(__name__)
 
