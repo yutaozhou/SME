@@ -2,8 +2,9 @@ import numpy as np
 
 from scipy.constants import Boltzmann
 
-from .sme import (
-    Atmosphere,
+from .atmosphere import Atmosphere
+from ..abund import Abund
+from ..sme import (
     CollectionFactory,
     asfloat,
     this,
@@ -15,7 +16,6 @@ from .sme import (
     oneof,
     array,
 )
-from .abund import Abund
 
 
 k_boltz = Boltzmann * 1e7
@@ -69,7 +69,7 @@ class MarcsFile(Atmosphere):
         teff, flux, g = param[:3]
         logg = np.log10(g)
         name = name.decode().strip()
-        monh = float(name.partition("z")[2].partition("t")[0])
+        monh = float(name.partition("z")[2].partition("t")[0].partition("m")[0])
         vturb = float(name.partition("t")[2])
 
         abund = np.copy(abund)
