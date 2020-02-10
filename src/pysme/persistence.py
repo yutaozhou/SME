@@ -186,7 +186,7 @@ def write_as_idl(sme):
     wind = np.cumsum(sme.wave.shape[1]) + 1
 
     idl_fields = {
-        "version": float(sme.version),
+        "version": sme.version,
         "id": sme.id,
         "teff": sme.teff,
         "grav": sme.logg,
