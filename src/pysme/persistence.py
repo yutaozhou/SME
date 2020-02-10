@@ -234,11 +234,11 @@ def write_as_idl(sme):
         # "ip_x": sme.ip_x,
         # "ip_y": sme.ip_y,
         "atmo": {
-            "method": sme.atmo.method,
-            "source": sme.atmo.source,
-            "depth": sme.atmo.depth,
-            "interp": sme.atmo.interp,
-            "geom": sme.atmo.geom,
+            "method": str(sme.atmo.method),
+            "source": str(sme.atmo.source),
+            "depth": str(sme.atmo.depth),
+            "interp": str(sme.atmo.interp),
+            "geom": str(sme.atmo.geom),
         },
     }
 
@@ -288,6 +288,7 @@ def save_as_idl(sme, fname):
     """
     with tempfile.NamedTemporaryFile("w+", suffix=".pro") as temp:
         tempname = temp.name
+        temp.write("None = ''\n")
         temp.write("sme = {")
         # TODO: Save data as idl compatible data
         temp.write(write_as_idl(sme))
