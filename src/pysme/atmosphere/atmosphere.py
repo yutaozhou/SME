@@ -1,21 +1,24 @@
 """ Handles reading and interpolation of atmopshere (grid) data """
+import io
+import json
 import logging
 
 import numpy as np
 
+from ..abund import Abund
 from ..data_structure import (
-    CollectionFactory,
     Collection,
+    CollectionFactory,
     absolute,
-    this,
+    array,
     asfloat,
     asstr,
     lowercase,
-    uppercase,
     oneof,
-    array,
+    this,
+    uppercase,
 )
-from ..abund import Abund
+from .. import persistence
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +121,7 @@ class AtmosphereGrid(np.recarray):
 
     # fmt: off
     _fields = [
+        ("grid", None, this, this, "np.recarray: the data grid"),
         ("source", None, asstr, this, "str: datafile name of this data"),
         ("method", None, lowercase(oneof(None, "grid", "embedded")), this, 
             "str: whether the data source is a grid or a fixed atmosphere"),
@@ -205,3 +209,27 @@ class AtmosphereGrid(np.recarray):
     @property
     def ndep(self):
         return self.shape[1]
+
+    @property
+    def _grid(self):
+        return self
+
+    def citation(self, format="string"):
+        return self.citation_info
+
+    def save(self, filename, compressed=False):
+        persistence.save(filename, self)
+
+    @classmethod
+    def load(cls, filename):
+        data = np.load(filename)
+
+        grid = data["grid"]
+        grid = grid.view(cls)
+
+        meta = json.loads(data["info.json"])
+
+        for key, value in meta.items():
+            setattr(grid, key, value)
+
+        return grid
