@@ -4,10 +4,11 @@ import os.path
 
 from pysme.gui import plot_plotly
 from pysme import sme as SME
-from pysme.sme import Atmosphere
 from pysme import util
 from pysme.solve import solve
 from pysme.synthesize import synthesize_spectrum
+
+# from pysme.persistence import save_as_idl
 
 if __name__ == "__main__":
 
@@ -25,6 +26,8 @@ if __name__ == "__main__":
 
     # Load your existing SME structure or create your own
     sme = SME.SME_Structure.load(in_file)
+
+    # save_as_idl(sme, "sme.sav")
 
     # Change parameters if your want
     sme.vsini = 0
