@@ -11,7 +11,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 # Update this if the names in sme change
-updates = {}
+updates = {"idlver": "system_info"}
 
 
 def toBaseType(value):
