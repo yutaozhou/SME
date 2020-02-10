@@ -427,7 +427,8 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
     atmo_file = atmo_in.source
     self = interp_atmo_grid
     if not hasattr(self, "atmo_grid"):
-        self.atmo_grid = SavFile(atmo_file, lfs_atmo)
+        atmo_file = lfs_atmo.get(atmo_file)
+        self.atmo_grid = SavFile(atmo_file)
     atmo_grid = self.atmo_grid
     # Get field names in ATMO and ATMO_GRID structures.
     atags = [s for s in atmo_in.dtype.names]

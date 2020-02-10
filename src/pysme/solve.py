@@ -247,7 +247,7 @@ class SME_Solver:
             atmo_file = self.lfs_atmo.get(atmo_file)
 
             if ext == ".sav":
-                atmo_grid = SavFile(atmo_file, lfs_atmo=self.lfs_atmo)
+                atmo_grid = SavFile(atmo_file)
 
                 teff = np.unique(atmo_grid.teff)
                 teff = np.min(teff), np.max(teff)

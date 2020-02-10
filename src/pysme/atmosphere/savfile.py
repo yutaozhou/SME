@@ -7,9 +7,8 @@ from .atmosphere import AtmosphereGrid
 class SavFile(AtmosphereGrid):
     """ IDL savefile atmosphere grid """
 
-    def __new__(cls, filename, lfs_atmo):
-        path = lfs_atmo.get(filename)
-        data = readsav(path)
+    def __new__(cls, filename):
+        data = readsav(filename)
 
         npoints = data["atmo_grid_maxdep"]
         ngrids = data["atmo_grid_natmo"]
