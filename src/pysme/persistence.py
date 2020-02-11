@@ -214,7 +214,9 @@ def write_as_idl(sme):
         "vsini": sme.vsini,
         "vrad": sme.vrad.tolist() if vrad_flag == 0 else sme.vrad[0],
         "vrad_flag": vrad_flag,
-        "cscale": sme.cscale.tolist() if cscale_flag in [0, 1] else sme.cscale[0],
+        "cscale": sme.cscale.tolist()
+        if cscale_flag in [0, 1]
+        else sme.cscale[0].tolist(),
         "cscale_flag": cscale_flag,
         "gam6": sme.gam6,
         "h2broad": int(sme.h2broad),
@@ -238,7 +240,7 @@ def write_as_idl(sme):
         "wind": wind.tolist(),
         "sob": save_as_binary(sme.spec.ravel()),
         "uob": save_as_binary(sme.uncs.ravel()),
-        "mob": save_as_binary(sme.mask.ravel()),
+        "mob": save_as_binary(sme.mask.ravel().astype("int16")),
         "obs_name": "",
         "obs_type": 0,
         "iptype": sme.iptype,
@@ -300,7 +302,6 @@ def save_as_idl(sme, fname):
     """
     with tempfile.NamedTemporaryFile("w+", suffix=".pro") as temp:
         tempname = temp.name
-        temp.write("None = ''\n")
         temp.write("sme = {")
         # TODO: Save data as idl compatible data
         temp.write(write_as_idl(sme))
