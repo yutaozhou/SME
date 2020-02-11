@@ -3,6 +3,7 @@ import logging
 from zipfile import ZipFile
 import json
 import tempfile
+import sys
 import subprocess
 
 
@@ -51,6 +52,8 @@ def save(filename, data, folder=""):
         saves(file, data, folder=folder)
 
 
+# TODO: this is specific for Collection type objects
+# Move this to Collection, and not here
 def saves(file, data, folder=""):
     if folder != "" and folder[-1] != "/":
         folder = folder + "/"
@@ -141,6 +144,7 @@ def get_typecode(dtype):
         return "5"
     if dtype.name[:3] == "str":
         return dtype.name[3:]
+    raise ValueError("Don't recognise the datatype")
 
 
 temps_to_clean = []
@@ -156,12 +160,22 @@ def save_as_binary(arr):
         else:
             shape = arr.shape[::-1]
 
+        # Most arrays should be in the native endianness anyway
+        # But if not we swap it to the native representation
+        endian = arr.dtype.str[0]
+        if endian == "<":
+            endian = "little"
+        elif endian == ">":
+            endian = "big"
+        elif endian == "|":
+            endian = sys.byteorder
+
+        if endian != sys.byteorder:
+            arr = arr.newbyteorder().byteswap()
+            endian = "native"
+
         arr.tofile(temp)
-        value = [
-            temp.name,
-            str(list(shape)),
-            get_typecode(arr.dtype),
-        ]
+        value = [temp.name, str(list(shape)), get_typecode(arr.dtype), endian]
     temps_to_clean += [temp]
     return value
 
@@ -301,10 +315,11 @@ new_sme = {}
 for i = 0, n_elements(tags)-1 do begin
     arr = sme.(i)
     s = size(arr)
-    if (s[0] eq 1) and (s[1] eq 3) then begin
+    if (s[0] eq 1) and (s[1] eq 4) then begin
         void = execute('shape = ' + arr[1])
         type = fix(arr[2])
-        arr = read_binary(arr[0], data_dims=shape, data_type=type, endian='big')
+        endian = string(arr[3])
+        arr = read_binary(arr[0], data_dims=shape, data_type=type, endian=endian)
         if type eq 1 then begin
             ;string
             arr = string(arr)
@@ -319,10 +334,11 @@ for i = 0, n_elements(tags)-1 do begin
         for j = 0, n_elements(tags2)-1 do begin
             arr2 = tmp.(j)
             s = size(arr2)
-            if (s[0] eq 1) and (s[1] eq 3) then begin
+            if (s[0] eq 1) and (s[1] eq 4) then begin
                 void = execute('shape = ' + arr2[1])
                 type = fix(arr2[2])
-                arr2 = read_binary(arr2[0], data_dims=shape, data_type=type, endian='big')
+                endian = string(arr2[3])
+                arr2 = read_binary(arr2[0], data_dims=shape, data_type=type, endian=endian)
                 if type eq 1 then begin
                     ;string
                     arr2 = string(arr2)
