@@ -197,7 +197,7 @@ def write_as_idl(sme):
     data arrays are stored in seperate temp files, and only the filename is passed to idl
     """
 
-    wind = np.cumsum(sme.wave.shape[1]) + 1
+    wind = np.cumsum(sme.wave.shape[1]) - 1
     vrad_flag = {"none": -2, "whole": -1, "each": 0}[sme.vrad_flag]
     cscale_flag = {"none": -3, "fix": -2, "constant": 0, "linear": 1, "quadratic": 1,}[
         sme.cscale_flag
