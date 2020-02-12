@@ -199,9 +199,14 @@ def write_as_idl(sme):
 
     wind = np.cumsum(sme.wave.shape[1]) - 1
     vrad_flag = {"none": -2, "whole": -1, "each": 0}[sme.vrad_flag]
-    cscale_flag = {"none": -3, "fix": -2, "constant": 0, "linear": 1, "quadratic": 1,}[
+    cscale_flag = {"none": -3, "fix": -3, "constant": 0, "linear": 1, "quadratic": 1,}[
         sme.cscale_flag
     ]
+    if not sme.normalize_by_continuum:
+        cscale_flag = -2
+
+    abund = sme.abund.get_pattern(type="sme", raw=True)
+    abund[np.isnan(abund)] = -99
 
     idl_fields = {
         "version": 5.1,
@@ -214,9 +219,7 @@ def write_as_idl(sme):
         "vsini": sme.vsini,
         "vrad": sme.vrad.tolist() if vrad_flag == 0 else sme.vrad[0],
         "vrad_flag": vrad_flag,
-        "cscale": sme.cscale.tolist()
-        if cscale_flag in [0, 1]
-        else sme.cscale[0].tolist(),
+        "cscale": 1.0,
         "cscale_flag": cscale_flag,
         "gam6": sme.gam6,
         "h2broad": int(sme.h2broad),
@@ -227,7 +230,7 @@ def write_as_idl(sme):
         "chirat": 0.002,
         "nmu": sme.nmu,
         "nseg": sme.nseg,
-        "abund": save_as_binary(sme.abund.get_pattern(raw=True)),
+        "abund": save_as_binary(abund),
         "species": save_as_binary(sme.species),
         "atomic": save_as_binary(sme.atomic),
         "lande": save_as_binary(sme.linelist.lande),
