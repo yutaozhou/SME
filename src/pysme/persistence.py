@@ -224,7 +224,7 @@ def write_as_idl(sme):
         "accrt": sme.accrt,
         "clim": 0.01,
         "maxiter": sme.fitresults.maxiter,
-        # "chisq": sme.fitresults.chisq,
+        "chirat": 0.002,
         "nmu": sme.nmu,
         "nseg": sme.nseg,
         "abund": save_as_binary(sme.abund.get_pattern(raw=True)),
