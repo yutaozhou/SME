@@ -226,7 +226,7 @@ def write_as_idl(sme):
         "accwi": sme.accwi,
         "accrt": sme.accrt,
         "clim": 0.01,
-        "maxiter": sme.fitresults.maxiter,
+        "maxiter": 100,
         "chirat": 0.002,
         "nmu": sme.nmu,
         "nseg": sme.nseg,
