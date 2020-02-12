@@ -208,6 +208,13 @@ def write_as_idl(sme):
     abund = sme.abund.get_pattern(type="sme", raw=True)
     abund[np.isnan(abund)] = -99
 
+    fitvars = ["TEFF", "GRAV", "FEH", "VMIC", "VMAC", "VSINI", "GAM6", "VRAD"]
+    fitvars = [s.upper() for s in sme.fitparameters if s.upper() in fitvars]
+    if "logg" in sme.fitparameters:
+        fitvars += ["GRAV"]
+    if "monh" in sme.fitparameters:
+        fitvars += ["FEH"]
+
     idl_fields = {
         "version": 5.1,
         "id": sme.id,
@@ -248,6 +255,7 @@ def write_as_idl(sme):
         "obs_type": 0,
         "iptype": sme.iptype,
         "ipres": sme.ipres,
+        "glob_free": fitvars,
         # "ip_x": sme.ip_x,
         # "ip_y": sme.ip_y,
         "atmo": {
