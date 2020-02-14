@@ -8,6 +8,9 @@ from datetime import datetime as dt
 import numpy as np
 from scipy.io import readsav
 
+import pybtex
+
+
 from . import __file_ending__, __version__, echelle, persistence
 from .iliffe_vector import Iliffe_vector
 
@@ -166,7 +169,9 @@ def CollectionFactory(cls):
 
 @CollectionFactory
 class Collection(persistence.IPersist):
-    _fields = []  # [("name", "default", str, this, "doc")]
+    _fields = [
+        ("citation_info", "", asstr, this, "str: Bibtex representation of the citation")
+    ]  # [("name", "default", str, this, "doc")]
 
     def __init__(self, **kwargs):
         for name, default, *_ in self._fields:
@@ -191,5 +196,15 @@ class Collection(persistence.IPersist):
     def __contains__(self, key):
         return key in dir(self) and getattr(self, key) is not None
 
-    def citation(self, format="string"):
-        return []
+    def create_citation(self, citation_info, output="string"):
+        if output == "bibtex":
+            return citation_info
+        elif output == "string":
+            output = "plaintext"
+
+        return pybtex.format_from_string(
+            citation_info, style="plain", output_backend=output
+        )
+
+    def citation(self, output="string"):
+        return self.create_citation(self.citation_info, output=output)

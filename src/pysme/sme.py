@@ -9,7 +9,7 @@ import numpy as np
 from scipy.io import readsav
 
 from . import __file_ending__, __version__, echelle, persistence
-from .abund import Abund
+from .abund import Abund, elements as abund_elem
 from .atmosphere.atmosphere import Atmosphere
 from .iliffe_vector import Iliffe_vector
 from .linelist.linelist import LineList
@@ -102,7 +102,7 @@ class NLTE(Collection):
         # Convert IDL keywords to Python
         if "nlte_elem_flags" in kwargs.keys():
             elements = kwargs["nlte_elem_flags"]
-            self.elements = [Abund._elem[i] for i, j in enumerate(elements) if j == 1]
+            self.elements = [abund_elem[i] for i, j in enumerate(elements) if j == 1]
 
         if "nlte_subgrid_size" in kwargs.keys():
             self.subgrid_size = kwargs["nlte_subgrid_size"]
@@ -111,7 +111,7 @@ class NLTE(Collection):
             grids = kwargs["nlte_grids"]
             if isinstance(grids, (list, np.ndarray)):
                 grids = {
-                    Abund._elem[i]: name.decode()
+                    abund_elem[i]: name.decode()
                     for i, name in enumerate(grids)
                     if name != ""
                 }
@@ -164,7 +164,8 @@ class NLTE(Collection):
         self.elements.remove(element)
         self.grids.pop(element)
 
-    def citation(self, format="string"):
+    def citation(self, output="string"):
+        # TODO
         citations = [self.grids[el] for el in self.elements]
         return citations
 
@@ -294,6 +295,25 @@ class SME_Structure(Parameters):
         ("nlte", NLTE(), astype(NLTE), this, "NLTE: nlte calculation data"),
         ("system_info", Version(), astype(Version), this,
             "Version: information about the host system running the calculation for debugging"),
+        ("citation_info", r"""
+            @ARTICLE{2017A&A...597A..16P,
+                author = {{Piskunov}, Nikolai and {Valenti}, Jeff A.},
+                title = "{Spectroscopy Made Easy: Evolution}",
+                journal = {Astronomy \& Astrophysics},
+                keywords = {stars: abundances, radiative transfer, stars: fundamental parameters, stars: atmospheres, techniques: spectroscopic, Astrophysics - Instrumentation and Methods for Astrophysics, Astrophysics - Solar and Stellar Astrophysics},
+                year = "2017",
+                month = "Jan",
+                volume = {597},
+                eid = {A16},
+                pages = {A16},
+                doi = {10.1051/0004-6361/201629124},
+                archivePrefix = {arXiv},
+                eprint = {1606.06073},
+                primaryClass = {astro-ph.IM},
+                adsurl = {https://ui.adsabs.harvard.edu/abs/2017A&A...597A..16P},
+                adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+            }
+        """, asstr, this, "str: BibTex entry for SME")
     ]
     # fmt: on
 
@@ -329,7 +349,7 @@ class SME_Structure(Parameters):
         glob_free = kwargs.get("glob_free", [])
         ab_free = kwargs.get("ab_free", [])
         if len(ab_free) != 0:
-            ab_free = [f"abund {el}" for i, el in zip(ab_free, Abund._elem) if i == 1]
+            ab_free = [f"abund {el}" for i, el in zip(ab_free, abund_elem) if i == 1]
         fitparameters = np.concatenate((pname, glob_free, ab_free)).astype("U")
         #:array of size (nfree): Names of the free parameters
         self.fitparameters = np.unique(fitparameters)
@@ -597,11 +617,15 @@ class SME_Structure(Parameters):
         elif self.cscale_flag == "constant":
             self.cscale = np.sqrt(1 / self.cscale)
 
-    def citation(self, format="string"):
-        citation = ["SME citation", "PySME citation"]
-        citation += self.atmo.citation(format=format)
-        citation += self.nlte.citation(format=format)
-        return citation
+    def citation(self, output="string"):
+        citation = [self.citation_info]
+        citation += [self.atmo.citation_info]
+        citation += [self.abund.citation_info]
+        citation += [self.linelist.citation_info]
+        citation += [self.nlte.citation_info]
+        citation = "\n".join(citation)
+
+        return self.create_citation(citation, output=output)
 
     def save(self, filename, compressed=False):
         # __file_ending__ = ".sme"

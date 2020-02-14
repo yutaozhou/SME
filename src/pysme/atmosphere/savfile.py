@@ -1,6 +1,8 @@
 from scipy.io import readsav
 import numpy as np
 
+from os.path import basename
+
 from .atmosphere import AtmosphereGrid
 
 
@@ -14,9 +16,47 @@ class SavFile(AtmosphereGrid):
         ngrids = data["atmo_grid_natmo"]
         self = super(SavFile, cls).__new__(cls, ngrids, npoints)
 
+        filename = basename(filename)
         self.source = filename
-        citation = [d.decode() for d in data["atmo_grid_intro"]]
-        self.citation_info = "".join(citation)
+
+        # TODO cover all cases
+        if "marcs" in filename:
+            self.citation_info = r"""
+                @ARTICLE{2008A&A...486..951G,
+                    author = {{Gustafsson}, B. and {Edvardsson}, B. and {Eriksson}, K. and
+                    {J{\o}rgensen}, U.~G. and {Nordlund}, {\r{A}}. and {Plez}, B.},
+                    title = "{A grid of MARCS model atmospheres for late-type stars. I. Methods and general properties}",
+                    journal = {Astronomy and Astrophysics},
+                    keywords = {stars: atmospheres, Sun: abundances, stars: fundamental parameters, stars: general, stars: late-type, stars: supergiants, Astrophysics},
+                    year = "2008",
+                    month = "Aug",
+                    volume = {486},
+                    number = {3},
+                    pages = {951-970},
+                    doi = {10.1051/0004-6361:200809724},
+                    archivePrefix = {arXiv},
+                    eprint = {0805.0554},
+                    primaryClass = {astro-ph},
+                    adsurl = {https://ui.adsabs.harvard.edu/abs/2008A&A...486..951G},
+                    adsnote = {Provided by the SAO/NASA Astrophysics Data System}}
+            """
+        elif "atlas" in filename:
+            self.citation_info = r"""
+                @MISC{2017ascl.soft10017K,
+                    author = {{Kurucz}, Robert L.},
+                    title = "{ATLAS9: Model atmosphere program with opacity distribution functions}",
+                    keywords = {Software},
+                    year = "2017",
+                    month = "Oct",
+                    eid = {ascl:1710.017},
+                    pages = {ascl:1710.017},
+                    archivePrefix = {ascl},
+                    eprint = {1710.017},
+                    adsurl = {https://ui.adsabs.harvard.edu/abs/2017ascl.soft10017K},
+                    adsnote = {Provided by the SAO/NASA Astrophysics Data System}}
+            """
+        else:
+            self.citation_info = ""  # ???
 
         atmo_grid = data["atmo_grid"]
 

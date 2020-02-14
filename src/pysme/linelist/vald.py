@@ -6,10 +6,13 @@ Module for handling linelist data from the VALD3 database (http://vald.astro.uu.
 import logging
 import re
 from io import StringIO
+from os.path import dirname, join
 
 import numpy as np
 import pandas as pd
 from astropy import units as u
+import pybtex.database
+
 
 from ..abund import Abund
 from .linelist import LineListError, LineList
@@ -23,6 +26,85 @@ class ValdError(LineListError):
 
 class ValdFile(LineList):
     """Atomic data for a list of spectral lines.
+    """
+
+    citation_info = r"""
+    @ARTICLE{2015PhyS...90e4005R,
+        author = {{Ryabchikova}, T. and {Piskunov}, N. and {Kurucz}, R.~L. and
+        {Stempels}, H.~C. and {Heiter}, U. and {Pakhomov}, Yu and
+        {Barklem}, P.~S.},
+        title = "{A major upgrade of the VALD database}",
+        journal = {Physica Scripta},
+        year = "2015",
+        month = "May",
+        volume = {90},
+        number = {5},
+        eid = {054005},
+        pages = {054005},
+        doi = {10.1088/0031-8949/90/5/054005},
+        adsurl = {https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R},
+        adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+    }
+    @ARTICLE{2000BaltA...9..590K,
+        author = {{Kupka}, F.~G. and {Ryabchikova}, T.~A. and {Piskunov}, N.~E. and
+        {Stempels}, H.~C. and {Weiss}, W.~W.},
+        title = "{VALD-2 -- The New Vienna Atomic Line Database}",
+        journal = {Baltic Astronomy},
+        keywords = {ATOMIC DATA, METHODS: SPECTROSCOPIC, STARS: ABUNDANCES, STARS: CHEMICALLY PECULIAR},
+        year = "2000",
+        month = "Jan",
+        volume = {9},
+        pages = {590-594},
+        doi = {10.1515/astro-2000-0420},
+        adsurl = {https://ui.adsabs.harvard.edu/abs/2000BaltA...9..590K},
+        adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+    }
+    @ARTICLE{1999A&AS..138..119K,
+        author = {{Kupka}, F. and {Piskunov}, N. and {Ryabchikova}, T.~A. and
+        {Stempels}, H.~C. and {Weiss}, W.~W.},
+        title = "{VALD-2: Progress of the Vienna Atomic Line Data Base}",
+        journal = {\aaps},
+        keywords = {ATOMIC DATA, TECHNIQUES: SPECTROSCOPIC, SUN: ABUNDANCES, STARS: ABUNDANCES, STARS: ATMOSPHERES, STARS: CHEMICALLY PECULIAR},
+        year = "1999",
+        month = "Jul",
+        volume = {138},
+        pages = {119-133},
+        doi = {10.1051/aas:1999267},
+        adsurl = {https://ui.adsabs.harvard.edu/abs/1999A&AS..138..119K},
+        adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+    }
+    @ARTICLE{1997BaltA...6..244R,
+        author = {{Ryabchikova}, T.~A. and {Piskunov}, N.~E. and {Kupka}, F. and
+        {Weiss}, W.~W.},
+        title = "{The Vienna Atomic Line Database : Present State and Future Development}",
+        journal = {Baltic Astronomy},
+        keywords = {DATABASES:  ATOMIC LINE PARAMETERS, STELLAR SPECTROSCOPY},
+        year = "1997",
+        month = "Mar",
+        volume = {6},
+        pages = {244-247},
+        doi = {10.1515/astro-1997-0216},
+        adsurl = {https://ui.adsabs.harvard.edu/abs/1997BaltA...6..244R},
+        adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+    }
+    @ARTICLE{1995A&AS..112..525P,
+        author = {{Piskunov}, N.~E. and {Kupka}, F. and {Ryabchikova}, T.~A. and
+        {Weiss}, W.~W. and {Jeffery}, C.~S.},
+        title = "{VALD: The Vienna Atomic Line Data Base.}",
+        journal = {\aaps},
+        keywords = {ATOMIC DATA, STARS: ABUNDANCES, ASTRONOMICAL DATA BASES: MISCELLANEOUS},
+        year = "1995",
+        month = "Sep",
+        volume = {112},
+        pages = {525},
+        adsurl = {https://ui.adsabs.harvard.edu/abs/1995A&AS..112..525P},
+        adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+    }
+    """
+
+    acknowledgement = r"""
+    This work has made use of the VALD database, operated at Uppsala University,
+    the Institute of Astronomy RAS in Moscow, and the University of Vienna.
     """
 
     def __init__(self, filename, medium=None):
@@ -61,6 +143,8 @@ class ValdFile(LineList):
         with open(filename, "r") as file:
             lines = file.readlines()
 
+        # TODO: if linelist from extract all, there is an extra header line
+
         self.parse_header(lines[0])
         self.parse_columns(lines[2])
         # TODO how to recognise extended format
@@ -72,10 +156,12 @@ class ValdFile(LineList):
                 linedata = lines[3 : 3 + n * 4]
                 atmodata = lines[3 + n * 4]
                 abunddata = lines[4 + n * 4 : 22 + n * 4]
+                refdata = linedata[3::4]
             elif fmt == "short":
                 linedata = lines[3 : 3 + n]
                 atmodata = lines[3 + n]
                 abunddata = lines[4 + n : 22 + n]
+                refdata = linedata
         except IndexError:
             msg = "Linelist file is shorter than it should be according to the number of lines. Is it incomplete?"
             logger.error(msg)
@@ -84,6 +170,9 @@ class ValdFile(LineList):
         linelist = self.parse_linedata(linedata, fmt=fmt)
         self.atmo = self.parse_valdatmo(atmodata)
         self.abund = self.parse_abund(abunddata)
+
+        self.citation_info += self.parse_references(refdata, fmt)
+
         return linelist
 
     def parse_header(self, line):
@@ -301,3 +390,27 @@ class ValdFile(LineList):
         pattern = {el: float(ab) for el, ab in pattern}
         monh = 0
         return Abund(monh, pattern, type="sme")
+
+    def parse_references(self, lines, fmt):
+        # Search the linelist data for this pattern, e.g:
+        # 1 gf:K14
+        # 4 KCN'
+        pattern = r"\s\d (\w+:)?(.+?)[ ']"
+        pattern = re.compile(pattern)
+        lines = "".join(lines)
+        references = [match.group(2) for match in re.finditer(pattern, lines)]
+        # We only need each reference ones
+        ref = set(references)
+        # Multiple references are seperated by '+'
+        references = []
+        for r in ref:
+            references += r.split("+")
+        # And make it unique again, if necessary
+        references = set(references)
+
+        # Get references from bibtex file
+        # TODO: only load this once? But then again, how often will we do this?
+        bibdata = pybtex.database.parse_file(join(dirname(__file__), "VALD3_ref.bib"))
+        entries = {r: bibdata.entries[r] for r in references}
+        bibdata_filtered = pybtex.database.BibliographyData(entries)
+        return bibdata_filtered.to_string("bibtex")

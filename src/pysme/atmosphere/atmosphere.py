@@ -107,12 +107,6 @@ class Atmosphere(Collection):
     def ndep(self, value):
         pass
 
-    def citation(self, format="string"):
-        if self.citation_info == "":
-            return [self.source]
-        # TODO Get the data from the file
-        return [self.citation_info]
-
 
 @CollectionFactory
 class AtmosphereGrid(np.recarray):
@@ -170,7 +164,7 @@ class AtmosphereGrid(np.recarray):
         data.method = "grid"
         data.geom = "PP"
         data.source = ""
-        data.citation = ""
+        data.citation_info = ""
         data.abund_format = "sme"
         return data
 
@@ -202,6 +196,3 @@ class AtmosphereGrid(np.recarray):
     @property
     def ndep(self):
         return self.shape[1]
-
-    def citation(self, format="string"):
-        return self.citation_info

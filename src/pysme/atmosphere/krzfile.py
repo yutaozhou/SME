@@ -11,6 +11,20 @@ class KrzFile(Atmosphere):
         super().__init__()
         self.source = filename
         self.method = "embedded"
+        self.citation_info = r"""
+            @MISC{2017ascl.soft10017K,
+                author = {{Kurucz}, Robert L.},
+                title = "{ATLAS9: Model atmosphere program with opacity distribution functions}",
+                keywords = {Software},
+                year = "2017",
+                month = "Oct",
+                eid = {ascl:1710.017},
+                pages = {ascl:1710.017},
+                archivePrefix = {ascl},
+                eprint = {1710.017},
+                adsurl = {https://ui.adsabs.harvard.edu/abs/2017ascl.soft10017K},
+                adsnote = {Provided by the SAO/NASA Astrophysics Data System}}
+        """
         self.load(filename)
 
     def load(self, filename):

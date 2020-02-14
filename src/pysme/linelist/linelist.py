@@ -38,6 +38,9 @@ class LineList(IPersist):
     ]
     string_columns = ["species", "term_lower", "term_upper", "reference"]
 
+    # Citations are added in the submodule (e.g. ValdFile)
+    citation_info = ""
+
     @staticmethod
     def parse_line_error(error_flags, values):
         """Transform Line Error flags into relative error values
@@ -186,6 +189,9 @@ class LineList(IPersist):
         #:pandas.DataFrame: DataFrame that contains all the data
         self._lines = linedata  # should have all the fields (20)
         self._medium = medium
+
+        if "citation_info" in kwargs.keys():
+            self.citation_info = kwargs["citation_info"]
 
     def __len__(self):
         return len(self._lines)
@@ -341,7 +347,11 @@ class LineList(IPersist):
         if folder != "" and folder[-1] != "/":
             folder = folder + "/"
 
-        info = {"format": self.lineformat}
+        info = {
+            "format": self.lineformat,
+            "medium": self.medium,
+            "citation_info": self.citation_info,
+        }
         file.writestr(f"{folder}info.json", json.dumps(info))
 
         lines = self._lines.reset_index(drop=True)
@@ -357,6 +367,8 @@ class LineList(IPersist):
                 info = file.read(name)
                 info = json.loads(info)
                 lineformat = info["format"]
+                medium = info.get("medium")
+                citation_info = info.get("citation_info", "")
             elif name.endswith("data.feather"):
                 b = io.BytesIO(file.read(name))
                 linedata = pd.read_feather(b)
@@ -365,4 +377,6 @@ class LineList(IPersist):
                 linedata = np.load(b)
                 linedata = pd.DataFrame.from_records(linedata)
 
-        return LineList(linedata, lineformat=lineformat)
+        return LineList(
+            linedata, lineformat=lineformat, medium=medium, citation_info=citation_info
+        )

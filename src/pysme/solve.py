@@ -272,7 +272,7 @@ class SME_Solver:
 
         # Add generic bounds
         bounds.update({"vmic": [0, np.inf], "vmac": [0, np.inf], "vsini": [0, np.inf]})
-        # bounds.update({"abund %s" % el: [-10, 11] for el in Abund._elem})
+        # bounds.update({"abund %s" % el: [-10, 11] for el in abund_elem})
 
         result = np.array([[-np.inf, np.inf]] * self.nparam)
 
