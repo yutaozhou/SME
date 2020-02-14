@@ -670,9 +670,7 @@ class SME_Structure(Parameters):
             filename to save the structure at
         compressed : bool, optional
             whether to compress the output, by default False
-            Note this doesn't do anything yet
         """
-        # TODO: compress output
         if not filename.endswith(__file_ending__):
             filename = filename + __file_ending__
         persistence.save(filename, self, compressed=compressed)
