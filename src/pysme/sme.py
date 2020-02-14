@@ -299,7 +299,7 @@ class SME_Structure(Parameters):
             @ARTICLE{2017A&A...597A..16P,
                 author = {{Piskunov}, Nikolai and {Valenti}, Jeff A.},
                 title = "{Spectroscopy Made Easy: Evolution}",
-                journal = {Astronomy \& Astrophysics},
+                journal = {\aap},
                 keywords = {stars: abundances, radiative transfer, stars: fundamental parameters, stars: atmospheres, techniques: spectroscopic, Astrophysics - Instrumentation and Methods for Astrophysics, Astrophysics - Solar and Stellar Astrophysics},
                 year = "2017",
                 month = "Jan",
