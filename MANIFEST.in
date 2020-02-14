@@ -8,5 +8,7 @@ include src/pysme/dll/NH_Stancil2018.dat.INTEL
 include src/pysme/datafiles_atmospheres.json
 include src/pysme/datafiles_nlte.json
 
+include src/pysme/linelist/VALD3_ref.bib
+
 include versioneer.py
 include src/pysme/_version.py
