@@ -5,7 +5,7 @@ import numpy as np
 
 from pysme.sme import SME_Structure as SME_Struct
 from pysme.abund import Abund
-from pysme.atmosphere.atmosphere import KrzFile
+from pysme.atmosphere.krzfile import KrzFile
 from pysme.linelist.linelist import LineList
 from pysme.sme_synth import SME_DLL
 from pysme.nlte import nlte
