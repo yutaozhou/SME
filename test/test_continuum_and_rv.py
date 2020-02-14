@@ -13,6 +13,8 @@ def test_match_both(testcase1):
     # TODO: This test sometimes fails due to randomness
     sme, x_syn, y_syn, rv = testcase1
 
+    np.random.seed(0)
+
     vrad_options = ["fix", "none", "each", "whole"]
     cscale_options = ["fix", "none", "constant", "linear", "quadratic"]
 
