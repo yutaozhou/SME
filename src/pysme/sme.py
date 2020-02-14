@@ -313,7 +313,19 @@ class SME_Structure(Parameters):
                 adsurl = {https://ui.adsabs.harvard.edu/abs/2017A&A...597A..16P},
                 adsnote = {Provided by the SAO/NASA Astrophysics Data System}
             }
-        """, asstr, this, "str: BibTex entry for SME")
+            @ARTICLE{1996A&AS..118..595V,
+                author = {{Valenti}, J.~A. and {Piskunov}, N.},
+                title = "{Spectroscopy made easy: A new tool for fitting observations with synthetic spectra.}",
+                journal = {\aaps},
+                keywords = {RADIATIVE TRANSFER, METHODS: NUMERICAL, TECHNIQUES: SPECTROSCOPIC, STARS: FUNDAMENTAL PARAMETERS, SUN: FUNDAMENTAL PARAMETERS, ATOMIC DATA},
+                year = "1996",
+                month = "Sep",
+                volume = {118},
+                pages = {595-603},
+                adsurl = {https://ui.adsabs.harvard.edu/abs/1996A&AS..118..595V},
+                adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+            }
+            """, asstr, this, "str: BibTex entry for SME")
     ]
     # fmt: on
 
