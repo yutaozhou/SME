@@ -630,6 +630,23 @@ class SME_Structure(Parameters):
             self.cscale = np.sqrt(1 / self.cscale)
 
     def citation(self, output="string"):
+        """Create a citation string for use in papers, or
+        other places. The citations are from all components that
+        contribute to the SME structure. SME and PySME, the linelist,
+        the abundance, the atmosphere, and the NLTE grids.
+        The default output is plaintext, but
+        it is also possible to get bibtex format.
+
+        Parameters
+        ----------
+        output : str, optional
+            the output format, options are: ["string", "bibtex", "html", "markdown"], by default "string"
+
+        Returns
+        -------
+        citation : str
+            citation string in the desired output format
+        """
         citation = [self.citation_info]
         citation += [self.atmo.citation_info]
         citation += [self.abund.citation_info]
@@ -640,10 +657,25 @@ class SME_Structure(Parameters):
         return self.create_citation(citation, output=output)
 
     def save(self, filename, compressed=False):
-        # __file_ending__ = ".sme"
+        """Save the whole SME structure to disk.
+
+        The file format is zip file, with one info.json
+        file for simple values, and numpy save files for
+        large arrays. Substructures (linelist, abundance, etc.)
+        have their own folder within the zip file.
+
+        Parameters
+        ----------
+        filename : str
+            filename to save the structure at
+        compressed : bool, optional
+            whether to compress the output, by default False
+            Note this doesn't do anything yet
+        """
+        # TODO: compress output
         if not filename.endswith(__file_ending__):
             filename = filename + __file_ending__
-        persistence.save(filename, self)
+        persistence.save(filename, self, compressed=compressed)
 
     @staticmethod
     def load(filename):

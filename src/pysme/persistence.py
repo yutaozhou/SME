@@ -1,6 +1,6 @@
 import io
 import logging
-from zipfile import ZipFile
+from zipfile import ZipFile, ZIP_STORED, ZIP_LZMA
 import json
 import tempfile
 import sys
@@ -32,7 +32,7 @@ def toBaseType(value):
     return value
 
 
-def save(filename, data, folder=""):
+def save(filename, data, folder="", compressed=False):
     """
     Create a folder structure inside a zipfile
     Add .json and .npy and .npz files with the correct names
@@ -47,8 +47,19 @@ def save(filename, data, folder=""):
         Filename of the final zipfile
     data : SME_struct
         data to save
+    folder : str, optional
+        subfolder to save data to
+    compressed : bool, optional
+        whether to compress the output
     """
-    with ZipFile(filename, "w") as file:
+    # We use LZMA for compression, since that yields the
+    # smallest filesize of the existing compression algorithms
+    if not compressed:
+        compression = ZIP_STORED
+    else:
+        compression = ZIP_LZMA
+
+    with ZipFile(filename, "w", compression) as file:
         saves(file, data, folder=folder)
 
 

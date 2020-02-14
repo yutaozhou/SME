@@ -39,6 +39,8 @@ if not exists(conf):
     with open(conf, "w") as f:
         json.dump(defaults, f)
 
+# TODO: Have smelib compiled before distribution
+
 # Setup package
 setup(
     name="pysme-astro",
@@ -47,7 +49,7 @@ setup(
     description="Spectroscopy Made Easy",
     author="Ansgar Wehrhahn, Jeff A. Valenti",
     author_email="ansgar.wehrhahn@physics.uu.se, valenti@stsci.edu",
-    packages=["pysme", "pysme.gui"],
+    packages=["pysme", "pysme.gui", "pysme.atmosphere", "pysme.linelist"],
     package_dir={"": "src"},
     include_package_data=True,
     install_requires=["numpy", "scipy", "matplotlib", "plotly", "pandas", "wget"],
