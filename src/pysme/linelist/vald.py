@@ -395,8 +395,17 @@ class ValdFile(LineList):
         # Search the linelist data for this pattern, e.g:
         # 1 gf:K14
         # 4 KCN'
-        pattern = r"\s\d (\w+:)?(.+?)[ ']"
+        if fmt == "long":
+            idiscard = 45
+        elif fmt == "short":
+            idiscard = 90
+        else:
+            raise ValueError
+
+        pattern = r"\s\d+ (\w+:)?([\w+]+)[\s']"
         pattern = re.compile(pattern)
+        # Discard the initial part of the line
+        lines = [l[idiscard:] for l in lines]
         lines = "".join(lines)
         references = [match.group(2) for match in re.finditer(pattern, lines)]
         # We only need each reference ones
