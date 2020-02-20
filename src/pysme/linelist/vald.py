@@ -320,10 +320,23 @@ class ValdFile(LineList):
             linelist["reference"] = comment
 
             # Parse energy level terms
-            term_lower = [t.replace("'", "").split(maxsplit=1) for t in term_lower]
-            term_upper = [t.replace("'", "").split(maxsplit=1) for t in term_upper]
-            term_lower = [t[-1][:-1] if len(t) != 0 else "" for t in term_lower]
-            term_upper = [t[-1][:-1] if len(t) != 0 else "" for t in term_upper]
+            term_lower = [t.strip()[8:-1].strip() for t in term_lower]
+            term_lower = np.char.partition(term_lower, " ")[:, (0, 2)]
+            term_lower = np.char.strip(term_lower)
+            idx = term_lower[:, 1] == ""
+            term_lower[idx, 1] = term_lower[idx, 0]
+            term_lower = np.char.add(
+                np.char.add(term_lower[:, 0], " "), term_lower[:, 1]
+            )
+
+            term_upper = [t[8:-1].strip() for t in term_upper]
+            term_upper = np.char.partition(term_upper, " ")[:, (0, 2)]
+            term_upper = np.char.strip(term_upper)
+            idx = term_upper[:, 1] == ""
+            term_upper[idx, 1] = term_upper[idx, 0]
+            term_upper = np.char.add(
+                np.char.add(term_upper[:, 0], " "), term_upper[:, 1]
+            )
 
             linelist["term_lower"] = term_lower
             linelist["term_upper"] = term_upper
