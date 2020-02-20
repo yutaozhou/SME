@@ -436,8 +436,27 @@ class Grid:
         # Interpolate on the grid
         # self._points and self._grid are interpolated when reading the data in read_grid
         target = (rabund, teff, logg, monh)
+        points = self._points
+        grid = self._grid
+
+        # Check if we need to extrapolate
+        if any([t < min(p) or t > max(p) for t, p in zip(target, points)]):
+            logger.warning(
+                f"Extrapolate on the NLTE grid. Requested values of {target} on grid {points}"
+            )
+
+        # Some grids have only one value in that direction
+        # Usually in abundance. Then we need to remove that dimension
+        # to avoid nan output
+        mask = [len(p) > 1 for p in points]
+        if not all(mask):
+            points = [p for m, p in zip(mask, points) if m]
+            target = [t for m, t in zip(mask, target) if m]
+            idx = [slice(None, None) if m else 0 for m in mask]
+            grid = grid[idx]
+
         subgrid = interpolate.interpn(
-            self._points, self._grid, target, bounds_error=False, fill_value=None
+            points, grid, target, method="linear", bounds_error=False, fill_value=None,
         )
 
         return subgrid[0]
