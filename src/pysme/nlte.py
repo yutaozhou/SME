@@ -190,6 +190,7 @@ class Grid:
         self.lineindices = None
 
     def get(self, abund, teff, logg, monh):
+        # TODO: NLTE grid should define which solar value has been used
         rabund = abund - self.solar
 
         if len(self.limits) == 0 or not (

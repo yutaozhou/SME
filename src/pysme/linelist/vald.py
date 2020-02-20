@@ -329,7 +329,7 @@ class ValdFile(LineList):
                 np.char.add(term_lower[:, 0], " "), term_lower[:, 1]
             )
 
-            term_upper = [t[8:-1].strip() for t in term_upper]
+            term_upper = [t.strip()[8:-1].strip() for t in term_upper]
             term_upper = np.char.partition(term_upper, " ")[:, (0, 2)]
             term_upper = np.char.strip(term_upper)
             idx = term_upper[:, 1] == ""
