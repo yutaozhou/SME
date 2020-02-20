@@ -531,6 +531,8 @@ class SME_Structure(Parameters):
                 1: "linear",
                 2: "quadratic",
             }[value]
+        if value == "quadratic":
+            logger.warning("Quadratic continuum scale is experimental")
 
         self.__cscale_flag = value
 

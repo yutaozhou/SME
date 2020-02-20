@@ -16,7 +16,7 @@ def test_match_both(testcase1):
     np.random.seed(0)
 
     vrad_options = ["fix", "none", "each", "whole"]
-    cscale_options = ["fix", "none", "constant", "linear", "quadratic"]
+    cscale_options = ["fix", "none", "constant", "linear"]  # quadratic
 
     for voption in vrad_options:
         for coption in cscale_options:
