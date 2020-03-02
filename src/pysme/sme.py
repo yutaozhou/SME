@@ -257,6 +257,15 @@ class SME_Structure(Parameters):
                 * "linear": First order polynomial, i.e. approximate continuum by a straight line
                 * "quadratic": Second order polynomial, i.e. approximate continuum by a quadratic polynomial
             """),
+        ("cscale_type", "whole", lowercase(oneof("whole", "mask")), this,
+            """str: Flag that determines the algorithm to determine the continuum
+
+            This is used in combination with cscale_flag, which determines the degree of the fit, if any.
+
+            allowed values are:
+              * "whole": Fit the whole synthetic spectrum to the observation to determine the best fit
+              * "mask": Fit a polynomial to the pixels marked as continuum in the mask
+            """),
         ("normalize_by_continuum", True, asbool, this,
             "bool: Whether to normalize the synthetic spectrum by the synthetic continuum spectrum or not"),
         ("gam6", 1, asfloat, this, "float: van der Waals scaling factor"),

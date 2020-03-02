@@ -69,7 +69,7 @@ def determine_continuum(sme, segment):
 
         # Extract points in this segment
         x, y, m, u = sme.wave, sme.spec, sme.mask, sme.uncs
-        x, y, u, m = x[segment], y[segment], u[segment], m[segment]
+        x, y, m, u = x[segment], y[segment], m[segment], u[segment]
 
         # Set continuum mask
         if np.all(m != 2):
@@ -189,11 +189,12 @@ def determine_radial_velocity(sme, segment, cscale, x_syn, y_syn):
         rvel = None
     elif sme.vrad_flag in [-2, "none"]:
         # vrad_flag says don't determine radial velocity
-        rvel = sme.vrad
-        rvel = rvel[segment] if len(rvel) > 1 else rvel[0]
+        rvel = sme.vrad[segment]
     elif sme.vrad_flag in [-1, "whole"] and segment >= 0:
         # We are inside a segment, but only want to determine rv at the end
         rvel = 0
+    elif sme.vrad_flag in ["fix"] and segment >= 0:
+        rvel = sme.vrad[segment]
     else:
         # Fit radial velocity
         # Extract data
@@ -207,7 +208,7 @@ def determine_radial_velocity(sme, segment, cscale, x_syn, y_syn):
 
             # apply continuum
             if cscale is not None:
-                cont = np.polyval(cscale, x_obs)
+                cont = np.polyval(cscale, x_obs - x_obs[0])
             else:
                 warnings.warn(
                     "No continuum scale passed to radial velocity determination"
@@ -706,19 +707,32 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
     if np.isscalar(segments):
         segments = [segments]
 
-    if sme.vrad_flag in ["each", "none", "fix"]:
-        for s in tqdm(segments, desc="RV/Cont", leave=False):
+    if sme.cscale_type == "whole":
+        if sme.vrad_flag in ["each", "none", "fix"]:
+            for s in tqdm(segments, desc="RV/Cont", leave=False):
+                vrad[s], vrad_unc[s], cscale[s], cscale_unc[s] = determine_rv_and_cont(
+                    sme, s, x_syn[s], y_syn[s]
+                )
+        elif sme.vrad_flag == "whole":
+            wave = Iliffe_vector(values=[x_syn[s] for s in segments])
+            smod = Iliffe_vector(values=[y_syn[s] for s in segments])
+            s = segments
             vrad[s], vrad_unc[s], cscale[s], cscale_unc[s] = determine_rv_and_cont(
-                sme, s, x_syn[s], y_syn[s]
+                sme, s, wave, smod
             )
-    elif sme.vrad_flag == "whole":
-        wave = Iliffe_vector(values=[x_syn[s] for s in segments])
-        smod = Iliffe_vector(values=[y_syn[s] for s in segments])
-        s = segments
-        vrad[s], vrad_unc[s], cscale[s], cscale_unc[s] = determine_rv_and_cont(
-            sme, s, wave, smod
-        )
+        else:
+            raise ValueError(f"Radial velocity flag {sme.vrad_flag} not understood")
+    elif sme.cscale_type == "mask":
+        for s in segments:
+            cscale[s] = determine_continuum(sme, s)
+            vrad[s] = determine_radial_velocity(sme, s, cscale[s], x_syn[s], y_syn[s])
+
+        if sme.vrad_flag == "whole":
+            s = segments
+            vrad[s] = determine_radial_velocity(sme, -1, cscale[s], x_syn[s], y_syn[s])
     else:
-        raise ValueError(f"Radial velocity flag {sme.vrad_flag} not understood")
+        raise ValueError(
+            f"Did not understand cscale_type, expected one of ('whole', 'mask'), but got {sme.cscale_type}."
+        )
 
     return cscale, cscale_unc, vrad, vrad_unc
