@@ -379,12 +379,12 @@ class Synthesizer:
             wave=wint_seg,
         )
 
-        # Create new geomspaced wavelength grid, to be used for intermediary steps
-        wgrid, vstep = self.new_wavelength_grid(wint)
-
-        # Continuum
-        # rtint = Radiative Transfer Integration
         if not sme.specific_intensities_only:
+            # Create new geomspaced wavelength grid, to be used for intermediary steps
+            wgrid, vstep = self.new_wavelength_grid(wint)
+
+            # Radiative Transfer Integration
+            # Continuum
             cint = integrate_flux(sme.mu, cint, 1, 0, 0)
             cint = np.interp(wgrid, wint, cint)
 
@@ -397,19 +397,20 @@ class Synthesizer:
             # Apply macroturbulent and rotational broadening while integrating intensities
             # over the stellar disk to produce flux spectrum Y.
             sint = integrate_flux(sme.mu, y_integrated, vstep, sme.vsini, sme.vmac)
+            wint = wgrid
 
         # instrument broadening
         if "iptype" in sme:
             ipres = sme.ipres if np.size(sme.ipres) == 1 else sme.ipres[segment]
             sint = broadening.apply_broadening(
-                ipres, wgrid, sint, type=sme.iptype, sme=sme
+                ipres, wint, sint, type=sme.iptype, sme=sme
             )
 
         # Divide calculated spectrum by continuum
         if sme.normalize_by_continuum:
             sint /= cint
 
-        return wgrid, sint, cint
+        return wint, sint, cint
 
 
 def synthesize_spectrum(sme, segments="all"):
