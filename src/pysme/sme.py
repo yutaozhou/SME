@@ -268,6 +268,8 @@ class SME_Structure(Parameters):
             """),
         ("normalize_by_continuum", True, asbool, this,
             "bool: Whether to normalize the synthetic spectrum by the synthetic continuum spectrum or not"),
+        ("specific_intensities_only", False, asbool, this,
+            "bool: Whether to keep the specific intensities or integrate them together"),
         ("gam6", 1, asfloat, this, "float: van der Waals scaling factor"),
         ("h2broad", True, asbool, this, "bool: Whether to use H2 broadening or not"),
         ("accwi", 0.003, asfloat, this,

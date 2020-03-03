@@ -29,7 +29,7 @@ class Synthesizer:
             config, lfs_atmo, lfs_nlte
         )
         self.dll = dll if dll is not None else SME_DLL()
-        self.first = True
+        logger.critical("Don't forget to cite your sources. Use sme.citation()")
 
     def get_atmosphere(self, sme):
         """
@@ -280,9 +280,11 @@ class Synthesizer:
                 # Force endpoints == wavelength range
                 wave[il] = np.concatenate(([wbeg], wmod[il][itrim], [wend]))
 
+        if sme.specific_intensities_only:
+            return wmod, smod, cmod
+
         # Fit continuum and radial velocity
         # And interpolate the flux onto the wavelength grid
-
         if radial_velocity_mode == "robust":
             cscale, cscale_unc, vrad, vrad_unc = match_rv_continuum(
                 sme, segments, wmod, smod
@@ -326,7 +328,8 @@ class Synthesizer:
         else:
             wave = Iliffe_vector(values=wave)
             smod = Iliffe_vector(values=smod)
-            return wave, smod
+            cmod = Iliffe_vector(values=cmod)
+            return wave, smod, cmod
 
     def synthesize_segment(
         self, sme, segment, reuse_wavelength_grid=False, keep_line_opacity=False
@@ -381,33 +384,32 @@ class Synthesizer:
 
         # Continuum
         # rtint = Radiative Transfer Integration
-        cont_flux = integrate_flux(sme.mu, cint, 1, 0, 0)
-        cont_flux = np.interp(wgrid, wint, cont_flux)
+        if not sme.specific_intensities_only:
+            cint = integrate_flux(sme.mu, cint, 1, 0, 0)
+            cint = np.interp(wgrid, wint, cint)
 
-        # Broaden Spectrum
-        y_integrated = np.empty((sme.nmu, len(wgrid)))
-        for imu in range(sme.nmu):
-            y_integrated[imu] = np.interp(wgrid, wint, sint[imu])
+            # Broaden Spectrum
+            y_integrated = np.empty((sme.nmu, len(wgrid)))
+            for imu in range(sme.nmu):
+                y_integrated[imu] = np.interp(wgrid, wint, sint[imu])
 
-        # Turbulence broadening
-        # Apply macroturbulent and rotational broadening while integrating intensities
-        # over the stellar disk to produce flux spectrum Y.
-        flux = integrate_flux(sme.mu, y_integrated, vstep, sme.vsini, sme.vmac)
+            # Turbulence broadening
+            # Apply macroturbulent and rotational broadening while integrating intensities
+            # over the stellar disk to produce flux spectrum Y.
+            sint = integrate_flux(sme.mu, y_integrated, vstep, sme.vsini, sme.vmac)
+
         # instrument broadening
         if "iptype" in sme:
             ipres = sme.ipres if np.size(sme.ipres) == 1 else sme.ipres[segment]
-            flux = broadening.apply_broadening(
-                ipres, wgrid, flux, type=sme.iptype, sme=sme
+            sint = broadening.apply_broadening(
+                ipres, wgrid, sint, type=sme.iptype, sme=sme
             )
 
         # Divide calculated spectrum by continuum
         if sme.normalize_by_continuum:
-            flux /= cont_flux
+            sint /= cint
 
-        if self.first:
-            logger.critical("Don't forget to cite your sources. Use sme.citation()")
-            self.first = False
-        return wgrid, flux, cont_flux
+        return wgrid, sint, cint
 
 
 def synthesize_spectrum(sme, segments="all"):

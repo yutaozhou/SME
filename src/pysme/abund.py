@@ -413,7 +413,7 @@ class Abund(IPersist):
         """
         self.type = "H=12"
         self.citation_info = _citation_atomic_weights + "\n"
-        if pattern_name.lower() == "asplund2009":
+        if pattern_name.lower() in ["asplund2009", "solar"]:
             self._pattern = np.array(_asplund2009, dtype=float)
             self.citation_info += _citation_asplund2009
         elif pattern_name.lower() == "grevesse2007":
@@ -518,5 +518,5 @@ class Abund(IPersist):
     @staticmethod
     def solar():
         """ Return solar abundances of asplund 2009 """
-        solar = Abund(pattern="asplund2009", monh=0)
+        solar = Abund(pattern="solar", monh=0)
         return solar
