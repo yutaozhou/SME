@@ -56,7 +56,7 @@ class Atmosphere(Collection):
             "str: flag that determines whether to use RHOX or TAU for interpolation"),
         ("rhox", None, array(None, "f8"), this,
             "array: mass column density"),
-        ("tau", None, array(None, "f8"), this, 
+        ("tau", None, array(None, "f8"), this,
             "array: continuum optical depth"),
         ("temp", None, array(None, "f8"), this,
             "array: temperature profile in Kelvin"),
@@ -171,8 +171,8 @@ class AtmosphereGrid(np.recarray):
     def __array_finalize__(self, obj):
         if obj is None:
             return
-        self.interp = getattr(self, "interp", "rhox")
-        self.depth = getattr(self, "depth", "tau")
+        self.interp = getattr(self, "interp", "TAU")
+        self.depth = getattr(self, "depth", "RHOX")
         self.source = getattr(self, "source", "")
         self.geom = getattr(self, "geom", "pp")
         self.citation_info = getattr(self, "citation_info", "")
@@ -185,6 +185,9 @@ class AtmosphereGrid(np.recarray):
         one record is returned """
         cls = type(self)
         value = super().__getitem__(key)
+        if isinstance(value, cls) and value.size == 1:
+            return value[0]
+
         if isinstance(value, np.record):
             kwargs = {s: value[s] for s in value.dtype.names}
             value = Atmosphere(**kwargs)
@@ -192,6 +195,12 @@ class AtmosphereGrid(np.recarray):
             for name in self._names:
                 setattr(value, name, getattr(self, name))
         return value
+
+    def get(self, teff, logg, monh):
+        mask = self.teff == teff
+        mask &= self.logg == logg
+        mask &= self.monh == monh
+        return self[mask]
 
     @property
     def ndep(self):

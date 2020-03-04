@@ -1,2 +1,48 @@
 # TODO implement atmosphere tests
+import pytest
+import numpy as np
+from pysme.atmosphere.atmosphere import Atmosphere
+from pysme.atmosphere.savfile import SavFile
+from pysme.atmosphere.interpolation import interp_atmo_grid
+from pysme.large_file_storage import setup_atmo
 
+from .test_largefilestorage import skipif_lfs, lfs_atmo
+
+
+@pytest.fixture
+def atmosphere_name():
+    # TODO iterate over all possible options
+    return "marcs2012p_t1.0.sav"
+
+
+@pytest.fixture
+def atmosphere(atmosphere_name):
+    atmo = Atmosphere(source=atmosphere_name, method="grid", interp="TAU", depth="RHOX")
+    return atmo
+
+
+@pytest.fixture
+@pytest.mark.usefixtures("lfs_atmo")
+def atmosphere_grid(atmosphere_name, lfs_atmo):
+    name = lfs_atmo.get(atmosphere_name)
+    atmo = SavFile(name)
+    return atmo
+
+
+@skipif_lfs
+@pytest.mark.usefixtures("lfs_atmo")
+def test_grid_point(atmosphere, atmosphere_grid, lfs_atmo):
+    # TODO: get this values from the grid
+    teff = 7000
+    logg = 4
+    monh = 0
+
+    atmo_interp = interp_atmo_grid(teff, logg, monh, atmosphere, lfs_atmo)
+    atmo_grid = atmosphere_grid.get(teff, logg, monh)
+
+    assert np.allclose(atmo_interp.temp, atmo_grid.temp[1:])
+    assert np.allclose(atmo_interp.tau, atmo_grid.tau[1:])
+    assert np.allclose(atmo_interp.rhox, atmo_grid.rhox[1:])
+    assert np.allclose(atmo_interp.rho, atmo_grid.rho[1:])
+    assert np.allclose(atmo_interp.xna, atmo_grid.xna[1:])
+    assert np.allclose(atmo_interp.xne, atmo_grid.xne[1:])
