@@ -144,7 +144,7 @@ def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
 
     # Define depth scale for atmosphere #1
     itop1 = itop
-    while atmo1[interpvar][itop1 + 1] / atmo1[interpvar][itop1] - 1 <= min_drhox:
+    while (atmo1[interpvar][itop1 + 1] / atmo1[interpvar][itop1] - 1) <= min_drhox:
         itop1 += 1
 
     ibot1 = atmo1[interpvar].size - 1
@@ -153,7 +153,7 @@ def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
 
     # Define depth scale for atmosphere #2
     itop2 = itop
-    while atmo2[interpvar][itop2 + 1] / atmo2[interpvar][itop2] - 1 <= min_drhox:
+    while (atmo2[interpvar][itop2 + 1] / atmo2[interpvar][itop2] - 1) <= min_drhox:
         itop2 += 1
 
     ibot2 = atmo2[interpvar].size - 1
@@ -167,10 +167,10 @@ def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
     # List of atmosphere vectors that need to be shifted.
     # The code below assumes 'TEMP' is the first vtag in the list.
     vtags = ["temp", "xne", "xna", "rho", interpvar]
-    if interpvar == "RHOX" and ok_tau:
-        vtags += ["TAU"]
-    if interpvar == "TAU" and ok_rhox:
-        vtags += ["RHOX"]
+    if interpvar == "rhox" and ok_tau:
+        vtags += ["tau"]
+    if interpvar == "tau" and ok_rhox:
+        vtags += ["rhox"]
     nvtag = len(vtags)
 
     # Adopt arbitrary uncertainties for shift determinations.
