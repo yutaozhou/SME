@@ -1,476 +1,340 @@
 """ Handles reading and interpolation of atmopshere (grid) data """
 import itertools
 import logging
-import os
-from os.path import dirname, join
-
-from scipy.interpolate import interp1d
-from scipy.optimize import curve_fit
-import matplotlib.pyplot as plt
 
 import numpy as np
-import tensorflow as tf
-from keras.layers import Dense
-from keras.models import Sequential
-from scipy.io import readsav
-from tqdm import tqdm
-from .atmosphere import Atmosphere as Atmo, AtmosphereError
+from scipy.interpolate import interp1d
+from scipy.optimize import curve_fit
+
+from .atmosphere import Atmosphere as Atmo
+from .atmosphere import AtmosphereError
 from .savfile import SavFile
-
-from ..large_file_storage import setup_atmo
-
-tf.config.optimizer.set_jit(True)
-
 
 logger = logging.getLogger(__name__)
 
 
-class Scaler:
-    def __init__(self, x, scale="abs", log10=False):
-        self.scale = scale
-        if np.isscalar(log10):
-            self.log10 = np.full(x.shape[1], log10)
-        else:
-            self.log10 = log10
-        self.useLog10 = np.any(self.log10)
+def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
+    """
+    Interpolate between two model atmospheres, accounting for shifts in
+    the mass column density or optical depth scale.
 
-        self.min = self.max = self.median = self.std = None
-        self.is_trained = False
+    How it works:
+    1) The second atmosphere is fitted onto the first, individually for
+    each of the four atmospheric quantitites: T, xne, xna, rho.
+    The fitting uses a linear shift in both the (log) depth parameter and
+    in the (log) atmospheric quantity. For T, the midpoint of the two
+    atmospheres is aligned for the initial guess. The result of this fit
+    is used as initial guess for the other quantities. A penalty function
+    is applied to each fit, to avoid excessively large shifts on the
+    depth scale.
+    2) The mean of the horizontal shift in each parameter is used to
+    construct the common output depth scale.
+    3) Each atmospheric quantity is interpolated after shifting the two
+    corner models by the amount determined in step 1), rescaled by the
+    interpolation fraction (frac).
 
-        if x is not None:
-            self.train(x)
+    Parameters
+    ------
+    atmo1 : Atmosphere
+        first atmosphere to interpolate
+    atmo2 : Atmosphere
+        second atmosphere to interpolate
+    frac : float
+        interpolation fraction: 0.0 -> atmo1 and 1.0 -> atmo2
+    interpvar : {"RHOX", "TAU"}, optional
+        atmosphere interpolation variable (default:"RHOX").
+    itop : int, optional
+        index of top point in the atmosphere to use. default
+        is to use all points (itop=0). use itop=1 to clip top depth point.
+    atmop : array[5, ndep], optional
+        interpolated atmosphere prediction (for plots)
+        Not needed if atmospheres are provided as structures. (default: None)
+    verbose : {0, 5}, optional
+        diagnostic print level (default 0: no printing)
+    plot : {-1, 0, 1}, optional
+        diagnostic plot level. Larger absolute
+        value yields more plots. Negative values cause a wait for keypress
+        after each plot. (default: 0, no plots)
+    old : bool, optional
+        also plot result from the old interpkrz2 algorithm. (default: False)
 
-    def train(self, x):
-        if self.useLog10:
-            x = np.copy(x)
-            x = np.log10(x, where=self.log10, out=x)
-        if self.scale == "abs":
-            self.min = np.min(x, axis=0)
-            self.max = np.max(x, axis=0)
-        elif self.scale == "std":
-            self.std = np.std(x, axis=0)
-            self.median = np.median(x, axis=0)
-        else:
-            raise ValueError("Scale parameter is not understood")
-        self.is_trained = True
+    Returns
+    ------
+    atmo : Atmosphere
+        interpolated atmosphere
+        .RHOX (vector[ndep]) mass column density (g/cm^2)
+        .TAU  (vector[ndep]) reference optical depth (at 5000 Å)
+        .temp (vector[ndep]) temperature (K)
+        .xne  (vector[ndep]) electron number density (1/cm^3)
+        .xna  (vector[ndep]) atomic number density (1/cm^3)
+        .rho  (vector[ndep]) mass density (g/cm^3)
+    """
+    """
+    History
+    -------
+    2004-Apr-15 Valenti
+        Initial coding.
+    MB
+        interpolation on TAU scale
+    2012-Oct-30 TN
+        Rewritten to use either column mass (RHOX) or
+        reference optical depth (TAU) as vertical scale. Shift-interpolation
+        algorithms have been improved for stability in cool dwarfs (<=3500 K).
+        The reference optical depth scale is preferred in terms of interpolation
+        accuracy across most of parameter space, with significant improvement for
+        both cool models (where depth vs temperature is rather flat) and hot
+        models (where depth vs temperature exhibits steep transitions).
+        Column mass depth is used by default for backward compatibility.
+    2013-May-17 Valenti
+        Use frac to weight the two shifted depth scales,
+        rather than simply averaging them. This change fixes discontinuities
+        when crossing grid nodes.
+    2013-Sep-10 Valenti
+        Now returns an atmosphere structure instead of a
+        [5,NDEP] atmosphere array. This was necessary to support interpolation
+        using one variable (e.g., TAU) and radiative transfer using a different
+        variable (e.g. RHOX). The atmosphere array could only store one depth
+        variable, meaning the radiative transfer variable had to be the same
+        as the interpolation variable. Returns atmo.RHOX if available and also
+        atmo.TAU if available. Since both depth variables are returned, if
+        available, this routine no longer needs to know which depth variable
+        will be used for radiative transfer. Only the interpolation variable
+        is important. Thus, the interpvar= keyword argument replaces the
+        type= keyword argument. Very similar code blocks for each atmospheric
+        quantity have been unified into a single code block inside a loop over
+        atmospheric quantities.
+    2013-Sep-21 Valenti
+        Fixed an indexing bug that affected the output depth
+        scale but not other atmosphere vectors. Itop clipping was not being
+        applied to the depth scale ('RHOX' or 'TAU'). Bug fixed by adding
+        interpvar to vtags. Now atmospheres interpolated with interp_atmo_grid
+        match output from revision 398. Revisions back to 399 were development
+        only, so no users should be affected.
+    2014-Mar-05 Piskunov
+        Replicated the removal of the bad top layers in models
+        for interpvar eq 'TAU'
+    """
 
-    def apply(self, x):
-        if not self.is_trained:
-            raise ValueError("Scaler needs to be trained first")
-        if self.useLog10:
-            x = np.copy(x)
-            x = np.log10(x, where=self.log10, out=x)
-        if self.scale == "abs":
-            return (x - self.min) / (self.max - self.min)
-        elif self.scale == "std":
-            return (x - self.median) / self.std
-        else:
-            raise ValueError("Scale parameter is not understood")
+    # Internal program parameters.
+    min_drhox = min_dtau = 0.01  # minimum fractional step in RHOX
+    # min_dtau = 0.01  # minimum fractional step in TAU
+    interpvar = interpvar.lower()
+    ##
+    ## Select interpolation variable (RHOX vs. TAU)
+    ##
 
-    def unscale(self, x):
-        if not self.is_trained:
-            raise ValueError("Scaler needs to be trained first")
-        if self.scale == "abs":
-            x = x * (self.max - self.min) + self.min
-        elif self.scale == "std":
-            x = x * self.std + self.median
-        else:
-            raise ValueError("Scale parameter is not understood")
-        if self.useLog10:
-            x = np.copy(x)
-            x = np.power(10.0, x, where=self.log10, out=x)
-        return x
-
-    def save(self, fname):
-        """ Save the scaler information to a file """
-        if self.scale == "abs":
-            arr0, arr1 = self.min, self.max
-        elif self.scale == "std":
-            arr0, arr1 = self.median, self.std
-        else:
-            raise ValueError
-
-        np.savez(fname, scale=self.scale, log10=self.log10, arr0=arr0, arr1=arr1)
-
-    @staticmethod
-    def load(fname):
-        data = np.load(fname)
-
-        scale = data["scale"]
-        log10 = data["log10"]
-        arr0, arr1 = data["arr0"], data["arr1"]
-        scaler = Scaler(None, scale=scale, log10=log10)
-
-        if scale == "abs":
-            scaler.min, scaler.max = arr0, arr1
-        elif scale == "std":
-            scaler.median, scaler.std = arr0, arr1
-        else:
-            raise ValueError
-
-        if arr0 is not None or arr1 is not None:
-            scaler.is_trained = True
-
-        return scaler
-
-
-class SME_Atmo_Model:
-    def __init__(
-        self,
-        nlayers=4,
-        normalize=False,
-        log10=True,
-        activation="sigmoid",
-        optimizer="adam",
-        parameters=["TEMP", "RHO", "RHOX", "XNA", "XNE"],
-    ):
-        self.nlayers = nlayers
-        self.normalize = normalize
-        self.log10 = log10
-        self.activation = activation
-        self.optimizer = optimizer
-        self.labels = ["TEFF", "LOGG", "MONH"]
-        self.parameters = parameters
-        self.lfs = setup_atmo()
-        self.scaler_x = None
-        self.scaler_y = None
-
-        if log10:
-            self.idx_y_logcols = np.array(self.parameters) != "TEMP"
-        else:
-            self.idx_y_logcols = np.full(len(self.parameters), False)
-
-        self.dim_in = len(self.labels) + 1
-        self.dim_out = len(self.parameters)
-
-        self.model = None
-        self.create_model()
-
-    @property
-    def output_dir(self):
-        output_dir = f"{self.nlayers}layers_"
-        output_dir += "-".join(self.parameters)
-
-        if self.log10:
-            output_dir += "_log10"
-        if self.normalize:
-            output_dir += "_norm"
-        else:
-            output_dir += "_std"
-
-        output_dir += f"_{self.activation}_{self.optimizer}"
-
-        output_dir = join(dirname(__file__), output_dir)
-        return output_dir
-
-    @property
-    def outmodel_file(self):
-        return join(self.output_dir, "model_weights.h5")
-
-    def get_tau(self, resolution=1):
-        points = [11, 40, 5]
-        points = [p * resolution for p in points]
-        tau1 = np.linspace(-5, -3, points[0])
-        tau2 = np.linspace(-2.9, 1.0, points[1])
-        tau3 = np.linspace(1.2, 2, points[2])
-        tau = np.concatenate((tau1, tau2, tau3))
-        return tau
-
-    def load_data(self, atmo, nextra=5000, ntest=1000):
-        fname = self.lfs.get(atmo.source)
-        data = readsav(fname)["atmo_grid"]
-
-        tau = self.get_tau()
-        ntau = len(tau)
-
-        # Define the input data (here use temperature)
-        x_raw = np.array([data[ln] for ln in self.labels]).T
-        y_raw = [np.concatenate(data[pa]).reshape(-1, ntau) for pa in self.parameters]
-
-        inputs = []
-        outputs = []
-        for i, x_row in enumerate(x_raw):
-            for k, tau_val in enumerate(tau):
-                inputs.append([x_row[0], x_row[1], x_row[2], tau_val])
-                out_row = []
-                for i_par in range(len(self.parameters)):
-                    out_row.append(y_raw[i_par][i][k])
-                outputs.append(out_row)
-
-        x_train = np.array(inputs)
-        y_train = np.array(outputs)
-
-        # Create additional training, test, and validation data from the traditional interpolation
-        npoints = nextra + ntest
-        teff_min, logg_min, monh_min, _ = x_train.min(axis=0)
-        teff_max, logg_max, monh_max, _ = x_train.max(axis=0)
-
-        x_test = np.zeros((npoints * (ntau-1), 4))
-        y_test = np.zeros((npoints * (ntau-1), y_train.shape[1]))
-
-        logger.disabled = True
-
-        for i in tqdm(range(npoints), desc="Dataset"):
-            # We have to make sure the interpolation succeeded
-            passed = False
-            while not passed:
-                t = teff_min + np.random.rand() * (teff_max - teff_min)
-                l = logg_min + np.random.rand() * (logg_max - logg_min)
-                m = monh_min + np.random.rand() * (monh_max - monh_min)
-                try:
-                    atmo_interp = interp_atmo_grid(t, l, m, atmo, self.lfs)
-                    passed = True
-                except AtmosphereError:
-                    pass
-
-            x_test[i * (ntau-1) : (i + 1) * (ntau-1), 3] = np.log10(atmo_interp["TAU"])
-            x_test[i * (ntau-1) : (i + 1) * (ntau-1), :3] = t, l, m
-
-            for j, par in enumerate(self.parameters):
-                y_test[i * (ntau-1) : (i + 1) * (ntau-1), j] = atmo_interp[par]
-
-        logger.disabled = False
-
-        x_train = np.concatenate((x_train, x_test[:nextra * (ntau-1)]))
-        y_train = np.concatenate((y_train, y_test[:nextra * (ntau-1)]))
-        x_test = x_test[nextra * (ntau-1):]
-        y_test = y_test[nextra * (ntau-1):]
-
-        return (x_train, y_train, x_test, y_test)
-
-    def extract_samples(self, x, y, n=1):
-        parametersets = np.unique(x[:, :3], axis=0)
-        idx = np.random.choice(parametersets.shape[0], replace=False, size=n)
-        mask = np.all(x[:, :3] == parametersets[idx], axis=1)
-
-        x_test, y_test = x[mask], y[mask]
-        x_train, y_train = x[~mask], y[~mask]
-
-        return x_train, y_train, x_test, y_test
-
-    def create_model(self):
-        # create ann model
-        self.model = Sequential()
-        layers = [50, 200, 350, 500, 500, 350, 200, 50]
-        n = 1
-        self.model.add(
-            Dense(
-                layers[0],
-                input_shape=(self.dim_in,),
-                activation=self.activation,
-                name="E_in",
-            )
+    # Check which depth scales are available in both input atmospheres.
+    tags1 = atmo1.dtype.names
+    tags2 = atmo2.dtype.names
+    ok_tau = "tau" in tags1 and "tau" in tags2
+    ok_rhox = "rhox" in tags1 and "rhox" in tags2
+    if not ok_tau and not ok_rhox:
+        raise AtmosphereError(
+            "atmo1 and atmo2 structures must both contain RHOX or TAU"
         )
 
-        self.model.add(Dense(layers[1], activation=self.activation, name=f"E_{n}"))
-        n += 1
+    # Set interpolation variable, if not specified by keyword argument.
+    if interpvar is None:
+        interpvar = "tau" if ok_tau else "rhox"
+    if interpvar != "tau" and interpvar != "rhox":
+        raise AtmosphereError("interpvar must be 'TAU' (default) or 'RHOX'")
 
-        if self.nlayers >= 5:
-            self.model.add(Dense(layers[2], activation=self.activation, name=f"E_{n}"))
-        n += 1
+    ##
+    ## Define depth scale for both atmospheres
+    ##
 
-        if self.nlayers >= 7:
-            self.model.add(Dense(layers[3], activation=self.activation, name=f"E_{n}"))
-        n += 1
+    # Define depth scale for atmosphere #1
+    itop1 = itop
+    while (atmo1[interpvar][itop1 + 1] / atmo1[interpvar][itop1] - 1) <= min_drhox:
+        itop1 += 1
 
-        if self.nlayers >= 8:
-            self.model.add(Dense(layers[-4], activation=self.activation, name=f"E_{n}"))
-        n += 1
+    ibot1 = atmo1[interpvar].size - 1
+    ndep1 = ibot1 - itop1 + 1
+    depth1 = np.log10(atmo1[interpvar][itop : ibot1 + 1])
 
-        if self.nlayers >= 6:
-            self.model.add(Dense(layers[-3], activation=self.activation, name=f"E_{n}"))
-        n += 1
+    # Define depth scale for atmosphere #2
+    itop2 = itop
+    while (atmo2[interpvar][itop2 + 1] / atmo2[interpvar][itop2] - 1) <= min_drhox:
+        itop2 += 1
 
-        self.model.add(Dense(layers[-2], activation=self.activation, name=f"E_{n}"))
-        n += 1
+    ibot2 = atmo2[interpvar].size - 1
+    ndep2 = ibot2 - itop2 + 1
+    depth2 = np.log10(atmo2[interpvar][itop2 : ibot2 + 1])
 
-        self.model.add(Dense(layers[-1], activation=self.activation, name=f"E_{n}"))
-        n += 1
+    ##
+    ## Prepare to find best shift parameters for each atmosphere vector.
+    ##
 
-        self.model.add(Dense(self.dim_out, activation="linear", name="E_out"))
-        # self.model.summary()
+    # List of atmosphere vectors that need to be shifted.
+    # The code below assumes 'TEMP' is the first vtag in the list.
+    vtags = ["temp", "xne", "xna", "rho", interpvar]
+    if interpvar == "rhox" and ok_tau:
+        vtags += ["tau"]
+    if interpvar == "tau" and ok_rhox:
+        vtags += ["rhox"]
+    nvtag = len(vtags)
 
-        return self.model
+    # Adopt arbitrary uncertainties for shift determinations.
+    err1 = np.full(ndep1, 0.05)
 
-    def train_scaler(self, x_train, y_train):
-        scale = "abs" if self.normalize else "std"
-        self.scaler_x = Scaler(scale=scale, x=x_train)
-        self.scaler_y = Scaler(scale=scale, x=y_train, log10=self.idx_y_logcols)
+    # Initial guess for TEMP shift parameters.
+    # Put depth and TEMP midpoints for atmo1 and atmo2 on top of one another.
+    npar = 4
+    ipar = np.zeros(npar, dtype="f4")
+    temp1 = np.log10(atmo1.temp[itop1 : ibot1 + 1])
+    temp2 = np.log10(atmo2.temp[itop2 : ibot2 + 1])
+    mid1 = np.argmin(np.abs(temp1 - 0.5 * (temp1[1] + temp1[ndep1 - 2])))
+    mid2 = np.argmin(np.abs(temp2 - 0.5 * (temp2[1] + temp2[ndep2 - 2])))
+    ipar[0] = depth1[mid1] - depth2[mid2]  # horizontal
+    ipar[1] = temp1[mid1] - temp2[mid2]  # vertical
 
-    def train_model(self, x_train, y_train, x_test, y_test):
-        self.train_scaler(x_train, y_train)
-        x_train = self.scaler_x.apply(x_train)
-        y_train = self.scaler_y.apply(y_train)
+    # Apply a constraint on the fit, to avoid runaway for cool models, where
+    # the temperature structure is nearly linear with both TAU and RHOX.
+    constraints = np.zeros(npar)
+    constraints[0] = 0.5  # weakly constrain the horizontal shift
 
-        self.model.compile(optimizer=self.optimizer, loss="mse")
-        ann_fit_hist = self.model.fit(
-            x_train,
-            y_train,
-            epochs=1000 + self.nlayers * 500,
-            shuffle=True,
-            batch_size=4096,
-            validation_split=0.1,
-            # validation_data=(x_test, y_test),
-            verbose=2,
+    # For first pass ('TEMP'), use all available depth points.
+    ngd = ndep1
+    igd = np.arange(ngd)
+
+    ##
+    ## Find best shift parameters for each atmosphere vector.
+    ##
+
+    # Loop through atmosphere vectors.
+    pars = np.zeros((nvtag, npar))
+    for ivtag, vtag in enumerate(vtags):
+
+        # Find vector in each structure.
+        if vtag not in tags1:
+            raise AtmosphereError("atmo1 does not contain " + vtag)
+        if vtag not in tags2:
+            raise AtmosphereError("atmo2 does not contain " + vtag)
+
+        vect1 = np.log10(atmo1[vtag][itop1 : ibot1 + 1])
+        vect2 = np.log10(atmo2[vtag][itop2 : ibot2 + 1])
+
+        # Fit the second atmosphere onto the first by finding the best horizontal
+        # shift in depth2 and the best vertical shift in vect2.
+        pars[ivtag], _ = interp_atmo_constrained(
+            depth1[igd],
+            vect1[igd],
+            err1[igd],
+            ipar,
+            x2=depth2,
+            y2=vect2,
+            y1=vect1,
+            ndep=ngd,
+            constraints=constraints,
         )
-        self.save_model(self.outmodel_file)
 
-        np.savez(
-            join(self.output_dir, "history.npz"),
-            loss=ann_fit_hist.history["loss"],
-            val_loss=ann_fit_hist.history["val_loss"],
-        )
-        self.plot_history(ann_fit_hist)
-        return self.model
+        # After first pass ('TEMP'), adjust initial guess and restrict depth points.
+        if ivtag == 0:
+            ipar = [pars[0, 0], 0.0, 0.0, 0.0]
+            igd = np.where(
+                (depth1 >= min(depth2) + ipar[0]) & (depth1 <= max(depth2) + ipar[0])
+            )[0]
+            if igd.size < 2:
+                raise AtmosphereError("unstable shift in temperature")
 
-    def load_model(self, fname):
-        output_dir = dirname(fname)
-        self.model.load_weights(fname, by_name=True)
-        self.scaler_x = Scaler.load(join(output_dir, "scaler_x.npz"))
-        self.scaler_y = Scaler.load(join(output_dir, "scaler_y.npz"))
-        return self.model
+    ##
+    ## Use mean shift to construct output depth scale.
+    ##
 
-    def save_model(self, fname):
-        output_dir = dirname(fname)
-        os.makedirs(output_dir, exist_ok=True)
-        self.model.save_weights(fname)
-        self.scaler_x.save(join(output_dir, "scaler_x.npz"))
-        self.scaler_y.save(join(output_dir, "scaler_y.npz"))
+    # Calculate the mean depth2 shift for all atmosphere vectors.
+    xsh = np.sum(pars[:, 0]) / nvtag
 
-    def predict(self, x):
-        xt = self.scaler_x.apply(x)
-        yt = self.model.predict(xt, verbose=2, batch_size=2048)
-        y = self.scaler_y.unscale(yt)
-        return y
+    # Base the output depth scale on the input scale with the fewest depth points.
+    # Combine the two input scales, if they have the same number of depth points.
+    depth1f = depth1 - xsh * frac
+    depth2f = depth2 + xsh * (1 - frac)
+    if ndep1 > ndep2:
+        depth = depth2f
+    elif ndep1 == ndep2:
+        depth = depth1f * (1 - frac) + depth2f * frac
+    elif ndep1 < ndep2:
+        depth = depth1f
+    ndep = len(depth)
 
-    def plot_history(self, history):
-        plt.figure(figsize=(13, 5))
-        plt.plot(history.history["loss"], label="Train", alpha=0.5)
-        plt.plot(history.history["val_loss"], label="Validation", alpha=0.5)
-        plt.title("Model accuracy")
-        plt.xlabel("Epoch")
-        plt.ylabel("Loss value")
-        plt.xlim(-5, max(1, len(history.history["loss"])) + 5)
-        plt.tight_layout()
-        plt.legend()
-        plt.savefig(join(self.output_dir, "sme_ann_network_loss.png"), dpi=300)
-        plt.close()
+    ##
+    ## Interpolate input atmosphere vectors onto output depth scale.
+    ##
 
-    def plot_results(self, x_train, y_train, x_test, y_test, y_new, y_test_new):
-        n_params = len(self.parameters)
-        x_plot = np.unique(x_test[:, :3], axis=0)
+    # Loop through atmosphere vectors.
+    vects = np.zeros((nvtag, ndep))
+    for ivtag, (vtag, par) in enumerate(zip(vtags, pars)):
 
-        for x in x_plot:
-            u_teff, u_logg, u_meh = x
-            idx_plot = np.all(x_test[:, :3] == x, axis=1)
-            idx_plot_train = x_train[:, 0] == u_teff
+        # Extract data
+        vect1 = np.log10(atmo1[vtag][itop1 : ibot1 + 1])
+        vect2 = np.log10(atmo2[vtag][itop2 : ibot2 + 1])
 
-            print("Plot points:", np.sum(idx_plot), u_teff, u_logg, u_meh)
+        # Identify output depth points that require extrapolation of atmosphere vector.
+        depth1f = depth1 - par[0] * frac
+        depth2f = depth2 + par[0] * (1 - frac)
+        x1max = np.max(depth1f)
+        x2max = np.max(depth2f)
+        iup = (depth > x1max) | (depth > x2max)
+        nup = np.count_nonzero(iup)
+        checkup = (nup >= 1) and abs(frac - 0.5) <= 0.5 and ndep1 == ndep2
 
-            fig, ax = plt.subplots(
-                n_params, 1, sharex=True, figsize=(7, 2.5 * n_params)
-            )
+        # Combine shifted vect1 and vect2 structures to get output vect.
+        vect1f = interp_atmo_func(depth, -frac * par, x2=depth1, y2=vect1)
+        vect2f = interp_atmo_func(depth, (1 - frac) * par, x2=depth2, y2=vect2)
+        vect = (1 - frac) * vect1f + frac * vect2f
+        ends = [vect1[ndep1 - 1], vect[ndep - 1], vect2[ndep2 - 1]]
+        if (
+            checkup
+            and np.median(ends) != vect[ndep - 1]
+            and (abs(vect1[ndep1 - 1] - 4.2) < 0.1 or abs(vect2[ndep2 - 1] - 4.2) < 0.1)
+        ):
+            vect[iup] = vect2f[iup] if x1max < x2max else vect1f[iup]
+        vects[ivtag] = vect
 
-            if n_params == 1:
-                ax = [ax]
+    ##
+    ## Construct output structure
+    ##
 
-            for i_par in range(n_params):
-                ax[i_par].plot(
-                    x_test[idx_plot, 3],
-                    y_test[:, i_par][idx_plot],
-                    label="Reference",
-                    alpha=0.5,
-                )
-                ax[i_par].plot(
-                    x_test[idx_plot, 3],
-                    y_test_new[:, i_par][idx_plot],
-                    label="Predicted",
-                    alpha=0.5,
-                    ls="--",
-                )
-                ax[i_par].set(ylabel=self.parameters[i_par])
+    # Construct output structure with interpolated atmosphere.
+    # Might be wise to interpolate abundances, in case those ever change.
+    atmo = Atmo(interp=interpvar)
+    stags = ["teff", "logg", "monh", "vturb", "lonh", "abund"]
+    ndep_orig = len(atmo1.temp)
+    for tag in tags1:
 
-            ax[-1].set(xlabel="tau")
-            ax[0].legend()
-            fig.tight_layout()
-            fig.subplots_adjust(wspace=0.0)
-            fname = f"{u_teff:.1f}-teff_{u_logg:.1f}-logg_{u_meh:.1f}-monh.png"
-            fname = join(self.output_dir, fname)
-            fig.savefig(fname)
-            plt.close()
+        # Default is to copy value from atmo1. Trim vectors.
+        value = atmo1[tag]
+        if np.size(value) == ndep_orig and tag != "abund":
+            value = value[:ndep]
 
-def train_grid(atmo):
-    nlayers = 4
-    normalize = False
-    log10_params = True
-    activation = "sigmoid"
-    optimizer = "adam"
-    parameters = ["TEMP", "RHO", "RHOX", "XNA", "XNE"]
+        # Vector quantities that have already been interpolated.
+        if tag in vtags:
+            ivtag = [i for i in range(nvtag) if tag == vtags[i]][0]
+            value = 10.0 ** vects[ivtag]
 
-    model = SME_Atmo_Model(
-        nlayers, normalize, log10_params, activation, optimizer, parameters=parameters
-    )
+        # Scalar quantities that should be interpolated using frac.
+        if tag in stags:
+            if tag in tags2:
+                value = (1 - frac) * atmo1[tag] + frac * atmo2[tag]
+            else:
+                value = atmo1[tag]
 
-    # Replace the training and sample creation with this if data exists
-    # data = np.load("test_data.npz")
-    # x_train, y_train, x_test, y_test = data["x_train"], data["y_train"], data["x_test"], data["y_test"]
-    # model.load_model(model.outmodel_file)
+        # Remaining cases.
+        if tag == "ndep":
+            value = ndep
 
-    x_train, y_train, x_test, y_test = model.load_data(atmo, 5000, 1000)
-    np.savez("test_data.npz", x_train=x_train, y_train=y_train, x_test=x_test, y_test=y_test)
+        # Abundances
+        if tag == "abund":
+            value = (1 - frac) * atmo1[tag] + frac * atmo2[tag]
 
-    model.train_model(x_train, y_train, x_test, y_test)
-
-    y_new = model.predict(x_train)
-    y_test_new = model.predict(x_test)
-
-    # This will make a lot of plots
-    model.plot_results(x_train, y_train, x_test, y_test, y_new, y_test_new)
-
-    pass
-
-
-
-def interpolate_grid(atmo, teff, logg, monh, lfs_atmo=None, verbose=0):
-    nlayers = 4
-    normalize = False
-    log10_params = True
-    activation = "sigmoid"
-    optimizer = "adam"
-    parameters = ["TEMP", "RHO", "RHOX", "XNA", "XNE"]
-
-    # TODO: load correct model
-    fname = atmo.source
-
-    # TODO: persist model in memory between calls
-    model = SME_Atmo_Model(
-        nlayers, normalize, log10_params, activation, optimizer, parameters=parameters
-    )
-
-    model.load_model(model.outmodel_file)
-
-    tau = model.get_tau()
-    # x = ["TEFF", "LOGG", "MONH", "TAU"]
-    x = np.zeros((len(tau), 4))
-    x[:, :3] = teff, logg, monh
-    x[:, 3] = tau
-
-    # y = ["TEMP", "RHO", "RHOX", "XNA", "XNE"]
-    y = model.predict(x)
-
-    atmo.tau = tau
-    atmo.temp = y[:, 0]
-    atmo.rho = y[:, 1]
-    atmo.rhox = y[:, 2]
-    atmo.xna = y[:, 3]
-    atmo.xne = y[:, 4]
-
+        # Create or add to output structure.
+        atmo[tag] = value
     return atmo
 
 
 def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=False):
     """
     General routine to interpolate in 3D grid of model atmospheres
+
     Parameters
     -----
     Teff : float
@@ -487,6 +351,7 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
         wether to plot debug information (default: False)
     reload : bool
         wether to reload atmosphere information from disk (default: False)
+
     Returns
     -------
     atmo : Atmosphere
@@ -517,8 +382,8 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
     20-May-12 UH
         Use _extra to pass grid file name.
     30-Oct-12 TN
-        Rewritten to interpolate on either the tau (optical depth)
-        or the rhox (column mass) scales. Renamed from interpkrz2/3
+        Rewritten to interpolate on either the TAU (optical depth)
+        or the RHOX (column mass) scales. Renamed from interpkrz2/3
         to be used as a general routine, called via interfaces.
     29-Apr-13 TN
         krz3 structure renamed to the generic name atmo_grid.
@@ -558,17 +423,16 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
 
     # Internal parameters.
     nb = 2  # number of bracket points
-    itop = 1  # index of top depth to use on rhox scale
+    itop = 1  # index of top depth to use on RHOX scale
 
     atmo_file = atmo_in.source
     self = interp_atmo_grid
     if not hasattr(self, "atmo_grid"):
-        self.atmo_grid = atmo_grid = sav_file(atmo_file, lfs_atmo)
-    else:
-        self.atmo_grid = atmo_grid = self.atmo_grid.load(atmo_file, reload=reload)
-
+        atmo_file = lfs_atmo.get(atmo_file)
+        self.atmo_grid = SavFile(atmo_file)
+    atmo_grid = self.atmo_grid
     # Get field names in ATMO and ATMO_GRID structures.
-    atags = [s.upper() for s in atmo_in.names]
+    atags = [s for s in atmo_in.dtype.names]
     gtags = [s for s in atmo_grid.dtype.names]
 
     # Determine ATMO.DEPTH radiative transfer depth variable. Order of precedence:
@@ -578,19 +442,19 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
     # (4) 'TAU', if ATMO_GRID.TAU exists
     # Check that INTERP is valid and the corresponding field exists in ATMO.
     #
-    if "DEPTH" in atags and atmo_in.depth is not None:
-        depth = str.upper(atmo_in.depth)
-    elif "DEPTH" in gtags and atmo_grid[0].depth is not None:
-        depth = str.upper(atmo_grid.depth)
-    elif "RHOX" in gtags:
+    if "depth" in atags and atmo_in.depth is not None:
+        depth = atmo_in.depth
+    elif "depth" in gtags and atmo_grid.depth is not None:
+        depth = atmo_grid.depth
+    elif "rhox" in gtags:
         depth = "RHOX"
-    elif "TAU" in gtags:
+    elif "tau" in gtags:
         depth = "TAU"
     else:
         raise AtmosphereError("no value for ATMO.DEPTH")
     if depth != "TAU" and depth != "RHOX":
         raise AtmosphereError("ATMO.DEPTH must be 'TAU' or 'RHOX', not '%s'" % depth)
-    if depth not in gtags:
+    if depth.lower() not in gtags:
         raise AtmosphereError(
             "ATMO.DEPTH='%s', but ATMO. %s does not exist" % (depth, depth)
         )
@@ -602,19 +466,19 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
     # (4) 'RHOX', if ATMO_GRID.RHOX exists
     # Check that INTERP is valid and the corresponding field exists in ATMO.
     #
-    if "INTERP" in atags and atmo_in.interp is not None:
-        interp = str.upper(atmo_in.interp)
-    elif "INTERP" in gtags and atmo_grid[0].interp is not None:
-        interp = str.upper(atmo_grid.interp)
-    elif "TAU" in gtags:
+    if atmo_in.interp is not None:
+        interp = atmo_in.interp
+    elif atmo_grid.interp is not None:
+        interp = atmo_grid.interp
+    elif "tau" in gtags:
         interp = "TAU"
-    elif "RHOX" in gtags:
+    elif "rhox" in gtags:
         interp = "RHOX"
     else:
         raise AtmosphereError("no value for ATMO.INTERP")
     if interp not in ["TAU", "RHOX"]:
         raise AtmosphereError("ATMO.INTERP must be 'TAU' or 'RHOX', not '%s'" % interp)
-    if interp not in gtags:
+    if interp.lower() not in gtags:
         raise AtmosphereError(
             "ATMO.INTERP='%s', but ATMO. %s does not exist" % (interp, interp)
         )
@@ -866,10 +730,6 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
     t1 = atmo1.teff
     tfrac = 0 if t0 == t1 else (Teff - t0) / (t1 - t0)
     krz = interp_atmo_pair(atmo0, atmo1, tfrac, interpvar=interp)
-    ktags = krz.names
-
-    # Set model type to depth variable that should be used for radiative transfer.
-    krz.modtyp = depth
 
     # If all interpolated models were spherical, the interpolated model should
     # also be reported as spherical. This enables spherical-symmetric radiative
@@ -879,7 +739,7 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
     #  log(M/Msol) = log g - log g_sol - 2*log(R_sol / R)
     #  2 * log(R / R_sol) = log g_sol - log g + log(M / M_sol)
     #
-    if "RADIUS" in gtags and np.min(atmo_grid[icor].radius) > 1 and "HEIGHT" in gtags:
+    if "radius" in gtags and np.min(atmo_grid[icor].radius) > 1 and "height" in gtags:
         solR = 69.550e9  # radius of sun in cm
         sollogg = 4.44  # solar log g [cm s^-2]
         mass_cor = (
@@ -893,374 +753,31 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
         geom = "PP"
 
     # Add standard ATMO input fields, if they are missing from ATMO_IN.
-    atmo = atmo_in
-
-    # Create ATMO.DEPTH, if necessary, and set value.
+    atmo = krz
     atmo.depth = depth
-
-    # Create ATMO.INTERP, if necessary, and set value.
     atmo.interp = interp
 
     # Create ATMO.GEOM, if necessary, and set value.
-    if "GEOM" in atags:
-        if atmo.geom != "" and atmo.geom != geom:
-            if atmo.geom == "SPH":
-                raise AtmosphereError(
-                    "Input ATMO.GEOM='%s' not valid for requested model." % atmo.geom
-                )
-            else:
-                logger.info(
-                    "Input ATMO.GEOM='%s' overrides '%s' from grid.", atmo.geom, geom
-                )
-    atmo.geom = geom
-
-    # Copy most fields from KRZ interpolation result to output ATMO.
-    discard = ["MODTYP", "SPHERE", "NDEP"]
-    for tag in ktags:
-        if tag not in discard:
-            setattr(atmo, tag, krz[tag])
-
-    return atmo
-
-
-def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
-    """
-    Interpolate between two model atmospheres, accounting for shifts in
-    the mass column density or optical depth scale.
-    How it works:
-    1) The second atmosphere is fitted onto the first, individually for
-    each of the four atmospheric quantitites: T, xne, xna, rho.
-    The fitting uses a linear shift in both the (log) depth parameter and
-    in the (log) atmospheric quantity. For T, the midpoint of the two
-    atmospheres is aligned for the initial guess. The result of this fit
-    is used as initial guess for the other quantities. A penalty function
-    is applied to each fit, to avoid excessively large shifts on the
-    depth scale.
-    2) The mean of the horizontal shift in each parameter is used to
-    construct the common output depth scale.
-    3) Each atmospheric quantity is interpolated after shifting the two
-    corner models by the amount determined in step 1), rescaled by the
-    interpolation fraction (frac).
-    Parameters
-    ------
-    atmo1 : Atmosphere
-        first atmosphere to interpolate
-    atmo2 : Atmosphere
-        second atmosphere to interpolate
-    frac : float
-        interpolation fraction: 0.0 -> atmo1 and 1.0 -> atmo2
-    interpvar : {"RHOX", "TAU"}, optional
-        atmosphere interpolation variable (default:"RHOX").
-    itop : int, optional
-        index of top point in the atmosphere to use. default
-        is to use all points (itop=0). use itop=1 to clip top depth point.
-    atmop : array[5, ndep], optional
-        interpolated atmosphere prediction (for plots)
-        Not needed if atmospheres are provided as structures. (default: None)
-    verbose : {0, 5}, optional
-        diagnostic print level (default 0: no printing)
-    plot : {-1, 0, 1}, optional
-        diagnostic plot level. Larger absolute
-        value yields more plots. Negative values cause a wait for keypress
-        after each plot. (default: 0, no plots)
-    old : bool, optional
-        also plot result from the old interpkrz2 algorithm. (default: False)
-    Returns
-    ------
-    atmo : Atmosphere
-        interpolated atmosphere
-        .rhox (vector[ndep]) mass column density (g/cm^2)
-        .tau  (vector[ndep]) reference optical depth (at 5000 Å)
-        .temp (vector[ndep]) temperature (K)
-        .xne  (vector[ndep]) electron number density (1/cm^3)
-        .xna  (vector[ndep]) atomic number density (1/cm^3)
-        .rho  (vector[ndep]) mass density (g/cm^3)
-    """
-    """
-    History
-    -------
-    2004-Apr-15 Valenti
-        Initial coding.
-    MB
-        interpolation on tau scale
-    2012-Oct-30 TN
-        Rewritten to use either column mass (RHOX) or
-        reference optical depth (TAU) as vertical scale. Shift-interpolation
-        algorithms have been improved for stability in cool dwarfs (<=3500 K).
-        The reference optical depth scale is preferred in terms of interpolation
-        accuracy across most of parameter space, with significant improvement for
-        both cool models (where depth vs temperature is rather flat) and hot
-        models (where depth vs temperature exhibits steep transitions).
-        Column mass depth is used by default for backward compatibility.
-    2013-May-17 Valenti
-        Use frac to weight the two shifted depth scales,
-        rather than simply averaging them. This change fixes discontinuities
-        when crossing grid nodes.
-    2013-Sep-10 Valenti
-        Now returns an atmosphere structure instead of a
-        [5,NDEP] atmosphere array. This was necessary to support interpolation
-        using one variable (e.g., TAU) and radiative transfer using a different
-        variable (e.g. RHOX). The atmosphere array could only store one depth
-        variable, meaning the radiative transfer variable had to be the same
-        as the interpolation variable. Returns atmo.rhox if available and also
-        atmo.tau if available. Since both depth variables are returned, if
-        available, this routine no longer needs to know which depth variable
-        will be used for radiative transfer. Only the interpolation variable
-        is important. Thus, the interpvar= keyword argument replaces the
-        type= keyword argument. Very similar code blocks for each atmospheric
-        quantity have been unified into a single code block inside a loop over
-        atmospheric quantities.
-    2013-Sep-21 Valenti
-        Fixed an indexing bug that affected the output depth
-        scale but not other atmosphere vectors. Itop clipping was not being
-        applied to the depth scale ('RHOX' or 'TAU'). Bug fixed by adding
-        interpvar to vtags. Now atmospheres interpolated with interp_atmo_grid
-        match output from revision 398. Revisions back to 399 were development
-        only, so no users should be affected.
-    2014-Mar-05 Piskunov
-        Replicated the removal of the bad top layers in models
-        for interpvar eq 'TAU'
-    """
-
-    # Internal program parameters.
-    min_drhox = 0.01  # minimum fractional step in rhox
-    min_dtau = 0.01  # minimum fractional step in tau
-
-    ##
-    ## Select interpolation variable (RHOX vs. TAU)
-    ##
-
-    # Check which depth scales are available in both input atmospheres.
-    tags1 = atmo1.dtype.names
-    tags2 = atmo2.dtype.names
-    ok_tau = "TAU" in tags1 and "TAU" in tags2
-    ok_rhox = "RHOX" in tags1 and "RHOX" in tags2
-    if not ok_tau and not ok_rhox:
-        raise AtmosphereError(
-            "atmo1 and atmo2 structures must both contain RHOX or TAU"
-        )
-
-    # Set interpolation variable, if not specified by keyword argument.
-    if interpvar is None:
-        if ok_tau:
-            interpvar = "TAU"
+    if "geom" in atags and atmo_in.geom != geom:
+        if atmo_in.geom == "SPH":
+            raise AtmosphereError(
+                "Input ATMO.GEOM='%s' not valid for requested model." % atmo_in.geom
+            )
         else:
-            interpvar = "RHOX"
-    if interpvar != "TAU" and interpvar != "RHOX":
-        raise AtmosphereError("interpvar must be 'TAU' (default) or 'RHOX'")
+            logger.info(
+                "Input ATMO.GEOM='%s' overrides '%s' from grid.", atmo_in.geom, geom
+            )
+    atmo.geom = geom
+    atmo.source = atmo_in.source
+    atmo.method = atmo_in.method
 
-    ##
-    ## Define depth scale for both atmospheres
-    ##
-
-    # Define depth scale for atmosphere #1
-    itop1 = itop
-    if interpvar == "RHOX":
-        while atmo1.rhox[itop1 + 1] / atmo1.rhox[itop1] - 1 <= min_drhox:
-            itop1 += 1
-    elif interpvar == "TAU":
-        while atmo1.tau[itop1 + 1] / atmo1.tau[itop1] - 1 <= min_dtau:
-            itop1 += 1
-
-    ibot1 = atmo1.ndep - 1
-    ndep1 = ibot1 - itop1 + 1
-    if interpvar == "RHOX":
-        depth1 = np.log10(atmo1.rhox[itop1 : ibot1 + 1])
-    elif interpvar == "TAU":
-        depth1 = np.log10(atmo1.tau[itop1 : ibot1 + 1])
-
-    # Define depth scale for atmosphere #2
-    itop2 = itop
-    if interpvar == "RHOX":
-        while atmo2.rhox[itop2 + 1] / atmo2.rhox[itop2] - 1 <= min_drhox:
-            itop2 += 1
-    elif interpvar == "TAU":
-        while atmo2.tau[itop2 + 1] / atmo2.tau[itop2] - 1 <= min_dtau:
-            itop2 += 1
-
-    ibot2 = atmo2.ndep - 1
-    ndep2 = ibot2 - itop2 + 1
-    if interpvar == "RHOX":
-        depth2 = np.log10(atmo2.rhox[itop2 : ibot2 + 1])
-    elif interpvar == "TAU":
-        depth2 = np.log10(atmo2.tau[itop2 : ibot2 + 1])
-
-    ##
-    ## Prepare to find best shift parameters for each atmosphere vector.
-    ##
-
-    # List of atmosphere vectors that need to be shifted.
-    # The code below assumes 'TEMP' is the first vtag in the list.
-    vtags = ["TEMP", "XNE", "XNA", "RHO", interpvar]
-    if interpvar == "RHOX" and ok_tau:
-        vtags += ["TAU"]
-    if interpvar == "TAU" and ok_rhox:
-        vtags += ["RHOX"]
-    nvtag = len(vtags)
-
-    # Adopt arbitrary uncertainties for shift determinations.
-    err1 = np.full(ndep1, 0.05)
-
-    # Initial guess for TEMP shift parameters.
-    # Put depth and TEMP midpoints for atmo1 and atmo2 on top of one another.
-    npar = 4
-    ipar = np.zeros(npar, dtype="f4")
-    temp1 = np.log10(atmo1.temp[itop1 : ibot1 + 1])
-    temp2 = np.log10(atmo2.temp[itop2 : ibot2 + 1])
-    mid1 = np.argmin(np.abs(temp1 - 0.5 * (temp1[1] + temp1[ndep1 - 2])))
-    mid2 = np.argmin(np.abs(temp2 - 0.5 * (temp2[1] + temp2[ndep2 - 2])))
-    ipar[0] = depth1[mid1] - depth2[mid2]  # horizontal
-    ipar[1] = temp1[mid1] - temp2[mid2]  # vertical
-
-    # Apply a constraint on the fit, to avoid runaway for cool models, where
-    # the temperature structure is nearly linear with both TAU and RHOX.
-    constraints = np.zeros(npar)
-    constraints[0] = 0.5  # weakly constrain the horizontal shift
-
-    # For first pass ('TEMP'), use all available depth points.
-    ngd = ndep1
-    igd = np.arange(ngd)
-
-    ##
-    ## Find best shift parameters for each atmosphere vector.
-    ##
-
-    # Loop through atmosphere vectors.
-    pars = np.zeros((nvtag, npar))
-    for ivtag in range(nvtag):
-        vtag = vtags[ivtag]
-
-        # Find vector in each structure.
-        if vtag not in tags1:
-            raise AtmosphereError("atmo1 does not contain " + vtag)
-        if vtag not in tags2:
-            raise AtmosphereError("atmo2 does not contain " + vtag)
-
-        vect1 = np.log10(atmo1[vtag][itop1 : ibot1 + 1])
-        vect2 = np.log10(atmo2[vtag][itop2 : ibot2 + 1])
-
-        # Fit the second atmosphere onto the first by finding the best horizontal
-        # shift in depth2 and the best vertical shift in vect2.
-        pars[ivtag], _ = interp_atmo_constrained(
-            depth1[igd],
-            vect1[igd],
-            err1[igd],
-            ipar,
-            x2=depth2,
-            y2=vect2,
-            y1=vect1,
-            ndep=ngd,
-            constraints=constraints,
-        )
-
-        # After first pass ('TEMP'), adjust initial guess and restrict depth points.
-        if ivtag == 0:
-            ipar = [pars[0, 0], 0.0, 0.0, 0.0]
-            igd = np.where(
-                (depth1 >= min(depth2) + ipar[0]) & (depth1 <= max(depth2) + ipar[0])
-            )[0]
-            if igd.size < 2:
-                raise AtmosphereError("unstable shift in temperature")
-
-    ##
-    ## Use mean shift to construct output depth scale.
-    ##
-
-    # Calculate the mean depth2 shift for all atmosphere vectors.
-    xsh = np.sum(pars[:, 0]) / nvtag
-
-    # Base the output depth scale on the input scale with the fewest depth points.
-    # Combine the two input scales, if they have the same number of depth points.
-    depth1f = depth1 - xsh * frac
-    depth2f = depth2 + xsh * (1 - frac)
-    if ndep1 > ndep2:
-        depth = depth2f
-    elif ndep1 == ndep2:
-        depth = depth1f * (1 - frac) + depth2f * frac
-    elif ndep1 < ndep2:
-        depth = depth1f
-    ndep = len(depth)
-
-    ##
-    ## Interpolate input atmosphere vectors onto output depth scale.
-    ##
-
-    # Loop through atmosphere vectors.
-    vects = np.zeros((nvtag, ndep))
-    for ivtag in range(nvtag):
-        vtag = vtags[ivtag]
-        par = pars[ivtag]
-
-        # Extract data
-        vect1 = np.log10(atmo1[vtag][itop1 : ibot1 + 1])
-        vect2 = np.log10(atmo2[vtag][itop2 : ibot2 + 1])
-
-        # Identify output depth points that require extrapolation of atmosphere vector.
-        depth1f = depth1 - par[0] * frac
-        depth2f = depth2 + par[0] * (1 - frac)
-        x1max = np.max(depth1f)
-        x2max = np.max(depth2f)
-        iup = (depth > x1max) | (depth > x2max)
-        nup = np.count_nonzero(iup)
-        checkup = (nup >= 1) and abs(frac - 0.5) <= 0.5 and ndep1 == ndep2
-
-        # Combine shifted vect1 and vect2 structures to get output vect.
-        vect1f = interp_atmo_func(depth, -frac * par, x2=depth1, y2=vect1)
-        vect2f = interp_atmo_func(depth, (1 - frac) * par, x2=depth2, y2=vect2)
-        vect = (1 - frac) * vect1f + frac * vect2f
-        ends = [vect1[ndep1 - 1], vect[ndep - 1], vect2[ndep2 - 1]]
-        if (
-            checkup
-            and np.median(ends) != vect[ndep - 1]
-            and (abs(vect1[ndep1 - 1] - 4.2) < 0.1 or abs(vect2[ndep2 - 1] - 4.2) < 0.1)
-        ):
-            vect[iup] = vect2f[iup] if x1max < x2max else vect1f[iup]
-        vects[ivtag] = vect
-
-    ##
-    ## Construct output structure
-    ##
-
-    # Construct output structure with interpolated atmosphere.
-    # Might be wise to interpolate abundances, in case those ever change.
-    atmo = Atmo()
-    stags = ["TEFF", "LOGG", "MONH", "VTURB", "LONH", "ABUND"]
-    ndep_orig = len(atmo1.temp)
-    for tag in tags1:
-
-        # Default is to copy value from atmo1. Trim vectors.
-        value = atmo1[tag]
-        if np.size(value) == ndep_orig and tag != "ABUND":
-            value = value[:ndep]
-
-        # Vector quantities that have already been interpolated.
-        if tag in vtags:
-            ivtag = [i for i in range(nvtag) if tag == vtags[i]][0]
-            value = 10.0 ** vects[ivtag]
-
-        # Scalar quantities that should be interpolated using frac.
-        if tag in stags:
-            if tag in tags2:
-                value = (1 - frac) * atmo1[tag] + frac * atmo2[tag]
-            else:
-                value = atmo1[tag]
-
-        # Remaining cases.
-        if tag == "NDEP":
-            value = ndep
-
-        # Abundances
-        if tag == "ABUND":
-            value = (1 - frac) * atmo1[tag] + frac * atmo2[tag]
-
-        # Create or add to output structure.
-        atmo[tag] = value
     return atmo
 
 
 def interp_atmo_constrained(x, y, err, par, x2, y2, constraints=None, **kwargs):
     """
     Apply a constraint on each parameter, to have it approach zero
+
     Parameters
     -------
     x : array[n]
@@ -1277,11 +794,13 @@ def interp_atmo_constrained(x, y, err, par, x2, y2, constraints=None, **kwargs):
         dependent variable for tabulated input function
     ** kwargs : dict
         passes keyword arguments to interp_atmo_func
+
         ndep : int
             number of depth points in supplied quantities
         constraints : array[nconstraint], optional
             error vector for constrained parameters.
             Use errors of 0 for unconstrained parameters.
+
     Returns
     --------
     ret : list of floats
@@ -1306,6 +825,7 @@ def interp_atmo_func(x1, par, x2, y2, ndep=None, y1=None):
     Apply a horizontal shift to x2.
     Apply a vertical shift to y2.
     Interpolate onto x1 the shifted y2 as a function of shifted x2.
+
     Parameters
     ---------
     x1 : array[ndep1]
@@ -1323,6 +843,7 @@ def interp_atmo_func(x1, par, x2, y2, ndep=None, y1=None):
         number of depth points in atmospheric structure (default is use all)
     y1 : array[ndep2], optional
         data values being fitted
+
     Note
     -------
     Only pass y1 if you want to restrict the y-values of extrapolated

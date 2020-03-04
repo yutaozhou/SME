@@ -22,7 +22,7 @@ from .abund import Abund
 from .atmosphere.atmosphere import AtmosphereError
 from .atmosphere.savfile import SavFile
 from .atmosphere.krzfile import KrzFile
-from .atmosphere.interpolation import interpolate_grid
+from .atmosphere.machine_learning import interpolate_grid
 from .config import Config
 from .continuum_and_radial_velocity import match_rv_continuum
 from .integrate_flux import integrate_flux
