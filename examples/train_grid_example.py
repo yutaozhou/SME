@@ -1,5 +1,7 @@
 import os.path
 
+import matplotlib.pyplot as plt
+
 from pysme.gui import plot_plotly
 from pysme import sme as SME
 from pysme import util
@@ -17,3 +19,4 @@ util.start_logging("training.log")
 sme = SME.SME_Structure.load(in_file)
 
 train_grid(sme.atmo)
+

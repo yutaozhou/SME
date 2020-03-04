@@ -9,15 +9,12 @@ import numpy as np
 import tensorflow as tf
 from keras.layers import Dense
 from keras.models import Sequential
-from scipy.interpolate import interp1d
 from scipy.io import readsav
-from scipy.optimize import curve_fit
 from tqdm import tqdm
 
 from ..large_file_storage import setup_atmo
-from .atmosphere import Atmosphere as Atmo
 from .atmosphere import AtmosphereError
-from .savfile import SavFile
+from .interpolation import interp_atmo_grid
 
 tf.config.optimizer.set_jit(True)
 
@@ -179,25 +176,30 @@ class SME_Atmo_Model:
         fname = self.lfs.get(atmo.source)
         data = readsav(fname)["atmo_grid"]
 
-        tau = self.get_tau()
+        tau = data["TAU"][0]
         ntau = len(tau)
+        ndata = len(data["TAU"])
+        npar = len(self.parameters)
 
         # Define the input data (here use temperature)
         x_raw = np.array([data[ln] for ln in self.labels]).T
         y_raw = [np.concatenate(data[pa]).reshape(-1, ntau) for pa in self.parameters]
 
-        inputs = []
-        outputs = []
-        for i, x_row in enumerate(x_raw):
-            for k, tau_val in enumerate(tau):
-                inputs.append([x_row[0], x_row[1], x_row[2], tau_val])
-                out_row = []
-                for i_par in range(len(self.parameters)):
-                    out_row.append(y_raw[i_par][i][k])
-                outputs.append(out_row)
+        inputs = np.zeros((ntau * ndata, 4))
+        outputs = np.zeros((ntau * ndata, npar))
 
-        x_train = np.array(inputs)
-        y_train = np.array(outputs)
+        for i, x_row in enumerate(x_raw):
+            tau = np.log10(data["TAU"][i])
+            low = i * ntau
+            upp = low + ntau
+
+            inputs[low:upp, :3] = x_row[0], x_row[1], x_row[2]
+            inputs[low:upp, -1] = tau
+
+            outputs[low:upp] = np.array([y[i] for y in y_raw]).T
+
+        x_train = np.asarray(inputs)
+        y_train = np.asarray(outputs)
 
         # Create additional training, test, and validation data from the traditional interpolation
         npoints = nextra + ntest
