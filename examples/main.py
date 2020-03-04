@@ -27,12 +27,11 @@ if __name__ == "__main__":
         examples_dir = "/DATA/ESO/HARPS/K2-3/"
         in_file = os.path.join(examples_dir, "K2-3_red_c.ech")
         vald_file = os.path.expanduser("~/Documents/IDL/SME/harps_red.lin")
-        atmo_file = "marcs2012p_t2.0.sav"
+        atmo_file = "marcs2012p_t1.0.sav"
         fitparameters = []
 
     # Load files
     sme = SME.SME_Structure.load(in_file)
-    # sme.save("test.npz", compressed=False, for_idl=True)
 
     if vald_file is not None:
         vald = ValdFile(vald_file)
@@ -41,6 +40,7 @@ if __name__ == "__main__":
     if atmo_file is not None:
         sme.atmo.source = atmo_file
         sme.atmo.method = "grid"
+        sme.atmo.geom = "PP"
 
     # Choose free parameters, i.e. sme.pname
     if len(fitparameters) == 0:
@@ -51,25 +51,24 @@ if __name__ == "__main__":
             fitparameters = ["teff", "logg", "monh"]
 
     sme.teff = 3800
-    sme.logg = 4.7
+    sme.logg = 4.86
     sme.monh = -0.4
     sme.vsini = 0
     sme.vmic = 1
     sme.vmac = 1
+    sme.h2broad = True
 
-    sme.nlte.set_nlte("Fe")
+    sme.nlte.set_nlte("Fe", "marcs2012_Fe2016.grd")
 
-    # sme.cscale_flag = "none"
-    # sme.cscale = 1
-    sme.vrad_flag = "each"
-    # sme.vrad = 30.75
+    sme.cscale_flag = "none"
+    sme.cscale = 1
+    sme.vrad_flag = "whole"
+    sme.vrad = 31.82
 
     fitparameters = ["logg", "teff", "monh"]
 
-    sme.save("k2-3.sme")
-    SME.SME_Structure.load("k2-3.sme")
-
     # Start SME solver
+
     sme = synthesize_spectrum(sme)
 
     # solver = SME_Solver(filename=f"test2.sme")

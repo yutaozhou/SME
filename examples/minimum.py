@@ -8,7 +8,9 @@ from pysme import util
 from pysme.solve import solve
 from pysme.synthesize import synthesize_spectrum
 
-# from pysme.persistence import save_as_idl
+from pysme.abund import Abund
+from pysme.linelist.vald import ValdFile
+from pysme.persistence import save_as_idl
 
 if __name__ == "__main__":
 
@@ -26,14 +28,15 @@ if __name__ == "__main__":
 
     # Load your existing SME structure or create your own
     sme = SME.SME_Structure.load(in_file)
-
-    # save_as_idl(sme, "sme.sav")
+    sme.abund = Abund(0, "asplund2009")
+    sme.linelist = ValdFile(os.path.join(examples_dir, "sun.lin"))
 
     # Change parameters if your want
     sme.vsini = 0
     sme.vrad = 0.35
-    sme.vrad_flag = "fix"
-    sme.cscale_flag = "none"
+    sme.vrad_flag = "each"
+    sme.cscale_flag = "linear"
+    sme.cscale_type = "mask"
 
     # Define any fitparameters you want
     # For abundances use: 'abund {El}', where El is the element (e.g. 'abund Fe')
@@ -41,11 +44,11 @@ if __name__ == "__main__":
     # linelist and p is the line parameter (e.g. 'linelist 17 gflog')
     fitparameters = ["teff", "logg", "monh"]
 
-    print(sme.citation())
-
     # Start SME solver
     # sme = synthesize_spectrum(sme)
     sme = solve(sme, fitparameters)
+
+    print(sme.citation())
 
     # Save results
     sme.save(out_file)
