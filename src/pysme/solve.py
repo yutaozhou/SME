@@ -420,8 +420,10 @@ class SME_Solver:
         assert "spec" in sme, "SME Structure has no observation"
 
         if "uncs" not in sme:
-            sme.uncs = np.ones_like(sme.sob)
+            sme.uncs = np.ones(sme.spec.size)
             logger.warning("SME Structure has no uncertainties, using all ones instead")
+        if "mask" not in sme:
+            sme.mask = np.full(sme.wave.size, sme.mask_values["line"])
 
         segments = Synthesizer.check_segments(sme, segments)
 
