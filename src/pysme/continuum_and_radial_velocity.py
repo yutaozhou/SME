@@ -702,7 +702,7 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
 
     vrad, vrad_unc, cscale, cscale_unc = null_result(sme.nseg, sme.cscale_degree)
     if sme.cscale_flag == "none" and sme.vrad_flag == "none":
-        return vrad, vrad_unc, cscale, cscale_unc
+        return cscale, cscale_unc, vrad, vrad_unc
 
     if np.isscalar(segments):
         segments = [segments]
