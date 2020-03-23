@@ -1,0 +1,303 @@
+ 6436.00000, 6444.00000, 67, 895, 1.0, Wavelength region, lines selected, lines processed, Vmicro
+                                                                                    Lande factors      Damping parameters Central
+Spec Ion      WL_air(A)   log gf*  E_low(cm^-1)   J lo    E_up(cm^-1)   J up   lower   upper    mean   Rad.  Stark  Waals  depth
+'Fe 1',       6436.4055,  -2.460,    33765.3060,   2.0,    49297.6350,   1.0,  0.680,  0.560,  0.730, 7.490,-6.030,  -7.810, 0.112,
+'  LS                                                                               3d8 c3F'
+'  LS                                                            3d6.(3F2).4s.4p.(3P*) v3D*'
+'N D        Kurucz Fe I 2014Fe               1 wl:K14   2 gf:FMW   1 K14   1 K14   1 K14   1 K14   1 K14   1 K14   1 K14'
+'Eu 2',       6437.6106,  -1.242,    10643.3850,   5.0,    26172.7576,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.011,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(153)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP HMAP'
+'Eu 2',       6437.6121,  -1.280,    10643.5837,   5.0,    26172.9090,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.010,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(151)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP+MHAP HMAP+MHAP'
+'Eu 2',       6437.6135,  -2.473,    10643.3850,   5.0,    26172.7576,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.011,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(153)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP HMAP'
+'Eu 2',       6437.6194,  -2.511,    10643.5837,   5.0,    26172.9090,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.010,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(151)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP+MHAP HMAP+MHAP'
+'Eu 2',       6437.6246,  -2.473,    10643.3850,   5.0,    26172.7576,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.011,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(153)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP HMAP'
+'Eu 2',       6437.6276,  -1.352,    10643.3850,   5.0,    26172.7576,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.011,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(153)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP HMAP'
+'Eu 2',       6437.6300,  -2.511,    10643.5837,   5.0,    26172.9090,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.010,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(151)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP+MHAP HMAP+MHAP'
+'Eu 2',       6437.6304,  -2.280,    10643.3850,   5.0,    26172.7576,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.011,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(153)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP HMAP'
+'Eu 2',       6437.6347,  -2.280,    10643.3850,   5.0,    26172.7576,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.011,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(153)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP HMAP'
+'Eu 2',       6437.6373,  -1.390,    10643.5837,   5.0,    26172.9090,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.010,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(151)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP+MHAP HMAP+MHAP'
+'Eu 2',       6437.6375,  -1.463,    10643.3850,   5.0,    26172.7576,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.011,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(153)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP HMAP'
+'Eu 2',       6437.6399,  -2.238,    10643.3850,   5.0,    26172.7576,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.011,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(153)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP HMAP'
+'Eu 2',       6437.6400,  -2.238,    10643.3850,   5.0,    26172.7576,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.011,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(153)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP HMAP'
+'Eu 2',       6437.6419,  -2.292,    10643.3850,   5.0,    26172.7576,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.011,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(153)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP HMAP'
+'Eu 2',       6437.6422,  -2.488,    10643.3850,   5.0,    26172.7576,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.011,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(153)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP HMAP'
+'Eu 2',       6437.6424,  -1.569,    10643.3850,   5.0,    26172.7576,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.011,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(153)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP HMAP'
+'Eu 2',       6437.6437,  -2.318,    10643.5837,   5.0,    26172.9090,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.010,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(151)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP+MHAP HMAP+MHAP'
+'Eu 2',       6437.6439,  -1.710,    10643.3850,   5.0,    26172.7576,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.011,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(153)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP HMAP'
+'Eu 2',       6437.6441,  -1.659,    10643.3850,   5.0,    26172.7576,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.011,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(153)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP HMAP'
+'Eu 2',       6437.6446,  -2.292,    10643.3850,   5.0,    26172.7576,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.011,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(153)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP HMAP'
+'Eu 2',       6437.6459,  -2.488,    10643.3850,   5.0,    26172.7576,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.011,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(153)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP HMAP'
+'Eu 2',       6437.6508,  -2.318,    10643.5837,   5.0,    26172.9090,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.010,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(151)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP+MHAP HMAP+MHAP'
+'Eu 2',       6437.6573,  -1.501,    10643.5837,   5.0,    26172.9090,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.010,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(151)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP+MHAP HMAP+MHAP'
+'Eu 2',       6437.6627,  -2.276,    10643.5837,   5.0,    26172.9090,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.010,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(151)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP+MHAP HMAP+MHAP'
+'Eu 2',       6437.6673,  -2.276,    10643.5837,   5.0,    26172.9090,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.010,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(151)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP+MHAP HMAP+MHAP'
+'Eu 2',       6437.6728,  -1.607,    10643.5837,   5.0,    26172.9090,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.010,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(151)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP+MHAP HMAP+MHAP'
+'Eu 2',       6437.6773,  -2.330,    10643.5837,   5.0,    26172.9090,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.010,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(151)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP+MHAP HMAP+MHAP'
+'Eu 2',       6437.6800,  -2.330,    10643.5837,   5.0,    26172.9090,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.010,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(151)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP+MHAP HMAP+MHAP'
+'Eu 2',       6437.6845,  -1.697,    10643.5837,   5.0,    26172.9090,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.010,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(151)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP+MHAP HMAP+MHAP'
+'Eu 2',       6437.6881,  -2.526,    10643.5837,   5.0,    26172.9090,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.010,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(151)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP+MHAP HMAP+MHAP'
+'Eu 2',       6437.6896,  -2.526,    10643.5837,   5.0,    26172.9090,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.010,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(151)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP+MHAP HMAP+MHAP'
+'Eu 2',       6437.6931,  -1.748,    10643.5837,   5.0,    26172.9090,   5.0,  1.730,  1.790,  1.760, 0.000, 0.000,   0.000, 0.010,
+'  LS                                                 4f7.(8S).5d                      a9D*'
+'  JJ                                                   4f7.(8S<7/2>).6p<3/2>     (7/2,3/2)'
+'E 0.05     Wisconsin REE ex(151)Eu+         3 iso:LWHS   3 gf:LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS   3 LWHS \hfs HMAP+MHAP HMAP+MHAP'
+'Si 1',       6437.7028,  -2.053,    47284.0610,   1.0,    62813.2600,   1.0,  1.000,  1.330,  1.160, 7.500,-3.850,  -6.920, 0.049,
+'  LS                                                                          3s2.3p.4p 1P'
+'  JJ                                                 3s2.3p.(2P*<1/2>).8s.<1/2> (1/2,1/2)*'
+'_          Kurucz SiI 2007 Si               4 wl:K07   4 gf:K07   4 K07   4 K07   4 K07   4 K07   4 K07   4 K07   4 K07'
+'Fe 1',       6438.7572,  -2.283,    35767.5640,   4.0,    51294.2200,   3.0,  1.100,  1.350,  0.730, 8.390,-5.290,  -7.570, 0.098,
+'  LS                                                                      3d7.(4F).4p z3G*'
+'  LS                                                              3d6.(5D).4s\ (4D).5s e3D'
+'_          Kurucz Fe I 2014Fe               1 wl:K14   1 gf:K14   1 K14   1 K14   1 K14   1 K14   1 K14   1 K14   1 K14'
+'Ca 1',       6439.0750,   0.390,    20371.0000,   3.0,    35896.8890,   4.0,  1.330,  1.250,  1.130, 7.649,-6.072,  -7.569, 0.675,
+'  LS                                                                          3p6.3d.4s 3D'
+'  LS                                                                         3p6.3d.4p 3F*'
+'_          Ca1-Ca2 exp.    Ca               5 wl:SR+Sm   5 gf:SR+Sm   5 SR+Sm   5 SR+Sm   5 SR+Sm   5 SR+Sm   5 SR+Sm   6 BPM   7 K07'
+'Si 1',       6440.5658,  -1.909,    45293.6290,   2.0,    60815.9250,   2.0,  1.170,  1.440,  1.300, 7.880,-4.450,  -7.120, 0.101,
+'  LS                                                                            3s.3p3 3D*'
+'  JJ                                                  3s2.3p.(2P*<3/2>).6p.<1/2> (3/2,1/2)'
+'_          Kurucz SiI 2007 Si               4 wl:K07   4 gf:K07   4 K07   4 K07   4 K07   4 K07   4 K07   4 K07   4 K07'
+'Mn 1',       6440.9103,  -2.942,    30419.6050,   2.5,    45941.0130,   2.5,  1.380,  1.370,  1.380, 7.870,-5.920,  -7.770, 0.045,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'_          Kurucz MnI 2007 Mn               8 wl:K07   8 gf:K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6440.9115,  -2.680,    30419.6050,   2.5,    45941.0130,   2.5,  1.380,  1.370,  1.380, 7.870,-5.920,  -7.770, 0.045,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'_          Kurucz MnI 2007 Mn               8 wl:K07   8 gf:K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6440.9138,  -3.708,    30419.6050,   2.5,    45941.0130,   2.5,  1.380,  1.370,  1.380, 7.870,-5.920,  -7.770, 0.045,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'_          Kurucz MnI 2007 Mn               8 wl:K07   8 gf:K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6440.9150,  -2.942,    30419.6050,   2.5,    45941.0130,   2.5,  1.380,  1.370,  1.380, 7.870,-5.920,  -7.770, 0.045,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'_          Kurucz MnI 2007 Mn               8 wl:K07   8 gf:K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6440.9151,  -2.578,    30419.6050,   2.5,    45941.0130,   2.5,  1.380,  1.370,  1.380, 7.870,-5.920,  -7.770, 0.045,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'_          Kurucz MnI 2007 Mn               8 wl:K07   8 gf:K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6440.9187,  -3.009,    30419.6050,   2.5,    45941.0130,   2.5,  1.380,  1.370,  1.380, 7.870,-5.920,  -7.770, 0.045,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'_          Kurucz MnI 2007 Mn               8 wl:K07   8 gf:K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6440.9211,  -2.680,    30419.6050,   2.5,    45941.0130,   2.5,  1.380,  1.370,  1.380, 7.870,-5.920,  -7.770, 0.045,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'_          Kurucz MnI 2007 Mn               8 wl:K07   8 gf:K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6440.9213,  -2.583,    30419.6050,   2.5,    45941.0130,   2.5,  1.380,  1.370,  1.380, 7.870,-5.920,  -7.770, 0.045,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'_          Kurucz MnI 2007 Mn               8 wl:K07   8 gf:K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6440.9264,  -2.562,    30419.6050,   2.5,    45941.0130,   2.5,  1.380,  1.370,  1.380, 7.870,-5.920,  -7.770, 0.045,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'_          Kurucz MnI 2007 Mn               8 wl:K07   8 gf:K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6440.9301,  -2.578,    30419.6050,   2.5,    45941.0130,   2.5,  1.380,  1.370,  1.380, 7.870,-5.920,  -7.770, 0.045,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'_          Kurucz MnI 2007 Mn               8 wl:K07   8 gf:K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6440.9305,  -2.746,    30419.6050,   2.5,    45941.0130,   2.5,  1.380,  1.370,  1.380, 7.870,-5.920,  -7.770, 0.045,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'_          Kurucz MnI 2007 Mn               8 wl:K07   8 gf:K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6440.9372,  -2.231,    30419.6050,   2.5,    45941.0130,   2.5,  1.380,  1.370,  1.380, 7.870,-5.920,  -7.770, 0.045,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'_          Kurucz MnI 2007 Mn               8 wl:K07   8 gf:K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6440.9422,  -2.583,    30419.6050,   2.5,    45941.0130,   2.5,  1.380,  1.370,  1.380, 7.870,-5.920,  -7.770, 0.045,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'_          Kurucz MnI 2007 Mn               8 wl:K07   8 gf:K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6440.9515,  -1.968,    30419.6050,   2.5,    45941.0130,   2.5,  1.380,  1.370,  1.380, 7.870,-5.920,  -7.770, 0.045,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'_          Kurucz MnI 2007 Mn               8 wl:K07   8 gf:K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6440.9582,  -2.746,    30419.6050,   2.5,    45941.0130,   2.5,  1.380,  1.370,  1.380, 7.870,-5.920,  -7.770, 0.045,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'_          Kurucz MnI 2007 Mn               8 wl:K07   8 gf:K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07   8 K07 \hfs BBAOKb BBAOKb'
+'Si 1',       6441.3194,  -2.359,    49399.6700,   1.0,    64920.1500,   1.0,  1.970,  0.530,  1.250, 9.040,-2.710,  -6.990, 0.015,
+'  LS                                                                          3s2.3p.4p 3S'
+'  JJ                                                3s2.3p.(2P*<3/2>).10d.<5/2> (3/2,5/2)*'
+'_          Kurucz SiI 2007 Si               4 wl:K07   4 gf:K07   4 K07   4 K07   4 K07   4 K07   4 K07   4 K07   4 K07'
+'Fe 2',       6442.9579,  -2.671,    44753.8180,   3.5,    60270.3510,   3.5,  1.290,  1.430,  1.360, 8.470,-6.410,  -7.768, 0.030,
+'  LS                                                                      3d6.(5D).4p z4F*'
+'  LS                                                                           3d5.4s2 c4D'
+'_          Kurucz FeII 2013Fe+              9 wl:K13  10 gf:RU   9 K13   9 K13   9 K13   9 K13   9 K13   6 BA-J   9 K13'
+'Ca 1',       6443.0434,  -1.159,    35835.4130,   2.0,    51351.7400,   1.0,  0.890,  0.540,  1.070, 8.080,-4.940,  -7.500, 0.028,
+'  LS                                                                         3p6.3d.4p 1D*'
+'  LS                                                                          3p6.3d.4d 3D'
+'_      A   Kurucz CaI 2007 Ca               7 wl:K07   7 gf:K07   7 K07   7 K07   7 K07   7 K07   7 K07   7 K07   7 K07'
+'Mn 1',       6443.4404,  -3.170,    30425.7050,   1.5,    45941.0130,   2.5,  1.210,  1.370,  1.490, 7.870,-5.920,  -7.511, 0.021,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'NC         Kurucz MnI 2007 Mn               8 wl:K07  11 gf:MFW   8 K07   8 K07   8 K07   8 K07   8 K07   6 BPM   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6443.4427,  -2.994,    30425.7050,   1.5,    45941.0130,   2.5,  1.210,  1.370,  1.490, 7.870,-5.920,  -7.511, 0.021,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'NC         Kurucz MnI 2007 Mn               8 wl:K07  11 gf:MFW   8 K07   8 K07   8 K07   8 K07   8 K07   6 BPM   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6443.4439,  -3.316,    30425.7050,   1.5,    45941.0130,   2.5,  1.210,  1.370,  1.490, 7.870,-5.920,  -7.511, 0.021,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'NC         Kurucz MnI 2007 Mn               8 wl:K07  11 gf:MFW   8 K07   8 K07   8 K07   8 K07   8 K07   6 BPM   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6443.4498,  -2.760,    30425.7050,   1.5,    45941.0130,   2.5,  1.210,  1.370,  1.490, 7.870,-5.920,  -7.511, 0.021,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'NC         Kurucz MnI 2007 Mn               8 wl:K07  11 gf:MFW   8 K07   8 K07   8 K07   8 K07   8 K07   6 BPM   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6443.4534,  -2.839,    30425.7050,   1.5,    45941.0130,   2.5,  1.210,  1.370,  1.490, 7.870,-5.920,  -7.511, 0.021,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'NC         Kurucz MnI 2007 Mn               8 wl:K07  11 gf:MFW   8 K07   8 K07   8 K07   8 K07   8 K07   6 BPM   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6443.4558,  -3.362,    30425.7050,   1.5,    45941.0130,   2.5,  1.210,  1.370,  1.490, 7.870,-5.920,  -7.511, 0.021,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'NC         Kurucz MnI 2007 Mn               8 wl:K07  11 gf:MFW   8 K07   8 K07   8 K07   8 K07   8 K07   6 BPM   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6443.4639,  -2.487,    30425.7050,   1.5,    45941.0130,   2.5,  1.210,  1.370,  1.490, 7.870,-5.920,  -7.511, 0.021,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'NC         Kurucz MnI 2007 Mn               8 wl:K07  11 gf:MFW   8 K07   8 K07   8 K07   8 K07   8 K07   6 BPM   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6443.4689,  -2.818,    30425.7050,   1.5,    45941.0130,   2.5,  1.210,  1.370,  1.490, 7.870,-5.920,  -7.511, 0.021,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'NC         Kurucz MnI 2007 Mn               8 wl:K07  11 gf:MFW   8 K07   8 K07   8 K07   8 K07   8 K07   6 BPM   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6443.4726,  -3.538,    30425.7050,   1.5,    45941.0130,   2.5,  1.210,  1.370,  1.490, 7.870,-5.920,  -7.511, 0.021,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'NC         Kurucz MnI 2007 Mn               8 wl:K07  11 gf:MFW   8 K07   8 K07   8 K07   8 K07   8 K07   6 BPM   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6443.4821,  -2.275,    30425.7050,   1.5,    45941.0130,   2.5,  1.210,  1.370,  1.490, 7.870,-5.920,  -7.511, 0.021,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'NC         Kurucz MnI 2007 Mn               8 wl:K07  11 gf:MFW   8 K07   8 K07   8 K07   8 K07   8 K07   6 BPM   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6443.4887,  -2.964,    30425.7050,   1.5,    45941.0130,   2.5,  1.210,  1.370,  1.490, 7.870,-5.920,  -7.511, 0.021,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'NC         Kurucz MnI 2007 Mn               8 wl:K07  11 gf:MFW   8 K07   8 K07   8 K07   8 K07   8 K07   6 BPM   8 K07 \hfs BBAOKb BBAOKb'
+'Mn 1',       6443.4938,  -3.918,    30425.7050,   1.5,    45941.0130,   2.5,  1.210,  1.370,  1.490, 7.870,-5.920,  -7.511, 0.021,
+'  LS                                                                           3d5.4s2 b4D'
+'  LS                                                                      3d6.(5D).4p z4D*'
+'NC         Kurucz MnI 2007 Mn               8 wl:K07  11 gf:MFW   8 K07   8 K07   8 K07   8 K07   8 K07   6 BPM   8 K07 \hfs BBAOKb BBAOKb'
+'sun_kurucz_p00k2_T05770G44.krz',
+'H :  0.91','He: -1.05',
+'Li:-10.88','Be:-10.89','B : -9.44','C : -3.48','N : -3.99','O : -3.11',
+'F : -7.48','Ne: -3.95','Na: -5.71','Mg: -4.46','Al: -5.57','Si: -4.49',
+'P : -6.59','S : -4.83','Cl: -6.54','Ar: -5.48','K : -6.82','Ca: -5.68',
+'Sc: -8.94','Ti: -7.05','V : -8.04','Cr: -6.37','Mn: -6.65','Fe: -4.37',
+'Co: -7.12','Ni: -5.79','Cu: -7.83','Zn: -7.44','Ga: -9.16','Ge: -8.63',
+'As: -9.67','Se: -8.69','Br: -9.41','Kr: -8.81','Rb: -9.44','Sr: -9.14',
+'Y : -9.80','Zr: -9.54','Nb:-10.62','Mo:-10.12','Tc:-20.00','Ru:-10.20',
+'Rh:-10.92','Pd:-10.35','Ag:-11.10','Cd:-10.18','In:-10.58','Sn:-10.04',
+'Sb:-11.04','Te: -9.80','I :-10.53','Xe: -9.81','Cs:-10.92','Ba: -9.91',
+'La:-10.82','Ce:-10.49','Pr:-11.33','Nd:-10.54','Pm:-20.00','Sm:-11.04',
+'Eu:-11.53','Gd:-10.92','Tb:-11.94','Dy:-10.94','Ho:-11.78','Er:-11.11',
+'Tm:-12.04','Yb:-10.96','Lu:-11.28','Hf:-11.16','Ta:-11.91','W :-10.93',
+'Re:-11.77','Os:-10.59','Ir:-10.69','Pt:-10.24','Au:-11.03','Hg:-10.95',
+'Tl:-11.14','Pb:-10.19','Bi:-11.33','Po:-20.00','At:-20.00','Rn:-20.00',
+'Fr:-20.00','Ra:-20.00','Ac:-20.00','Th:-11.92','Pa:-20.00','U :-12.51',
+'Np:-20.00','Pu:-20.00','Am:-20.00','Cm:-20.00','Bk:-20.00','Cf:-20.00',
+'Es:-20.00','END'
+* oscillator strengths were scaled by the solar isotopic ratios.
+ References:
+  1. Kurucz obs. energy level: Fe 1
+  2. Fe 1: exp. data
+  3. Wisconsin exp. data with IS
+  4. Kurucz obs. energy level: Si 1
+  5. Ca1-2 exp. data with IS
+  6. Van der Waals data
+  7. Kurucz obs. energy level: Ca 1
+  8. Kurucz obs. energy level: Mn 1
+  9. Kurucz obs. energy level: Fe 2
+ 10. Fe 2: Raassen & Uylings
+ 11. Mn: NBS data
