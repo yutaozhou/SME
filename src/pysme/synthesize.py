@@ -214,6 +214,8 @@ class Synthesizer:
             sme.vrad_flag = "none"
             sme.cscale_flag = "none"
         else:
+            if "mask" not in sme:
+                sme.mask = np.full(sme.spec.size, sme.mask_values["line"])
             for i in range(sme.nseg):
                 sme.mask[i, ~np.isfinite(sme.spec[i])] = 0
 

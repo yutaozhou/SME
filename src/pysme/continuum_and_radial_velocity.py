@@ -326,10 +326,15 @@ def determine_rv_and_cont(sme, segment, x_syn, y_syn):
             cscale = sme.cscale[segment]
         return vrad, vunc, cscale, cunc
 
-    if "spec" not in sme or "mask" not in sme or "wave" not in sme or "uncs" not in sme:
+    if "spec" not in sme or "wave" not in sme:
         # No observation no radial velocity
         logger.warning("Missing data for radial velocity/continuum determination")
         return null_result(nseg, sme.cscale_degree)
+
+    if "mask" not in sme:
+        sme.mask = np.full(sme.spec.size, sme.mask_values["line"])
+    if "uncs" not in sme:
+        sme.uncs = np.full(sme.spec.size, 1.)
 
     if np.all(sme.mask_bad[segment].ravel()):
         warnings.warn(
