@@ -520,4 +520,3 @@ class SME_Solver:
 def solve(sme, param_names=("teff", "logg", "monh"), segments="all", filename=None):
     solver = SME_Solver(filename=filename)
     return solver.solve(sme, param_names, segments)
-
