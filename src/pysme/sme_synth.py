@@ -569,6 +569,9 @@ class SME_DLL:
         sint_seg = sint_seg[:nw, :].T
         cint_seg = cint_seg[:nw, :].T
 
+        sint_seg = np.nan_to_num(sint_seg, copy=False)
+        cint_seg = np.nan_to_num(cint_seg, copy=False)
+
         self.nmu = nmu
 
         return nw, wint_seg, sint_seg, cint_seg

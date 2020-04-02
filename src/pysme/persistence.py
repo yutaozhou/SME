@@ -128,11 +128,17 @@ def loads(file, data, names=None, folder=""):
             for key, value in info.items():
                 key = updates.get(key, key)
                 data[key] = value
-        elif name.endswith(".npy") or name.endswith(".npz"):
+        elif name.endswith(".npy"):
             b = io.BytesIO(file.read(name))
             key = name[len(folder) : -4]
             key = updates.get(key, key)
             data[key] = np.load(b)
+        elif name.endswith(".npz"):
+            b = io.BytesIO(file.read(name))
+            key = name[len(folder) : -4]
+            key = updates.get(key, key)
+            value = np.load(b)
+            data[key] = [value[f"arr_{i}"] for i in range(len(value))]
 
     for key, value in subdirs.items():
         data_key = updates.get(key, key)
@@ -264,11 +270,7 @@ def write_as_idl(sme):
         "mob": save_as_binary(sme.mask.ravel().astype("int16")),
         "obs_name": "",
         "obs_type": 0,
-        "iptype": sme.iptype,
-        "ipres": sme.ipres,
         "glob_free": fitvars,
-        # "ip_x": sme.ip_x,
-        # "ip_y": sme.ip_y,
         "atmo": {
             "method": str(sme.atmo.method),
             "source": str(sme.atmo.source),
@@ -278,6 +280,12 @@ def write_as_idl(sme):
         },
     }
 
+    # if sme.iptype is not None:
+    #     idl_fields["iptype"] = sme.iptype
+    #     idl_fields["ipres"] = sme.ipres
+    #     # "ip_x": sme.ip_x,
+    #     # "ip_y": sme.ip_y,
+
     if sme.synth is not None:
         idl_fields["smod"] = save_as_binary(sme.synth.ravel())
 
@@ -286,8 +294,8 @@ def write_as_idl(sme):
             {
                 "line_extra": save_as_binary(sme.linelist.extra),
                 "line_lulande": save_as_binary(sme.linelist.lulande),
-                "line_term_low": save_as_binary(sme.linelist.term_low),
-                "line_term_upp": save_as_binary(sme.linelist.term_upp),
+                "line_term_low": save_as_binary(sme.linelist.term_lower),
+                "line_term_upp": save_as_binary(sme.linelist.term_upper),
             }
         )
 
@@ -324,13 +332,16 @@ def save_as_idl(sme, fname):
     """
     with tempfile.NamedTemporaryFile("w+", suffix=".pro") as temp:
         tempname = temp.name
+        temp.write("print, 'Hello'\n")
         temp.write("sme = {")
         # TODO: Save data as idl compatible data
         temp.write(write_as_idl(sme))
         temp.write("} \n")
         # This is the code that will be run in idl
+        temp.write("print, 'there'\n")
         temp.write(
             """tags = tag_names(sme)
+print, tags
 new_sme = {}
 
 for i = 0, n_elements(tags)-1 do begin
@@ -380,6 +391,7 @@ sme = new_sme\n"""
 
         # with open(os.devnull, 'w') as devnull:
         subprocess.run(["idl", "-e", ".r %s" % tempname])
+        # input("Wait for me...")
         clean_temps()
 
 

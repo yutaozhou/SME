@@ -254,7 +254,7 @@ class SME_Solver:
                 bounds["teff"] = teff
 
                 logg = np.unique(atmo_grid.logg)
-                logg = np.min(logg), np.inf  # np.max(logg)
+                logg = np.min(logg), np.max(logg) + 1
                 bounds["logg"] = logg
 
                 monh = np.unique(atmo_grid.monh)
@@ -520,4 +520,3 @@ class SME_Solver:
 def solve(sme, param_names=("teff", "logg", "monh"), segments="all", filename=None):
     solver = SME_Solver(filename=filename)
     return solver.solve(sme, param_names, segments)
-
