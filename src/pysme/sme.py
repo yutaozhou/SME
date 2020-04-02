@@ -642,6 +642,36 @@ class SME_Structure(Parameters):
         elif self.cscale_flag == "constant":
             self.cscale = np.sqrt(1 / self.cscale)
 
+    def import_mask(self, other):
+        """
+        Import the mask of another sme structure and apply it to this one
+        Conversion is based on the wavelength
+
+        Parameters
+        ----------
+        other : SME_Structure
+            the sme structure to import the mask from
+        
+        Returns
+        -------
+        self : SME_Structure
+            this sme structure
+        """
+        wave = other.wave.ravel()
+        line_mask = other.mask_line.ravel()
+        cont_mask = other.mask_cont.ravel()
+
+        for seg in range(self.nseg):
+            # We simply interpolate between the masks, if most if the new pixel was
+            # continuum / line mask then it will become that, otherwise bad
+            w = self.wave[seg]
+            cm = np.interp(w, wave, cont_mask) > 0.5
+            lm = np.interp(w, wave, line_mask) > 0.5
+            self.mask[seg][cm] = self.mask_values["continuum"]
+            self.mask[seg][lm] = self.mask_values["line"]
+            self.mask[seg][~(cm | lm)] = self.mask_values["bad"]
+        return self
+
     def citation(self, output="string"):
         """Create a citation string for use in papers, or
         other places. The citations are from all components that
