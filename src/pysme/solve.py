@@ -383,17 +383,19 @@ class SME_Solver:
 
         if "vrad" in param_names:
             param_names.remove("vrad")
-            sme.vrad_flag = "each"
-            logger.info(
-                "Removed fit parameter 'vrad', instead set radial velocity flag to 'each'"
-            )
+            if sme.vrad_flag in ["fix", "none"]:
+                sme.vrad_flag = "whole"
+                logger.info(
+                    "Removed fit parameter 'vrad', instead set radial velocity flag to %s", sme.vrad_flag
+                )
 
         if "cont" in param_names:
             param_names.remove("cont")
-            sme.cscale_flag = "linear"
-            logger.info(
-                "Removed fit parameter 'cont', instead set continuum flag to 'linear'"
-            )
+            if sme.cscale_flag in ["fix", "none"]:
+                sme.cscale_flag = "linear"
+                logger.info(
+                    "Removed fit parameter 'cont', instead set continuum flag to %s", sme.cscale_flag
+                )
         return param_names
 
     def solve(self, sme, param_names=None, segments="all"):
