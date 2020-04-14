@@ -314,6 +314,11 @@ class Iliffe_vector(IPersist):
         """ Minimum value in all segments """
         return np.min(self._values)
 
+    def astype(self, dtype):
+        for i, seg in enumerate(self):
+            self._values[i] = seg.astype(dtype)
+        return self
+
     @property
     def size(self):
         """int: number of elements in vector """
