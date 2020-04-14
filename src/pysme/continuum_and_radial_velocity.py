@@ -91,7 +91,7 @@ def determine_continuum(sme, segment):
         # Fit polynomial
         try:
             func = lambda coef: (np.polyval(coef, x) - y) / u
-            c0 = [0] * ndeg + [1]
+            c0 = np.polyfit(x, y, deg=ndeg)
             res = least_squares(func, x0=c0, loss="soft_l1")
             cscale = res.x
         except TypeError:
@@ -389,7 +389,8 @@ def determine_rv_and_cont(sme, segment, x_syn, y_syn):
             cscale = sme.cscale[segment]
         else:
             cscale = np.zeros(nseg, ndeg + 1)
-            cscale[:, -1] = np.median(y_obs, axis=1)
+            for i, seg in enumerate(segment):
+                cscale[i, -1] = np.nanpercentile(y_obs[seg], 95)
 
     # Even when the vrad_flag is set to whole
     # you still want to fit the rv of the individual segments
@@ -440,7 +441,7 @@ def determine_rv_and_cont(sme, segment, x_syn, y_syn):
             where |= np.any(cscale[:, :, -1] < 0, axis=1)
             if ndeg == 1:
                 where |= np.any(
-                    cscale[:, :, -1] + cscale[:, :, -2] * x_num[:, -1] < 0, axis=1
+                    (cscale[:, :, -1] + cscale[:, :, -2] * x_num[:, -1]) < 0, axis=1
                 )
             elif ndeg == 2:
                 for i in range(nseg):
@@ -507,7 +508,7 @@ def determine_rv_and_cont(sme, segment, x_syn, y_syn):
     if cflag:
         ndim += cscale.size
         p0 += list(cscale.ravel())
-        scale += [0.1] * cscale.size
+        scale += [0.001] * cscale.size
     p0 = np.array(p0)[None, :]
     scale = np.array(scale)[None, :]
 
