@@ -79,7 +79,7 @@ def determine_continuum(sme, segment):
                 "No Continuum mask was set, "
                 "Using effective wavelength range of lines to find continuum instead"
             )
-            cont = get_continuum_mask(x, sme.linelist, mask=m)
+            cont = get_continuum_mask(x, y, sme.linelist, mask=m)
             # Save mask for next iteration
             m[cont == 2] = 2
             logger.debug("Continuum mask points: %i", np.count_nonzero(cont == 2))
@@ -101,7 +101,7 @@ def determine_continuum(sme, segment):
     return cscale
 
 
-def get_continuum_mask(wave, linelist, threshold=0.1, mask=None):
+def get_continuum_mask(wave, synth, linelist, threshold=0.1, mask=None):
     """
     Use the effective wavelength range of the lines,
     to find wavelength points that should be unaffected by lines
@@ -135,6 +135,7 @@ def get_continuum_mask(wave, linelist, threshold=0.1, mask=None):
     dll.linelist = linelist
 
     width = dll.GetLineRange()
+
     temp = False
     while np.count_nonzero(temp) < len(wave) * 0.1:
         temp = np.full(len(wave), True)
@@ -187,25 +188,25 @@ def determine_radial_velocity(sme, segment, cscale, x_syn, y_syn):
         # No observation no radial velocity
         warnings.warn("Missing data for radial velocity determination")
         rvel = None
-    elif sme.vrad_flag in [-2, "none"]:
+    elif sme.vrad_flag == "none":
         # vrad_flag says don't determine radial velocity
         rvel = sme.vrad[segment]
-    elif sme.vrad_flag in [-1, "whole"] and segment >= 0:
+    elif sme.vrad_flag == "whole" and np.size(segment) == 1:
         # We are inside a segment, but only want to determine rv at the end
         rvel = 0
-    elif sme.vrad_flag in ["fix"] and segment >= 0:
+    elif sme.vrad_flag == "fix":
         rvel = sme.vrad[segment]
     else:
         # Fit radial velocity
         # Extract data
         x, y, m, u = sme.wave, sme.spec, sme.mask, sme.uncs
-        if sme.vrad_flag in [0, "each"]:
-            # Only this one segment
-            x_obs = x[segment]
-            y_obs = y[segment]
-            u_obs = u[segment]
-            mask = m[segment]
+        # Only this one segment
+        x_obs = x[segment]
+        y_obs = y[segment].copy()
+        u_obs = u[segment]
+        mask = m[segment]
 
+        if sme.vrad_flag == "each":
             # apply continuum
             if cscale is not None:
                 cont = np.polyval(cscale, x_obs - x_obs[0])
@@ -214,28 +215,29 @@ def determine_radial_velocity(sme, segment, cscale, x_syn, y_syn):
                     "No continuum scale passed to radial velocity determination"
                 )
                 cont = np.ones_like(y_obs)
-
-            y_obs = y_obs / cont
-
-        elif sme.vrad_flag in [-1, "whole"]:
+            y_obs /= cont
+        elif sme.vrad_flag == "whole":
             # All segments
             if cscale is not None:
                 cscale = np.atleast_2d(cscale)
-                cont = [np.polyval(c, x[i]) for i, c in enumerate(cscale)]
+                cont = [
+                    np.polyval(c, x_obs[i] - x_obs[i][0]) for i, c in enumerate(cscale)
+                ]
             else:
                 warnings.warn(
                     "No continuum scale passed to radial velocity determination"
                 )
-                cont = [1 for _ in range(len(x))]
+                cont = [1 for _ in range(len(x_obs))]
 
-            y = y.copy()
-            for i in range(len(x)):
-                y[i] = y[i] / cont[i]
+            for i in range(len(y_obs)):
+                y_obs[i] /= cont[i]
 
-            x_obs = x.__values__
-            y_obs = y.__values__
-            u_obs = u.__values__
-            mask = m.__values__
+            x_obs = x_obs.ravel()
+            y_obs = y_obs.ravel()
+            u_obs = u_obs.ravel()
+            x_syn = np.concatenate(x_syn)
+            y_syn = np.concatenate(y_syn)
+            mask = mask.ravel()
         else:
             raise ValueError(
                 f"Radial velocity flag {sme.vrad_flag} not recognised, expected one of 'each', 'whole', 'none'"
@@ -334,7 +336,7 @@ def determine_rv_and_cont(sme, segment, x_syn, y_syn):
     if "mask" not in sme:
         sme.mask = np.full(sme.spec.size, sme.mask_values["line"])
     if "uncs" not in sme:
-        sme.uncs = np.full(sme.spec.size, 1.)
+        sme.uncs = np.full(sme.spec.size, 1.0)
 
     if np.all(sme.mask_bad[segment].ravel()):
         warnings.warn(
@@ -734,7 +736,9 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
 
         if sme.vrad_flag == "whole":
             s = segments
-            vrad[s] = determine_radial_velocity(sme, -1, cscale[s], x_syn[s], y_syn[s])
+            vrad[s] = determine_radial_velocity(
+                sme, s, cscale[s], [x_syn[s] for s in s], [y_syn[s] for s in s]
+            )
     else:
         raise ValueError(
             f"Did not understand cscale_type, expected one of ('whole', 'mask'), but got {sme.cscale_type}."

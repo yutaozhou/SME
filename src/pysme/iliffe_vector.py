@@ -386,7 +386,7 @@ class Iliffe_vector(IPersist):
         copy : Iliffe_vector
             A copy of this vector
         """
-        values = np.copy(self._values)
+        values = [np.copy(v) for v in self._values]
         return Iliffe_vector(values=values)
 
     def append(self, other):
