@@ -585,6 +585,18 @@ class SME_Structure(Parameters):
         return self.mask == self.mask_values["bad"]
 
     @property
+    def mask_line(self):
+        if self.mask is None:
+            return None
+        return self.mask == self.mask_values["line"]
+
+    @property
+    def mask_cont(self):
+        if self.mask is None:
+            return None
+        return self.mask == self.mask_values["continuum"]
+
+    @property
     def cscale_degree(self):
         """int: Polynomial degree of the continuum as determined by cscale_flag """
         if self.cscale_flag == "constant":
