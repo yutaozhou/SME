@@ -18,9 +18,11 @@ class SME_DLL:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = object.__new__(cls)
+            SME_DLL.init(cls._instance)
         return cls._instance
 
-    def __init__(self):
+    @staticmethod
+    def init(self):
         #:LineList: Linelist passed to the library
         self.linelist = None
         #:int: Number of mu points passed to the library
