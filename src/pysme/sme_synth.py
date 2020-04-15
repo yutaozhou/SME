@@ -185,6 +185,10 @@ class SME_DLL:
             raise TypeError("linelist has to be a LineList type")
 
         nlines = len(linelist)
+
+        if nlines == 0:
+            raise ValueError("linelist must not be empty")
+
         species = np.asarray(species, "U8")
 
         assert (
