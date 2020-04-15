@@ -93,6 +93,7 @@ def load_library():
     localdir = Path(__file__).parent
     libfile = get_lib_name()
     libfile = localdir / "dll" / libfile
+    libfile = str(libfile)
     return ct.CDLL(libfile)
 
 
