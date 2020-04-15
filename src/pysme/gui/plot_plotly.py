@@ -253,6 +253,8 @@ class FinalPlot:
                 else:
                     y = np.interp(x, self.wave[seg], self.smod[seg])
 
+                ytop = np.max(self.smod[seg])
+
                 for i, line in enumerate(lines):
                     seg_annotations += [
                         {
@@ -265,7 +267,7 @@ class FinalPlot:
                             "textangle": 90,
                             "opacity": 1,
                             "ax": 0,
-                            "ay": 1.2,
+                            "ay": 1.2 * ytop,
                             "ayref": "y",
                             "showarrow": True,
                             "arrowhead": 7,
