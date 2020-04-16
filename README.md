@@ -4,7 +4,8 @@
 
 
 
-# SME
+# PySME
+
 Spectroscopy Made Easy (SME) is a software tool that fits an observed
 spectrum of a star with a model spectrum. Since its initial release in
 [1996](http://adsabs.harvard.edu/abs/1996A%26AS..118..595V), SME has been a
@@ -17,4 +18,19 @@ adopting an object oriented paradigm and continuous itegration practices
 (code repository, build automation, self-testing, frequent builds).
 
 # Installation
-See Documentation https://pysme-astro.readthedocs.io/en/latest/usage/installation.html
+
+A stable version is available on pip `pip install pysme-astro`
+If you are interested in the latest version you can do so by cloning this git.
+```bash
+# Clone the git repository
+git clone https://github.com/AWehrhahn/SME.git
+# Move to the new directory
+cd SME
+# Install this folder (as an editable module)
+pip install -e .
+```
+See also the [documentation](https://pysme-astro.readthedocs.io/en/latest/usage/installation.html)
+
+# GUI
+
+A GUI for PySME is available in its own repository [PySME-GUI](https://github.com/AWehrhahn/PySME-GUI).
