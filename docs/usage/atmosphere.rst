@@ -9,6 +9,8 @@ with a set of atmospheres in each distribution but instead
 uses the LFS (See :ref:`lfs`) to fetch only the required
 model atmosphere when run.
 
+If you want to provide your own model atmosphere file, it should be present in `~/.sme/atmospheres/`.
+
 Each atmosphere model file describes a grid of models, on
 which we then linearly interpolate to the desired stellar parameters.
 Sometimes we dare extrapolate from this grid as well, but in that case,
