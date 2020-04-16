@@ -8,6 +8,8 @@ PySME supports them using NLTE grids, which need to be created for
 every element. For common elements PySME provides grids via the LFS
 (see :ref:`lfs`).
 
+If you want to provide your own NLTE grid files, they should be present in `~/.sme/nlte_grids`.
+
 NLTE calculations need to be specified for each element they are
 supposed to be used for individually using 'sme.nlte.set_nlte(el, grid)'.
 Similarly they can be disabled for each element using
