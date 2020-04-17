@@ -110,11 +110,11 @@ class FinalPlot:
             self.widget = widgets.VBox([self.button_mask, self.button_save, self.fig])
             display(self.widget)
 
-    def save(self, _=None, filename="SME.html"):
+    def save(self, _=None, filename="SME.html", **kwargs):
         """ save plot to html file """
         if filename.endswith(".html"):
             self.fig.layout.dragmode = "zoom"
-            py.plot(self.fig, filename=filename)
+            py.plot(self.fig, filename=filename, **kwargs)
         else:
             write_image(self.fig, filename)
 
