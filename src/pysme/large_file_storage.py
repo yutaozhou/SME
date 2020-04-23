@@ -99,7 +99,7 @@ class LargeFileStorage:
                 logger.warning(
                     f"Data file {key} exists, but is not tracked by the large file storage"
                 )
-                return key
+                return self.current / key
 
         # Step 2: Check Pointer version, i.e. newest version
         newest = self.pointers[key]
