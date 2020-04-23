@@ -108,7 +108,7 @@ class DirectAccessFile:
                 ]
             )
             dir_dtype = np.dtype(
-                [("key", "S256"), ("size", "<u4", 23), ("pointer", "<u8")]
+                [("key", "S256"), ("size", "<i4", 23), ("pointer", "<i8")]
             )
 
             header = np.fromfile(file, header_dtype, count=1)
