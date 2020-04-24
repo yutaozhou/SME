@@ -102,9 +102,9 @@ class DirectAccessFile:
             header_dtype = np.dtype(
                 [
                     ("version", "S64"),
-                    ("nblocks", "<i2"),
-                    ("dir_length", "<i2"),
-                    ("ndir", "<i2"),
+                    ("nblocks", "<u2"),
+                    ("dir_length", "<u2"),
+                    ("ndir", "<u2"),
                 ]
             )
             dir_dtype = np.dtype(
