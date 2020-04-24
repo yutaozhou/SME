@@ -2,7 +2,8 @@
 
 import json
 import os
-from os.path import exists, expanduser, join
+from os.path import exists, expanduser, join, dirname
+from shutil import copy
 
 import versioneer
 from setuptools import setup
@@ -38,6 +39,16 @@ if not exists(conf):
     # Save file to disk
     with open(conf, "w") as f:
         json.dump(defaults, f)
+
+# Copy datafile pointers
+copy(
+    join(dirname(__file__), "src/pysme/datafiles_atmospheres.json"),
+    expanduser("~/.sme/datafiles_atmospheres.json"),
+)
+copy(
+    join(dirname(__file__), "src/pysme/datafiles_nlte.json"),
+    expanduser("~/.sme/datafiles_nlte.json"),
+)
 
 # TODO: Have smelib compiled before distribution
 

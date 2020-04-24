@@ -93,7 +93,7 @@ def load_library():
     localdir = Path(__file__).parent
     libfile = get_lib_name()
     libfile = localdir / "dll" / libfile
-    return ct.CDLL(libfile)
+    return ct.CDLL(str(libfile))
 
 
 def idl_call_external(funcname, *args, restype="str", type=None, lib=None):

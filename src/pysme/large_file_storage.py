@@ -42,12 +42,12 @@ class LargeFileStorage:
         self.server = Server(server)
 
         if isinstance(pointers, str):
-            path = Path(__file__).parent / pointers
-            if not path.exists():
-                with path.open("w") as f:
-                    f.writelines("")
-            with path.open("r") as f:
-                pointers = json.load(f)
+            path = Path.expanduser("~/.sme") / pointers
+            try:
+                with path.open("r") as f:
+                    pointers = json.load(f)
+            except FileExistsError:
+                pointers = {}
         #:dict(fname:hash): points from a filename to the current newest object id, usually a hash
         self.pointers = pointers
         #:Directory: directory of the current data files
@@ -92,14 +92,20 @@ class LargeFileStorage:
         # Step 1: Check if the file is tracked and/or exists in the storage directory
         if key not in self.pointers:
             if key not in self.current:
-                raise FileNotFoundError(
-                    f"File {key} does not exist and is not tracked by the Large File system"
-                )
+                if not os.path.exists(key):
+                    raise FileNotFoundError(
+                        f"File {key} does not exist and is not tracked by the Large File system"
+                    )
+                else:
+                    logger.warning(
+                        f"Data file {key} exists, but is not tracked by the large file storage"
+                    )
+                    return key
             else:
                 logger.warning(
                     f"Data file {key} exists, but is not tracked by the large file storage"
                 )
-                return key
+                return self.current / key
 
         # Step 2: Check Pointer version, i.e. newest version
         newest = self.pointers[key]
@@ -220,3 +226,21 @@ def setup_lfs(config=None, lfs_atmo=None, lfs_nlte=None):
     if lfs_nlte is None:
         lfs_nlte = setup_nlte(config)
     return config, lfs_atmo, lfs_nlte
+
+
+def get_available_atmospheres(config=None):
+    if config is None:
+        config = Config()
+    pointers = config["data.pointers.atmospheres"]
+    with open(pointers) as f:
+        data = json.load(f)
+    return data.keys()
+
+
+def get_available_nlte_grids(config=None):
+    if config is None:
+        config = Config()
+    pointers = config["data.pointers.nlte_grids"]
+    with open(pointers) as f:
+        data = json.load(f)
+    return data.keys()
