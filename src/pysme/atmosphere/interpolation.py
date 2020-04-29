@@ -738,7 +738,7 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
     #  log(M/Msol) = log g - log g_sol - 2*log(R_sol / R)
     #  2 * log(R / R_sol) = log g_sol - log g + log(M / M_sol)
     #
-    if "radius" in gtags and np.min(atmo_grid[icor].radius) > 1 and "height" in gtags:
+    if "radius" in gtags and "height" in gtags and np.min(atmo_grid[icor].radius) > 1 :
         solR = 69.550e9  # radius of sun in cm
         sollogg = 4.44  # solar log g [cm s^-2]
         mass_cor = (

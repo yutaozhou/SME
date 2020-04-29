@@ -60,8 +60,14 @@ class SavFile(AtmosphereGrid):
 
         atmo_grid = data["atmo_grid"]
 
-        if "RADIUS" in atmo_grid.dtype.names:
+        if (
+            "RADIUS" in atmo_grid.dtype.names
+            and "HEIGHT" in atmo_grid.dtypes.names
+            and not np.min(atmo_grid["radius"]) > 1
+        ):
             self.geom = "SPH"
+            self["radius"] = atmo_grid["radius"]
+            self["height"] = atmo_grid["height"]
         else:
             self.geom = "PP"
 
