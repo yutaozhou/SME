@@ -35,7 +35,7 @@ $$ I_\lambda = \int_0^\inf e^(-\tau / \mu) S_\lambda(\tau) d\tau
 $$
 
 `PySME` is a stellar model that does just that. It is based on the original
-`SME` [@1996A&AS..118..595V], which was written in C, Fortran, and IDL.
+`SME` [@sme], which was written in C, Fortran, and IDL.
 `PySME` replaces the IDL component with a Python implementation, but keeps
 the same C and Fortran codes, which makes it very fast.
 
@@ -49,7 +49,7 @@ The switch to Python away from IDL, brings many advantages. Foremost this
 means that `PySME` is no longer bound to IDL licenses, which allows for
 example for the parallel execution on servers etc. This also means that
 `PySME` is now completely open source, which is a requirement for some
-projects such as the upcoming 4MOST telescope [@2019Msngr.175....3D].
+projects such as the upcoming 4MOST telescope [@4most].
 
 We hope that this will encourage old and new users to use the new `PySME`
 in their research.
