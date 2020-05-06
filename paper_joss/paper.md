@@ -37,7 +37,7 @@ to an observation spectrum.
 
 To model the spectrum `PySME` uses the 1D radiative transfer equation
 $$ I_\lambda = \int_0^\infty e^{-\tau / \mu} S_\lambda(\tau) d\tau $$
-where $\tau$ is the optical depth, \mu is the cosine of the incidence angle,
+where $\tau$ is the optical depth, $\mu$ is the cosine of the incidence angle,
 and $S_\lambda$ is the source function (i.e. Planck's law in Local Thermal Equlibrium (LTE)).
 
 It needs five sets of input parameters to work:
