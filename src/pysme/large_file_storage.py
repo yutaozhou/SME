@@ -42,11 +42,12 @@ class LargeFileStorage:
         self.server = Server(server)
 
         if isinstance(pointers, str):
-            path = Path.expanduser("~/.sme") / pointers
+            path = Path("~/.sme").expanduser() / pointers
             try:
-                with path.open("r") as f:
+                with open(path, "r") as f:
                     pointers = json.load(f)
-            except FileExistsError:
+            except FileNotFoundError:
+                logger.error("Could not find LargeFileStorage reference file %s", path)
                 pointers = {}
         #:dict(fname:hash): points from a filename to the current newest object id, usually a hash
         self.pointers = pointers

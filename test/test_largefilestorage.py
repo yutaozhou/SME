@@ -1,10 +1,10 @@
 import pytest
 
-from os import listdir, makedirs, stat
-from os.path import dirname, islink, exists
+from os import listdir, makedirs, stat, remove
+from os.path import dirname, islink, exists, join
 from shutil import rmtree
 
-from pysme.large_file_storage import LargeFileStorage, Server
+from pysme.large_file_storage import LargeFileStorage, Server, setup_atmo, setup_nlte
 from pysme.config import Config
 
 
@@ -19,28 +19,33 @@ skipif_lfs = pytest.mark.skipif(lfs_available(), reason="LFS not available")
 
 @pytest.fixture
 def lfs_nlte():
-    config = Config()
-    server = config["data.file_server"]
-    pointers = config["data.pointers.nlte_grids"]
-    storage = "./lfs_test"
-    cache = "./lfs_test/cache"
-    makedirs(cache, exist_ok=True)
-    lfs_nlte = LargeFileStorage(server, pointers, storage, cache)
+    lfs_nlte = setup_nlte()
     yield lfs_nlte
-    rmtree(storage, ignore_errors=True)
+    for folder in [lfs_nlte.current, lfs_nlte.cache]:
+        for filename in listdir(folder):
+            file_path = join(folder, filename)
+            try:
+                remove(file_path)
+            except IsADirectoryError as e:
+                pass
+            except Exception as e:
+                print("Failed to delete %s. Reason: %s" % (file_path, e))
 
 
 @pytest.fixture
 def lfs_atmo():
-    config = Config()
-    server = config["data.file_server"]
-    pointers = config["data.pointers.atmospheres"]
-    storage = "./lfs_test"
-    cache = "./lfs_test/cache"
-    makedirs(cache, exist_ok=True)
-    lfs_atmo = LargeFileStorage(server, pointers, storage, cache)
+    lfs_atmo = setup_atmo()
     yield lfs_atmo
-    rmtree(storage, ignore_errors=True)
+
+    for folder in [lfs_atmo.current, lfs_atmo.cache]:
+        for filename in listdir(folder):
+            file_path = join(folder, filename)
+            try:
+                remove(file_path)
+            except IsADirectoryError as e:
+                pass
+            except Exception as e:
+                print("Failed to delete %s. Reason: %s" % (file_path, e))
 
 
 @skipif_lfs
