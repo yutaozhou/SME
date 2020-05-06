@@ -31,7 +31,7 @@ which can be compared to the observations from the telescope.
 
 `PySME` solves the 1D radiative transfer equation 
 
-$$ I_\lambda = \int_0^\inf e^(-\tau / \mu) S_\lambda(\tau) d\tau
+$$ I_\lambda = \int_0^\infty e^{-\tau / \mu} S_\lambda(\tau) d\tau
 $$
 
 `PySME` is a stellar model that does just that. It is based on the original
