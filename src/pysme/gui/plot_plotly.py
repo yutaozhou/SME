@@ -253,7 +253,12 @@ class FinalPlot:
                 else:
                     y = np.interp(x, self.wave[seg], self.smod[seg])
 
-                ytop = np.max(self.smod[seg])
+                if self.smod is not None:
+                    ytop = np.max(self.smod[seg])
+                elif self.spec is not None:
+                    ytop = np.max(self.spec[seg])
+                else:
+                    ytop = 1
 
                 for i, line in enumerate(lines):
                     seg_annotations += [
