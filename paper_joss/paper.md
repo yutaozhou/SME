@@ -56,13 +56,14 @@ The model requires five sets of input parameters to work, most of which can also
 variable parameters that should be determined.
 
 The five sets are:
-* Stellar Parameters (temperature, surface gravity, metallicity, etc.)
-* Model Atmosphere Grid (or a single model atmosphere)
-* Linelist, i.e. parameters for each spectral line
-* Elemental abundances of the star
-* Wavelength range(s) to calculate
-* (optional) NLTE departure coefficients
-
+\begin{itemize}
+ \item Stellar Parameters (temperature, surface gravity, metallicity, etc.)
+ \item Model Atmosphere Grid (or a single model atmosphere)
+ \item Linelist, i.e. parameters for each spectral line
+ \item Elemental abundances of the star
+ \item Wavelength range(s) to calculate
+ \item (optional) NLTE departure coefficients
+\end{itemize}
 To make the analysis easier, `PySME` provides access to several model atmosphere grids from
 `MARCS` [@marcs] and `ATLAS9` [@atlas9]. Also avalaible are several sets of solar abunances for
 the elemental composition of the star. The linelist meanwhile can most easily be obtained from `VALD` [@vald]
