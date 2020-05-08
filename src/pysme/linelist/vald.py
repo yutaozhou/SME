@@ -191,8 +191,8 @@ class ValdFile(LineList):
             If the header is not understood
         """
         words = [w.strip() for w in line.split(",")]
-        if len(words) < 5 or words[5] != "Wavelength region":
-            raise ValdError(f"{self._filename} is not a VALD line data file")
+        # if len(words) < 5 or words[5] != "Wavelength region":
+        #     raise ValdError(f"{self.filename} is not a VALD line data file")
         try:
             self.nlines = int(words[2])
             # self._wavelo = float(words[0])
@@ -201,7 +201,7 @@ class ValdFile(LineList):
             # self._vmicro = float(words[4])
             pass
         except:
-            raise ValdError(f"{self._filename} is not a VALD line data file")
+            raise ValdError(f"{self.filename} is not a VALD line data file")
 
     def parse_columns(self, line):
         match = re.search(r"WL_(air|vac)\((.*?)\)", line)

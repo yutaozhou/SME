@@ -271,7 +271,7 @@ class SME_Solver:
                 raise IOError(f"File extension {ext} not recognized")
 
         # Add generic bounds
-        bounds.update({"vmic": [0, np.inf], "vmac": [0, np.inf], "vsini": [0, np.inf]})
+        bounds.update({"vmic": [0, clight], "vmac": [0, clight], "vsini": [0, clight]})
         # bounds.update({"abund %s" % el: [-10, 11] for el in abund_elem})
 
         result = np.array([[-np.inf, np.inf]] * self.nparam)
@@ -386,7 +386,8 @@ class SME_Solver:
             if sme.vrad_flag in ["fix", "none"]:
                 sme.vrad_flag = "whole"
                 logger.info(
-                    "Removed fit parameter 'vrad', instead set radial velocity flag to %s", sme.vrad_flag
+                    "Removed fit parameter 'vrad', instead set radial velocity flag to %s",
+                    sme.vrad_flag,
                 )
 
         if "cont" in param_names:
@@ -394,7 +395,8 @@ class SME_Solver:
             if sme.cscale_flag in ["fix", "none"]:
                 sme.cscale_flag = "linear"
                 logger.info(
-                    "Removed fit parameter 'cont', instead set continuum flag to %s", sme.cscale_flag
+                    "Removed fit parameter 'cont', instead set continuum flag to %s",
+                    sme.cscale_flag,
                 )
         return param_names
 

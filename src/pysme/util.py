@@ -11,6 +11,8 @@ from platform import python_version
 import sys
 import builtins
 import contextlib
+import os
+import subprocess
 
 import numpy as np
 from numpy import __version__ as npversion
@@ -23,26 +25,6 @@ from . import __version__ as smeversion
 from .sme_synth import SME_DLL
 
 logger = logging.getLogger(__name__)
-
-
-class DummyTqdmFile(object):
-    """Dummy file-like that will write to tqdm"""
-
-    file = None
-
-    def __init__(self, file):
-        self.file = file
-
-    def write(self, x):
-        # Avoid print() second call (useless \n)
-        if len(x.rstrip()) > 0:
-            tqdm.write(x, file=self.file)
-
-    def flush(self):
-        return getattr(self.file, "flush", lambda: None)()
-
-    def isatty(self):
-        return getattr(self.file, "isatty", lambda: False)()
 
 
 @contextlib.contextmanager
@@ -367,6 +349,32 @@ def start_logging(log_file="log.log"):
     )
     logging.captureWarnings(True)
     log_version()
+
+
+def redirect_output_to_file(output_file):
+    """Redirect ALL output that would go to the commandline, to a file instead
+
+    Parameters
+    ----------
+    output_file : str
+        output filename
+    """
+
+    tee = subprocess.Popen(["tee", output_file], stdin=subprocess.PIPE)
+    # Cause tee's stdin to get a copy of our stdin/stdout (as well as that
+    # of any child processes we spawn)
+    os.dup2(tee.stdin.fileno(), sys.stdout.fileno())
+    os.dup2(tee.stdin.fileno(), sys.stderr.fileno())
+
+    # The flush flag is needed to guarantee these lines are written before
+    # the two spawned /bin/ls processes emit any output
+    print("\nHello World", flush=True)
+    # print("\nstdout", flush=True)
+    # print("stderr", file=sys.stderr, flush=True)
+
+    # These child processes' stdin/stdout are
+    # os.spawnve("P_WAIT", "/bin/ls", ["/bin/ls"], {})
+    # os.execve("/bin/ls", ["/bin/ls"], os.environ)
 
 
 def parse_args():

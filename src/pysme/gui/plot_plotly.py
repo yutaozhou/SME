@@ -253,9 +253,9 @@ class FinalPlot:
                 else:
                     y = np.interp(x, self.wave[seg], self.smod[seg])
 
-                if self.smod is not None:
+                if self.smod is not None and len(self.smod[seg]) > 0:
                     ytop = np.max(self.smod[seg])
-                elif self.spec is not None:
+                elif self.spec is not None and len(self.spec[seg]) > 0:
                     ytop = np.max(self.spec[seg])
                 else:
                     ytop = 1

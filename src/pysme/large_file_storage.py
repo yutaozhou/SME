@@ -128,7 +128,7 @@ class LargeFileStorage:
             return self.current / key
 
         # Step 5: If not in the cache, download from the server
-        logger.info("Downloading newest version of the datafile from server")
+        logger.info("Downloading newest version of %s from server", key)
         try:
             self.server.download(newest, self.cache)
             os.symlink(self.cache / newest, self.current / key)
@@ -187,6 +187,7 @@ class Server:
         url = self.url + "/" + fname
         loc = str(location)
         wget.download(url, out=loc)
+        print("\n")
 
     def isUp(self):
         try:
