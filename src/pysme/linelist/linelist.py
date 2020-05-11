@@ -355,10 +355,15 @@ class LineList(IPersist):
         file.writestr(f"{folder}info.json", json.dumps(info))
 
         lines = self._lines.reset_index(drop=True)
-        b = io.BytesIO()
-        lines.to_feather(b)
+        # Eventually feather should be stable, at that point we can use this
+        # Until then use JSON?
+        # b = io.BytesIO()
+        # lines.to_feather(b)
+        # file.writestr(f"{folder}data.feather", b.getvalue())
+        linedata = lines.to_json(orient="records")
+        file.writestr(f"{folder}data.json", linedata)
 
-        file.writestr(f"{folder}data.feather", b.getvalue())
+
 
     @staticmethod
     def _load(file, names, folder=""):
@@ -372,6 +377,9 @@ class LineList(IPersist):
             elif name.endswith("data.feather"):
                 b = io.BytesIO(file.read(name))
                 linedata = pd.read_feather(b)
+            elif name.endswith("data.json"):
+                b = io.BytesIO(file.read(name))
+                linedata = pd.read_json(b, orient="records")
             elif name.endswith("data.npy"):
                 b = io.BytesIO(file.read(name))
                 linedata = np.load(b)
