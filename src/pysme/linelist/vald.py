@@ -191,8 +191,8 @@ class ValdFile(LineList):
             If the header is not understood
         """
         words = [w.strip() for w in line.split(",")]
-        if len(words) < 5 or words[5] != "Wavelength region":
-            raise ValdError(f"{self._filename} is not a VALD line data file")
+        # if len(words) < 5 or words[5] != "Wavelength region":
+        #     raise ValdError(f"{self.filename} is not a VALD line data file")
         try:
             self.nlines = int(words[2])
             # self._wavelo = float(words[0])
@@ -201,7 +201,7 @@ class ValdFile(LineList):
             # self._vmicro = float(words[4])
             pass
         except:
-            raise ValdError(f"{self._filename} is not a VALD line data file")
+            raise ValdError(f"{self.filename} is not a VALD line data file")
 
     def parse_columns(self, line):
         match = re.search(r"WL_(air|vac)\((.*?)\)", line)
@@ -430,9 +430,20 @@ class ValdFile(LineList):
         # And make it unique again, if necessary
         references = set(references)
 
+        def get_entry(ref):
+            try:
+                return bibdata.entries[r]
+            except KeyError:
+                logger.warning(
+                    "Reference %s not found in local reference database, "
+                    "try updating it or check the bib file that came with your VALD file",
+                    ref,
+                )
+                return ref
+
         # Get references from bibtex file
         # TODO: only load this once? But then again, how often will we do this?
         bibdata = pybtex.database.parse_file(join(dirname(__file__), "VALD3_ref.bib"))
-        entries = {r: bibdata.entries[r] for r in references}
+        entries = {r: get_entry(r) for r in references}
         bibdata_filtered = pybtex.database.BibliographyData(entries)
         return bibdata_filtered.to_string("bibtex")
