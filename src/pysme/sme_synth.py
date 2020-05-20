@@ -1,5 +1,6 @@
 """ Wrapper for sme_synth.so C library """
 import os
+from os.path import dirname, join
 import logging
 from pathlib import Path
 
@@ -50,8 +51,9 @@ class SME_DLL:
         self.ion = None
 
         self.lib = IDL_DLL(libfile)
-        if datadir is not None:
-            self.SetLibraryPath(datadir)
+        if datadir is None:
+            datadir = join(dirname(__file__), "share/libsme")
+        self.SetLibraryPath(datadir)
 
         self.check_data_files_exist()
 
@@ -83,7 +85,6 @@ class SME_DLL:
         """int: number of lines in the linelist"""
         assert self.linelist is not None, f"No line list has been set"
         return len(self.linelist)
-
 
     def check_data_files_exist(self):
         """

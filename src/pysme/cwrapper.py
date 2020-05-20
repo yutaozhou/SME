@@ -92,7 +92,8 @@ def get_dtype(type):
 def get_full_libfile():
     localdir = Path(__file__).parent
     libfile = get_lib_name()
-    libfile = localdir / "dll" / libfile
+    # TODO: Or "bin" for Windows
+    libfile = localdir / "lib" / libfile
 
 
 def load_library(libfile):
