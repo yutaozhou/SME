@@ -40,7 +40,7 @@ if not exists(conf):
     with open(conf, "w") as f:
         json.dump(defaults, f)
 
-# Copy datafile pointers
+# Copy datafile pointers, for use in the GUI
 copy(
     join(dirname(__file__), "src/pysme/datafiles_atmospheres.json"),
     expanduser("~/.sme/datafiles_atmospheres.json"),

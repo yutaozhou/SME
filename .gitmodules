@@ -1,3 +1,4 @@
 [submodule "smelib"]
 	path = smelib
 	url = https://github.com/AWehrhahn/SMElib
+	update = checkout
