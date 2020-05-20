@@ -14,8 +14,9 @@ function repair_wheel {
 (cd /io/smelib/; sh /io/smelib/travis/build.sh)
 
 # Copy files to the desired folder
-cp -R /io/build/ /io/src/pysme/dll/
-ls /io/src/pysme/dll/
+cp -R /io/build/ /io/src/pysme/
+ls /io/src/pysme/
+ls /io/src/pysme/share/
 
 # Compile wheels
 for PYBIN in /opt/python/cp3*/bin; do
