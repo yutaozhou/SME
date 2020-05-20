@@ -14,7 +14,7 @@ function repair_wheel {
 (cd /io/smelib/; sh /io/smelib/travis/build.sh)
 
 # Copy files to the desired folder
-cp -R /io/build/ /io/src/pysme/*
+cp -R /io/build/* /io/src/pysme/
 ls /io/src/pysme/
 ls /io/src/pysme/share/
 
