@@ -1,0 +1,11 @@
+pandas
+scipy
+numpy
+astropy
+wget
+requests
+tqdm
+colorlog
+emcee
+pybtex
+pytest

@@ -63,5 +63,16 @@ setup(
     packages=["pysme", "pysme.gui", "pysme.atmosphere", "pysme.linelist"],
     package_dir={"": "src"},
     include_package_data=True,
-    install_requires=["numpy", "scipy", "matplotlib", "plotly", "pandas", "wget"],
+    install_requires=[
+        "numpy",
+        "scipy",
+        "astropy",
+        "pandas",
+        "wget",
+        "requests",
+        "tqdm",
+        "colorlog",
+        "emcee",
+        "pybtex",
+    ],
 )

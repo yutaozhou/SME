@@ -8,7 +8,6 @@ import warnings
 from itertools import product
 
 import emcee
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy.constants import speed_of_light
 from scipy.linalg import lu_factor, lu_solve

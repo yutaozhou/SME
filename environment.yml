@@ -4,14 +4,9 @@ channels:
   - astropy
   - anaconda
 dependencies:
+  - numpy
   - astropy
-  - Ipython
-  - jupyter
-  - matplotlib
   - pandas
-  - plotly
-  - pytest
   - requests
   - scipy
   - wget
-  - pyarrow
