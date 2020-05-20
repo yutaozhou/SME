@@ -89,10 +89,13 @@ def get_dtype(type):
         raise ValueError(f"Data type {type} not understood")
 
 
-def load_library():
+def get_full_libfile():
     localdir = Path(__file__).parent
     libfile = get_lib_name()
     libfile = localdir / "dll" / libfile
+
+
+def load_library(libfile):
     return ct.CDLL(str(libfile))
 
 
@@ -239,13 +242,17 @@ def idl_call_external(funcname, *args, restype="str", type=None, lib=None):
 class IDL_DLL:
     _instance = None
 
-    def __new__(cls):
+    def __new__(cls, *args, **kwargs):
         if cls._instance is None:
             cls._instance = object.__new__(cls)
+            IDL_DLL.init(cls._instance, *args, **kwargs)
         return cls._instance
 
-    def __init__(self):
-        self.lib = load_library()
+    def init(self, libfile=None):
+        if libfile is None:
+            libfile = get_full_libfile()
+        self.libfile = libfile
+        self.lib = load_library(libfile)
 
     def __getattr__(self, name):
         return lambda *args, **kwargs: self.call(name, *args, **kwargs)

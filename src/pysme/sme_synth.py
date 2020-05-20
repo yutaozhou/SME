@@ -15,14 +15,14 @@ class SME_DLL:
 
     _instance = None
 
-    def __new__(cls):
+    def __new__(cls, *args, **kwargs):
         if cls._instance is None:
             cls._instance = object.__new__(cls)
-            SME_DLL.init(cls._instance)
+            SME_DLL.init(cls._instance, *args, **kwargs)
         return cls._instance
 
     @staticmethod
-    def init(self):
+    def init(self, libfile=None, datadir=None):
         #:LineList: Linelist passed to the library
         self.linelist = None
         #:int: Number of mu points passed to the library
@@ -49,9 +49,27 @@ class SME_DLL:
         self._nlte_grids = {}
         self.ion = None
 
-        self.lib = IDL_DLL()
+        self.lib = IDL_DLL(libfile)
+        if datadir is not None:
+            self.SetLibraryPath(datadir)
 
         self.check_data_files_exist()
+
+    @property
+    def libfile(self):
+        """str: Location of the library file"""
+        return self.lib.libfile
+
+    @property
+    def file(self):
+        """str: Location of the library file"""
+        # Deprecated
+        return self.libfile
+
+    @property
+    def datadir(self):
+        """str: Expected directory of the data files"""
+        return self.GetLibraryPath()
 
     @property
     def ndepth(self):
@@ -66,16 +84,6 @@ class SME_DLL:
         assert self.linelist is not None, f"No line list has been set"
         return len(self.linelist)
 
-    @property
-    def file(self):
-        """str: (Expected) Location of the library file"""
-        return get_lib_name()
-
-    @property
-    def directory(self):
-        prefix = Path(__file__).parent
-        libpath = str(prefix / "dll") + os.sep
-        return libpath
 
     def check_data_files_exist(self):
         """
@@ -87,15 +95,8 @@ class SME_DLL:
         FileNotFoundError
             If any of the files don't exist
         """
-        names = [
-            "bpo_self.grid.INTEL",
-            "Fe1_Bautista2017.dat.INTEL",
-            "NH_Stancil2018.dat.INTEL",
-            "stehle_long.dat.INTEL",
-            "vcsbalmer.dat",
-        ]
-
-        directory = self.directory
+        names = self.GetDataFiles()
+        directory = self.GetLibraryPath()
         for name in names:
             n = os.path.join(directory, name)
             if not os.path.exists(n):
@@ -119,6 +120,15 @@ class SME_DLL:
         """ Set the path to the library """
         libpath = self.directory
         self.lib.SetLibraryPath(libpath)
+
+    def GetLibraryPath(self):
+        """ Get the data file directory """
+        return self.lib.GetLibraryPath(raise_error=False)
+
+    def GetDataFiles(self):
+        """ Get the required data files """
+        files = self.lib.GetDataFiles(raise_error=False)
+        return files.split(";")
 
     def InputWaveRange(self, wfirst, wlast):
         """
