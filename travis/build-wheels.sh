@@ -21,7 +21,7 @@ ls /io/src/pysme/share/
 # Compile wheels
 echo "Included Python versions:"
 ls /opt/python/
-for PYBIN in /opt/python/cp3*/bin; do
+for PYBIN in /opt/python/cp3[7-9]*/bin; do
     "${PYBIN}/pip" install --upgrade -r /io/dev-requirements.txt
     "${PYBIN}/pip" wheel /io/ --no-deps -w wheelhouse/
 done
@@ -32,7 +32,7 @@ for whl in wheelhouse/*.whl; do
 done
 
 # Install packages and test
-for PYBIN in /opt/python/cp3*/bin/; do
+for PYBIN in /opt/python/cp3[7-9]*/bin/; do
     "${PYBIN}/pip" install -v pysme-astro --no-index -f /io/wheelhouse
     "${PYBIN}/pytest" /io/test
 done
