@@ -19,6 +19,7 @@ ls /io/src/pysme/
 ls /io/src/pysme/share/
 
 # Compile wheels
+echo "Included Python versions:"
 ls /opt/python/
 for PYBIN in /opt/python/cp3[6-9]*/bin; do
     "${PYBIN}/pip" install -r /io/dev-requirements.txt
