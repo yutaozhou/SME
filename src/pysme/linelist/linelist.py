@@ -143,14 +143,12 @@ class LineList(IPersist):
         return (linedata, lineformat)
 
     def __init__(self, linedata=None, lineformat="short", medium=None, **kwargs):
-        if linedata is None:
-            if len(kwargs) == 0:
-                linedata = pd.DataFrame(data=[], columns=self._base_columns)
-            elif "atomic" in kwargs.keys():
+        if linedata is None or len(linedata) == 0:
+            if "atomic" in kwargs.keys():
                 # everything is in the kwargs (usually by loading from old SME file)
                 linedata, lineformat = LineList.from_IDL_SME(**kwargs)
             else:
-                raise NotImplementedError
+                linedata = pd.DataFrame(data=[], columns=self._base_columns)
         else:
             if isinstance(linedata, LineList):
                 linedata = linedata._lines
