@@ -40,11 +40,11 @@ class Config:
         self._cfg[key] = value
 
     def load(self):
-        with self._filename.open("r") as f:
+        with open(self._filename, "r") as f:
             self._cfg = json.load(f)
         return self._cfg
 
     @_requires_load
     def save(self):
-        with self._filename.open("w") as f:
+        with open(self._filename, "w") as f:
             json.dump(self._cfg, f)
