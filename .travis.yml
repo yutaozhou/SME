@@ -24,11 +24,12 @@ before_install:
         # make sure it's on PATH as 'python3'
         ln -s /c/Python38/python.exe /c/Python38/python3.exe
     fi
-    wget LIBSME_FILE
+  - |
+    wget $LIBSME_FILE
     tar -xvzf smelib_*.tar.gz
     mv -R lib|bin src/pysme
     mv -R share src/pysme
-    rm LIBSME_FILE
+    rm $LIBSME_FILE
     ls src/pysme
 
 
