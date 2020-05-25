@@ -14,7 +14,11 @@ python:
   - 3.8
 
 env:
-  - LIBSME_FILE="https://github.com/AWehrhahn/SMElib/releases/latest/download/smelib_manylinux2010.tar.gz"
+  - matrix:
+    - LIBSME_FILE="https://github.com/AWehrhahn/SMElib/releases/latest/download/smelib_manylinux2010.tar.gz"
+  - global:
+    - TWINE_USERNAME=__token__
+    # Note: TWINE_PASSWORD is set to a PyPI API token in Travis settings
 
 before_install:
   - |
@@ -24,13 +28,13 @@ before_install:
         # make sure it's on PATH as 'python3'
         ln -s /c/Python38/python.exe /c/Python38/python3.exe
     fi
-  - |
-    wget $LIBSME_FILE
-    tar -xvzf smelib_*.tar.gz
-    mv -R lib|bin src/pysme
-    mv -R share src/pysme
-    rm $LIBSME_FILE
-    ls src/pysme
+  - echo $LIBSME_FILE
+  - wget $LIBSME_FILE
+  - tar -xvzf smelib_*.tar.gz
+  - mv -R lib|bin src/pysme
+  - mv -R share src/pysme
+  - rm $LIBSME_FILE
+  - ls src/pysme
 
 
 install:
@@ -56,7 +60,8 @@ jobs:
     - os: windows
       language: shell
       name: Test on Windows
-
+      env:
+      - LIBSME_FILE="https://github.com/AWehrhahn/SMElib/releases/latest/download/smelib_win64.tar.gz"
     # Deploy source distribution
     - stage: deploy
       name: Deploy source distribution
@@ -100,7 +105,3 @@ jobs:
       after_success: |
         python3 -m pip install twine
         python3 -m twine upload --skip-existing wheelhouse/*.whl
-env:
-  global:
-    - TWINE_USERNAME=__token__
-    # Note: TWINE_PASSWORD is set to a PyPI API token in Travis settings
