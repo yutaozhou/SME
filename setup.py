@@ -46,11 +46,7 @@ path = binaries_directory()
 class PostDevelopCommand(develop):
     """Post-installation for development mode."""
 
-    def __init__(self, *args, **kwargs):
-        super(PostDevelopCommand, self).__init__(*args, **kwargs)
-        atexit.register(self.post_install)
-
-    def post_install(self):
+    def run(self):
         os.system("echo Hello")
         if sys.version_info.major == 3 and sys.version_info.minor < 6:
             from convert_fstrings import convert
@@ -59,16 +55,13 @@ class PostDevelopCommand(develop):
                 "echo Converting fstrings to string formats since we are using Python Version < 3.6"
             )
             convert(join(binaries_directory(), "pysme"))
+        develop.run(self)
 
 
 class PostInstallCommand(install):
     """Post-installation for installation mode."""
 
-    def __init__(self, *args, **kwargs):
-        super(PostInstallCommand, self).__init__(*args, **kwargs)
-        atexit.register(self.post_install)
-
-    def post_install(self):
+    def run(self):
         os.system("echo World")
         # PUT YOUR POST-INSTALL SCRIPT HERE or CALL A FUNCTION
         if sys.version_info.major == 3 and sys.version_info.minor < 6:
@@ -78,6 +71,7 @@ class PostInstallCommand(install):
                 "echo Converting fstrings to string formats since we are using Python Version < 3.6"
             )
             convert(join(binaries_directory(), "pysme"))
+        install.run(self)
 
 
 # Create folder structure
