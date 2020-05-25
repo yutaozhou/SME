@@ -1,9 +1,6 @@
-include src/pysme/dll/sme_synth.so.*
-include src/pysme/dll/vcsbalmer.dat
-include src/pysme/dll/stehle_long.dat.INTEL
-include src/pysme/dll/bpo_self.grid.INTEL
-include src/pysme/dll/Fe1_Bautista2017.dat.INTEL
-include src/pysme/dll/NH_Stancil2018.dat.INTEL
+include src/pysme/lib/*
+include src/pysme/bin/*
+include src/pysme/share/libsme/*
 
 include src/pysme/datafiles_atmospheres.json
 include src/pysme/datafiles_nlte.json
