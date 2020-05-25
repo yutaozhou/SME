@@ -93,7 +93,8 @@ def get_full_libfile():
     localdir = Path(__file__).parent
     libfile = get_lib_name()
     # TODO: Or "bin" for Windows
-    libfile = localdir / "lib" / libfile
+    libfile = str(localdir / "lib" / libfile)
+    return libfile
 
 
 def load_library(libfile):
