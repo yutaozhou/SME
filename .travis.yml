@@ -110,6 +110,7 @@ install:
   - pip3 install setuptools
   - pip3 install pytest
   - pip3 install -r requirements.txt
+  - pip3 install .
 
 script:
   - python3 -m pytest test/
