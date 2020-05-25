@@ -7,6 +7,8 @@ jobs:
   - name: linux-test
     dist: bionic
     language: gcc
+    env:
+      - $OUTPUT_DIRS="lib share"
     addons:
       apt:
         packages:
@@ -17,13 +19,6 @@ jobs:
         - python3.8
         - python3-venv
         - python3-pip
-    before_install:
-      - cd smelib
-      - ./bootstrap
-      - ./configure --prefix=$PWD
-      - make install
-      - cp lib share ../src/pysme/
-      - cd ..
     deploy: skip 
   - name: manylinux2010
     service: docker
@@ -74,12 +69,6 @@ jobs:
       - alias python3="/usr/local/opt/python@3.8/bin/python3"
       - alias pip3="/usr/local/opt/python@3.8/bin/pip3"
       - export PATH="/usr/local/opt/ccache/libexec:$PATH"
-      - cd smelib
-      - ./bootstrap
-      - ./configure --prefix=$PWD $CONFIG_FLAGS
-      - make install
-      - cp $OUTPUT_DIRS ../src/pysme/
-      - cd ..
   - name: win32
     os: linux
     dist: bionic
@@ -109,19 +98,18 @@ jobs:
         - g++-mingw-w64
         - g++-mingw-w64-x86-64
     # Skip testing for Windows target
-    install:
-      - cd smelib
-      - ./bootstrap
-      - ./configure --prefix=$PWD $CONFIG_FLAGS
-      - make install
-      - cp $OUTPUT_DIRS ../src/pysme/
-      - cd ..
     script:
       - ls src/pysme
       - ls src/pysme/bin
       - ls src/pysme/share/libsme
 
 install:
+  - cd smelib
+  - ./bootstrap
+  - ./configure --prefix=$PWD $CONFIG_FLAGS
+  - make install
+  - cp -R $OUTPUT_DIRS ../src/pysme/
+  - cd ..
   - pip3 install -r requirements.txt
 
 script:
