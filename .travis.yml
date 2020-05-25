@@ -1,34 +1,26 @@
 language: python
 python:
   - "3.6"
-dist: xenial
 service: docker
 env: 
-  - DOCKER_IMAGE=quay.io/pypa/manylinux2010_x86_64 PLAT=manylinux2010_x86_64
+  global:
+    - TWINE_USERNAME=AWehrhahn
+    - TWINE_PASSWORD=YCJyHTiRXTIo0oB+vukZUIpdeUyGXOvUGVMcfxE8dcRq0FSWwPD55mj18LI7iZCAYnUocFeZGmC/zMyn0aUBVLAanucUUKKLvcy3zmiKrYUs5JSjPUp3m0AgXYxG2zVPfx1yZyjCdlHYx9BMHxzzMUE1cpiY3DFYu3Q5C9XhDtR+dzjs0vvjSyVq8WDKTrecNglnxzhusGASSsagtH1t5IWbg7DW9/k853hxRHTmczTN6Y5SviBS9ujgYtRmfNluTub4y15pNVIgwnOgthcJ1mW0p4zSKAsNNYDShTap1n6Cu5iaTP4TRrt+IOi6juqqlhnRGnZdPjBnjdfn6RQk422RueAkz2pBMTb20nidALnM1/xinuSe5NYuURUxCt1mkWoqViK0qsTB4Ph/TTdOEQ8e8qFvmqlqeLGm9ahBDPuhJyIdq5E5OAVOm0Xock4kL7UZmaq+PccT5/j0hsKg09f9mXR9lX80JWit+FJ1KjpHNcmfg68TPc6+tasinrjHt2Peid7VlnN8tbjb8XDGOWD0eLxKacXXmdgT+ql1nKL8TXBDbSszxj9Al0zNNwxzhlaimMR/xWsCuWw5ouLqiFOLHO31l8HH3tKWQX/z4urKUlVXayijje9hpXRO4RWFiHi6/CtrxPZZJeOhyopgBotf4KSliDspblLPe0F0KyE=
 
-addons:
-  apt:
-    packages:
-      - libgfortran3
+jobs:
+  - service: docker
+    env:
+      - DOCKER_IMAGE=quay.io/pypa/manylinux2010_x86_64 PLAT=manylinux2010_x86_64
+    install:
+      - docker pull $DOCKER_IMAGE
+      - docker run --rm -e PLAT=$PLAT -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD /io/travis/build-wheels.sh
+    script:
+      - ls wheelhouse
 
-# Compile the SMElib
-before_install:
-  - docker pull $DOCKER_IMAGE
-  - docker run --rm -e PLAT=$PLAT -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD /io/travis/build-wheels.sh
-  - ls wheelhouse
-
-install:
-  - pip install -r requirements.txt
-  - pip install .
-script:
-  - pytest
-cache:
-  - pip
-
-deploy:
-  provider: pypi
-  user: AWehrhahn
-  password:
-    secure: YCJyHTiRXTIo0oB+vukZUIpdeUyGXOvUGVMcfxE8dcRq0FSWwPD55mj18LI7iZCAYnUocFeZGmC/zMyn0aUBVLAanucUUKKLvcy3zmiKrYUs5JSjPUp3m0AgXYxG2zVPfx1yZyjCdlHYx9BMHxzzMUE1cpiY3DFYu3Q5C9XhDtR+dzjs0vvjSyVq8WDKTrecNglnxzhusGASSsagtH1t5IWbg7DW9/k853hxRHTmczTN6Y5SviBS9ujgYtRmfNluTub4y15pNVIgwnOgthcJ1mW0p4zSKAsNNYDShTap1n6Cu5iaTP4TRrt+IOi6juqqlhnRGnZdPjBnjdfn6RQk422RueAkz2pBMTb20nidALnM1/xinuSe5NYuURUxCt1mkWoqViK0qsTB4Ph/TTdOEQ8e8qFvmqlqeLGm9ahBDPuhJyIdq5E5OAVOm0Xock4kL7UZmaq+PccT5/j0hsKg09f9mXR9lX80JWit+FJ1KjpHNcmfg68TPc6+tasinrjHt2Peid7VlnN8tbjb8XDGOWD0eLxKacXXmdgT+ql1nKL8TXBDbSszxj9Al0zNNwxzhlaimMR/xWsCuWw5ouLqiFOLHO31l8HH3tKWQX/z4urKUlVXayijje9hpXRO4RWFiHi6/CtrxPZZJeOhyopgBotf4KSliDspblLPe0F0KyE=
-  on:
-    tags: true
+after_success:
+  # if the release was tagged, upload them to PyPI
+  - |
+    if [[ $TRAVIS_TAG ]]; then
+      python3 -m pip install twine
+      python3 -m twine upload wheelhouse/*.whl
+    fi

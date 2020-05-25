@@ -23,11 +23,11 @@ echo "Included Python versions:"
 ls /opt/python/
 for PYBIN in /opt/python/cp3[6-9]*/bin; do
     "${PYBIN}/pip" install --upgrade -r /io/dev-requirements.txt
-    "${PYBIN}/pip" wheel /io/ --no-deps -w wheelhouse/
+    "${PYBIN}/pip" wheel /io/ --no-deps -w /io/wheelhouse/
 done
 
 # Bundle external shared libraries into the wheels
-for whl in wheelhouse/*.whl; do
+for whl in /io/wheelhouse/*.whl; do
     repair_wheel "$whl"
 done
 
