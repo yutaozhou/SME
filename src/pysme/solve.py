@@ -13,7 +13,6 @@ import builtins
 import numpy as np
 from tqdm import tqdm
 from scipy.constants import speed_of_light
-from scipy.io import readsav
 from scipy.optimize import OptimizeWarning, least_squares
 from scipy.optimize._numdiff import approx_derivative
 

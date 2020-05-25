@@ -50,8 +50,6 @@ class SME_DLL:
         self.ion = None
 
         self.lib = IDL_DLL(libfile)
-        if datadir is None:
-            datadir = join(dirname(__file__), "share/libsme")
         self.SetLibraryPath(datadir)
 
         self.check_data_files_exist()
@@ -116,10 +114,12 @@ class SME_DLL:
         version = self.lib.call("SMELibraryVersion", raise_error=False)
         return version
 
-    def SetLibraryPath(self, datadir):
+    def SetLibraryPath(self, datadir=None):
         """ Set the path to the library """
+        if datadir is None:
+            datadir = join(dirname(__file__), "share/libsme")
         datadir = str(datadir)
-        self.lib.SetLibraryPath(datadir)
+        self.lib.SetLibraryPath(datadir, type="string")
 
     def GetLibraryPath(self):
         """ Get the data file directory """

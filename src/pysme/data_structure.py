@@ -6,7 +6,6 @@ from copy import copy
 from datetime import datetime as dt
 
 import numpy as np
-from scipy.io import readsav
 
 import pybtex
 

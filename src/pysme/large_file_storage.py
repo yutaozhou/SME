@@ -101,12 +101,12 @@ class LargeFileStorage:
                     logger.warning(
                         f"Data file {key} exists, but is not tracked by the large file storage"
                     )
-                    return key
+                    return str(key)
             else:
                 logger.warning(
                     f"Data file {key} exists, but is not tracked by the large file storage"
                 )
-                return self.current / key
+                return str(self.current / key)
 
         # Step 2: Check Pointer version, i.e. newest version
         newest = self.pointers[key]
@@ -119,13 +119,13 @@ class LargeFileStorage:
                 current_hash = self.hash(self.current / key)
                 self._hashes[key] = current_hash
             if current_hash == newest:
-                return self.current / key
+                return str(self.current / key)
 
         # Step 4: Otherwise check the cache for the requested version
         if newest in self.cache:
             logger.debug("Using cached version of datafile")
             os.symlink(str(self.cache / newest), str(self.current / key))
-            return self.current / key
+            return str(self.current / key)
 
         # Step 5: If not in the cache, download from the server
         logger.info("Downloading newest version of %s from server", key)
@@ -140,7 +140,7 @@ class LargeFileStorage:
                 logger.warning("No data available for use")
                 raise FileNotFoundError("No data could be found for the requested file")
 
-        return self.current / key
+        return str(self.current / key)
 
     def clean_cache(self):
         """ Remove unused cache files (from old versions) """
