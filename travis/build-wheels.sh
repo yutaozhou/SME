@@ -21,15 +21,7 @@ ls /io/src/pysme/share/
 # Compile wheels
 echo "Included Python versions:"
 ls /opt/python/
-for PYBIN in /opt/python/cp35*/bin; do
-    "${PYBIN}/pip" install -r /io/dev-requirements.txt
-    "${PYBIN}/pip" install future-fstrings[rewrite]
-    for FILE in /io/src/pysme/**/*.py; do
-        future-fstrings-show ${FILE} > ${FILE}
-    done
-    "${PYBIN}/pip" wheel /io/ --no-deps -w wheelhouse/
-done
-for PYBIN in /opt/python/cp3[6-9]*/bin; do
+for PYBIN in /opt/python/cp3*/bin; do
     "${PYBIN}/pip" install -r /io/dev-requirements.txt
     "${PYBIN}/pip" wheel /io/ --no-deps -w wheelhouse/
 done

@@ -8,6 +8,24 @@ from shutil import copy
 import versioneer
 from setuptools import setup
 
+import sys
+
+if sys.version_info.major == 3 and sys.version_info.minor < 6:
+    try:
+        import future_fstrings
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError(
+            "For Python Version < 3.6 future_fstrings is requried"
+        )
+    from glob import glob
+
+    files = join(dirname(__file__), "**/*.py")
+    files = glob(files, recursive=True)
+    for file in files:
+        with open(file, "rb") as f:
+            text, _ = future_fstrings.fstring_decode(f.read())
+        getattr(sys.stdout, "buffer", sys.stdout).write(text.encode("UTF-8"))
+
 # Create folder structure
 directory = expanduser("~/.sme/")
 conf = join(directory, "config.json")

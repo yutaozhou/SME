@@ -9,3 +9,5 @@ colorlog
 emcee
 pybtex
 pytest
+
+future-fstrings; python_version < "3.6"
