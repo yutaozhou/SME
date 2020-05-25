@@ -117,7 +117,7 @@ class SME_DLL:
     def SetLibraryPath(self, datadir=None):
         """ Set the path to the library """
         if datadir is None:
-            datadir = join(dirname(__file__), "lib")
+            datadir = join(dirname(__file__), "share", "libsme")
         datadir = str(datadir)
         # Against all conventions, SME lib expects a "/" at the end of the path
         if not datadir.endswith(os.sep):
