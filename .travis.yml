@@ -29,6 +29,7 @@ before_install:
     mv -R lib|bin src/pysme
     mv -R share src/pysme
     rm LIBSME_FILE
+    ls src/pysme
 
 
 install:
