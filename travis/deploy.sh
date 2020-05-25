@@ -1,2 +1,2 @@
-python3 -m pip install twine
+pip3 install twine
 python3 -m twine upload wheelhouse/*.whl

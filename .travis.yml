@@ -25,6 +25,10 @@ jobs:
       on: 
         tags: true
   - name: manylinux2010
+    os: linux
+    dist: bionic
+    language: python
+    python: 3.8
     service: docker
     env:
       - DOCKER_IMAGE=quay.io/pypa/manylinux2010_x86_64 PLAT=manylinux2010_x86_64
@@ -69,6 +73,8 @@ jobs:
     before_install:
       - alias python3="/usr/local/opt/python@3.8/bin/python3"
       - alias pip3="/usr/local/opt/python@3.8/bin/pip3"
+      - alias python=python3
+      - alias pip=pip3
       - export PATH="/usr/local/opt/ccache/libexec:$PATH"
   - name: win32
     os: linux
@@ -102,6 +108,8 @@ jobs:
         - g++-mingw-w64
         - g++-mingw-w64-x86-64
     # Skip testing for Windows target
+    before_install:
+      - alias python=python3
     script:
       - ls src/pysme
       - ls src/pysme/bin
@@ -125,6 +133,7 @@ script:
 deploy:
   provider: pypi
   user: AWehrhahn
+  skip_cleanup: true
   password:
     secure: YCJyHTiRXTIo0oB+vukZUIpdeUyGXOvUGVMcfxE8dcRq0FSWwPD55mj18LI7iZCAYnUocFeZGmC/zMyn0aUBVLAanucUUKKLvcy3zmiKrYUs5JSjPUp3m0AgXYxG2zVPfx1yZyjCdlHYx9BMHxzzMUE1cpiY3DFYu3Q5C9XhDtR+dzjs0vvjSyVq8WDKTrecNglnxzhusGASSsagtH1t5IWbg7DW9/k853hxRHTmczTN6Y5SviBS9ujgYtRmfNluTub4y15pNVIgwnOgthcJ1mW0p4zSKAsNNYDShTap1n6Cu5iaTP4TRrt+IOi6juqqlhnRGnZdPjBnjdfn6RQk422RueAkz2pBMTb20nidALnM1/xinuSe5NYuURUxCt1mkWoqViK0qsTB4Ph/TTdOEQ8e8qFvmqlqeLGm9ahBDPuhJyIdq5E5OAVOm0Xock4kL7UZmaq+PccT5/j0hsKg09f9mXR9lX80JWit+FJ1KjpHNcmfg68TPc6+tasinrjHt2Peid7VlnN8tbjb8XDGOWD0eLxKacXXmdgT+ql1nKL8TXBDbSszxj9Al0zNNwxzhlaimMR/xWsCuWw5ouLqiFOLHO31l8HH3tKWQX/z4urKUlVXayijje9hpXRO4RWFiHi6/CtrxPZZJeOhyopgBotf4KSliDspblLPe0F0KyE=
   on:
