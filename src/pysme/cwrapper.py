@@ -131,7 +131,7 @@ def idl_call_external(funcname, *args, restype="str", type=None, lib=None):
 
     # Load library if that wasn't done yet
     if lib is None:
-        lib = load_library()
+        lib = load_library(get_full_libfile())
 
     # prepare input arguments
     args = list(args)
