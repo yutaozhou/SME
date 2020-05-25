@@ -1,4 +1,3 @@
-from pathlib import Path
 from os.path import dirname, join
 import numpy as np
 import pytest
@@ -92,8 +91,7 @@ def test_medium():
 
 
 def test_short_format():
-    testdir = Path(__file__).parent
-    linelist = ValdFile(testdir / "testcase1.lin")
+    linelist = ValdFile(join(dirname(__file__), "testcase1.lin"))
 
     assert linelist.lineformat == "short"
     assert len(linelist) == 44
@@ -111,8 +109,7 @@ def test_short_format():
 
 
 def test_long_format():
-    testdir = Path(__file__).parent
-    linelist = ValdFile(testdir / "testcase3.lin")
+    linelist = ValdFile(join(dirname(__file__), "testcase3.lin"))
 
     assert linelist.lineformat == "long"
     assert len(linelist) == 67
@@ -128,4 +125,3 @@ def test_long_format():
 
     assert isinstance(linelist.abund, Abund)
     assert isinstance(linelist.atmo, str)
-

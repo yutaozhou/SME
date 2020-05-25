@@ -2,7 +2,6 @@
 import os
 from os.path import dirname, join
 import logging
-from pathlib import Path
 
 import numpy as np
 

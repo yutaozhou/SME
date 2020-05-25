@@ -3,7 +3,7 @@ Handle the Json configuration file
 At the moment it is only used for the LargeFileStorage
 """
 import logging
-from pathlib import Path
+from os.path import expanduser
 import json
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ class Config:
 
     @filename.setter
     def filename(self, value):
-        self._filename = Path(value).expanduser()
+        self._filename = expanduser(value)
 
     @_requires_load
     def __getitem__(self, key):

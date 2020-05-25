@@ -5,7 +5,7 @@ And also determines the best fit parameters
 
 import logging
 import warnings
-from pathlib import Path
+from os.path import splitext
 import contextlib
 import sys
 import builtins
@@ -242,8 +242,7 @@ class SME_Solver:
             or "logg" in self.parameter_names
             or "monh" in self.parameter_names
         ):
-            atmo_file = Path(atmo_file)
-            ext = atmo_file.suffix
+            _, ext = splitext(atmo_file)
             atmo_file = self.lfs_atmo.get(atmo_file)
 
             if ext == ".sav":

@@ -44,7 +44,7 @@ class LargeFileStorage:
         if isinstance(pointers, str):
             path = Path("~/.sme").expanduser() / pointers
             try:
-                with open(path, "r") as f:
+                with open(str(path), "r") as f:
                     pointers = json.load(f)
             except FileNotFoundError:
                 logger.error("Could not find LargeFileStorage reference file %s", path)
@@ -62,7 +62,7 @@ class LargeFileStorage:
         """ hash a file """
         hasher = hashlib.sha3_512()
         blocksize = 8192  # 512 * 16
-        with open(filename, "rb") as f:
+        with open(str(filename), "rb") as f:
             for chunk in iter(lambda: f.read(blocksize), b""):
                 hasher.update(chunk)
         return hasher.hexdigest()
