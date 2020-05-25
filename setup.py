@@ -11,21 +11,12 @@ from setuptools import setup
 import sys
 
 if sys.version_info.major == 3 and sys.version_info.minor < 6:
-    try:
-        import future_fstrings
-    except ModuleNotFoundError:
-        raise ModuleNotFoundError(
-            "For Python Version < 3.6 future_fstrings is requried"
-        )
-    from glob import glob
+    from convert_fstrings import convert
 
-    files = join(dirname(__file__), "**/*.py")
-    files = glob(files, recursive=True)
-    for file in files:
-        with open(file, "rb") as f:
-            text, _ = future_fstrings.fstring_decode(f.read())
-        with open(file, "w") as f:
-            f.write(text)
+    print(
+        "Converting fstrings to string formats since we are using Python Version < 3.6"
+    )
+    convert()
 
 # Create folder structure
 directory = expanduser("~/.sme/")
@@ -70,6 +61,8 @@ copy(
 )
 
 # TODO: Have smelib compiled before distribution
+with open(join(dirname(__file__), "README.md"), "r") as fh:
+    long_description = fh.read()
 
 # Setup package
 setup(
@@ -77,11 +70,14 @@ setup(
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     description="Spectroscopy Made Easy",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     author="Ansgar Wehrhahn, Jeff A. Valenti",
     author_email="ansgar.wehrhahn@physics.uu.se, valenti@stsci.edu",
     packages=["pysme", "pysme.gui", "pysme.atmosphere", "pysme.linelist"],
     package_dir={"": "src"},
     include_package_data=True,
+    python_requires=">=3",
     install_requires=[
         "numpy",
         "scipy",
@@ -93,5 +89,18 @@ setup(
         "colorlog",
         "emcee",
         "pybtex",
+    ],
+    url="https://github.com/AWehrhahn/SME/",
+    project_urls={
+        "Bug Tracker": "https://github.com/AWehrhahn/SME/issues",
+        "Documentation": "https://pysme-astro.readthedocs.io/en/latest/",
+        "Source Code": "https://github.com/AWehrhahn/SME/",
+    },
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: BSD License",
+        "Operating System :: POSIX :: Linux",
+        "Operating System :: MacOS :: MacOS X",
+        "Operating System :: Microsoft :: Windows",
     ],
 )
