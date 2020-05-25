@@ -124,14 +124,14 @@ class LargeFileStorage:
         # Step 4: Otherwise check the cache for the requested version
         if newest in self.cache:
             logger.debug("Using cached version of datafile")
-            os.symlink(self.cache / newest, self.current / key)
+            os.symlink(str(self.cache / newest), str(self.current / key))
             return self.current / key
 
         # Step 5: If not in the cache, download from the server
         logger.info("Downloading newest version of %s from server", key)
         try:
             self.server.download(newest, self.cache)
-            os.symlink(self.cache / newest, self.current / key)
+            os.symlink(str(self.cache / newest), str(self.current / key))
         except TimeoutError:
             logger.warning("Server connection timed out.")
             if key in self.current:
@@ -166,9 +166,11 @@ class LargeFileStorage:
             name = fullpath.stem
             if fullpath.is_file():
                 # Copy file
-                shutil.copy(fullpath, self.cache / self.pointers[name])
-                os.remove(fullpath)
-                os.symlink(self.cache / self.pointers[name], self.current / name)
+                shutil.copy(str(fullpath), str(self.cache / self.pointers[name]))
+                os.remove(str(fullpath))
+                os.symlink(
+                    str(self.cache / self.pointers[name]), str(self.current / name)
+                )
 
     def create_pointer_file(self, filename):
         """ Create/Update the pointer file with new hashes """

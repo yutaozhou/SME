@@ -116,10 +116,10 @@ class SME_DLL:
         version = self.lib.call("SMELibraryVersion", raise_error=False)
         return version
 
-    def SetLibraryPath(self):
+    def SetLibraryPath(self, datadir):
         """ Set the path to the library """
-        libpath = self.directory
-        self.lib.SetLibraryPath(libpath)
+        datadir = str(datadir)
+        self.lib.SetLibraryPath(datadir)
 
     def GetLibraryPath(self):
         """ Get the data file directory """
