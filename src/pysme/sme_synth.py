@@ -128,7 +128,13 @@ class SME_DLL:
     def GetDataFiles(self):
         """ Get the required data files """
         files = self.lib.GetDataFiles(raise_error=False)
-        return files.split(";")
+        if files != "Using obsolete SME Library":
+            return files.split(";")
+        else:
+            logging.warning(
+                "Using obsolete SME Library. Cannot determine necessay data files"
+            )
+            return []
 
     def InputWaveRange(self, wfirst, wlast):
         """
