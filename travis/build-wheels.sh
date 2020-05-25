@@ -33,6 +33,6 @@ done
 
 # Install packages and test
 for PYBIN in /opt/python/cp3*/bin/; do
-    "${PYBIN}/pip" install pysme-astro --no-index -f /io/wheelhouse
+    "${PYBIN}/pip" install -v pysme-astro --no-index -f /io/wheelhouse
     "${PYBIN}/pytest" /io/test
 done

@@ -1,22 +1,84 @@
 #!/usr/bin/env python
 
+import atexit
 import json
 import os
-from os.path import exists, expanduser, join, dirname
+import sys
+from os.path import dirname, exists, expanduser, join
 from shutil import copy
 
-import versioneer
 from setuptools import setup
+from setuptools.command.develop import develop
+from setuptools.command.install import install
 
-import sys
+import versioneer
 
-if True:  # sys.version_info.major == 3 and sys.version_info.minor < 6:
-    from convert_fstrings import convert
+import site
 
-    print(
-        "Converting fstrings to string formats since we are using Python Version < 3.6"
-    )
-    convert()
+
+def binaries_directory():
+    """Return the installation directory, or None"""
+    if "--user" in sys.argv:
+        paths = (site.getusersitepackages(),)
+    else:
+        py_version = "%s.%s" % (sys.version_info[0], sys.version_info[1])
+        paths = (
+            s % (py_version)
+            for s in (
+                sys.prefix + "/lib/python%s/dist-packages/",
+                sys.prefix + "/lib/python%s/site-packages/",
+                sys.prefix + "/local/lib/python%s/dist-packages/",
+                sys.prefix + "/local/lib/python%s/site-packages/",
+                "/Library/Python/%s/site-packages/",
+            )
+        )
+
+    for path in paths:
+        if os.path.exists(path):
+            return path
+    print("no installation path found", file=sys.stderr)
+    return None
+
+
+path = binaries_directory()
+
+
+class PostDevelopCommand(develop):
+    """Post-installation for development mode."""
+
+    def __init__(self, *args, **kwargs):
+        super(PostDevelopCommand, self).__init__(*args, **kwargs)
+        atexit.register(self.post_install)
+
+    def post_install(self):
+        os.system("echo Hello")
+        if sys.version_info.major == 3 and sys.version_info.minor < 6:
+            from convert_fstrings import convert
+
+            os.system(
+                "echo Converting fstrings to string formats since we are using Python Version < 3.6"
+            )
+            convert(join(binaries_directory(), "pysme"))
+
+
+class PostInstallCommand(install):
+    """Post-installation for installation mode."""
+
+    def __init__(self, *args, **kwargs):
+        super(PostInstallCommand, self).__init__(*args, **kwargs)
+        atexit.register(self.post_install)
+
+    def post_install(self):
+        os.system("echo World")
+        # PUT YOUR POST-INSTALL SCRIPT HERE or CALL A FUNCTION
+        if sys.version_info.major == 3 and sys.version_info.minor < 6:
+            from convert_fstrings import convert
+
+            os.system(
+                "echo Converting fstrings to string formats since we are using Python Version < 3.6"
+            )
+            convert(join(binaries_directory(), "pysme"))
+
 
 # Create folder structure
 directory = expanduser("~/.sme/")
@@ -64,11 +126,15 @@ copy(
 with open(join(dirname(__file__), "README.md"), "r") as fh:
     long_description = fh.read()
 
+cmdclass = versioneer.get_cmdclass()
+cmdclass["install"] = PostInstallCommand
+cmdclass["develop"] = PostDevelopCommand
+
 # Setup package
 setup(
     name="pysme-astro",
     version=versioneer.get_version(),
-    cmdclass=versioneer.get_cmdclass(),
+    cmdclass=cmdclass,
     description="Spectroscopy Made Easy",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -90,6 +156,10 @@ setup(
         "emcee",
         "pybtex",
     ],
+    # cmdclass={
+    #     'develop': PostDevelopCommand,
+    #     'install': PostInstallCommand,
+    # },
     url="https://github.com/AWehrhahn/SME/",
     project_urls={
         "Bug Tracker": "https://github.com/AWehrhahn/SME/issues",
