@@ -17,9 +17,10 @@ env:
   - global:
     - TWINE_USERNAME=__token__ \
     LIBSME_FILE="https://github.com/AWehrhahn/SMElib/releases/latest/download/smelib_manylinux2010.tar.gz" \
+    OUTPUT_DIRS="lib share" \
     TAR="tar -xvzf" \
     RM="rm" \
-    MV="mv -R" \
+    MV="mv" \
     LS="ls"
     # Note: TWINE_PASSWORD is set to a PyPI API token in Travis settings
 
@@ -34,8 +35,7 @@ before_install:
   - echo $LIBSME_FILE
   - wget $LIBSME_FILE
   - $TAR smelib_*.tar.gz
-  - $MV lib|bin src/pysme
-  - $MV -R share src/pysme
+  - $MV $OUTPUT_DIRS src/pysme
   - $RM $LIBSME_FILE
   - $LS src/pysme
 
@@ -68,7 +68,8 @@ jobs:
         TAR=7z \
         LS=dir \
         RM=rem \
-        MV=move
+        MV=move \
+        OUTPUT_DIRS="bin share"
     # Deploy source distribution
     - stage: deploy
       name: Deploy source distribution
