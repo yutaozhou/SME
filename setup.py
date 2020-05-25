@@ -24,7 +24,8 @@ if sys.version_info.major == 3 and sys.version_info.minor < 6:
     for file in files:
         with open(file, "rb") as f:
             text, _ = future_fstrings.fstring_decode(f.read())
-        getattr(sys.stdout, "buffer", sys.stdout).write(text.encode("UTF-8"))
+        with open(file, "w") as f:
+            f.write(text)
 
 # Create folder structure
 directory = expanduser("~/.sme/")
