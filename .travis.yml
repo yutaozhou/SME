@@ -14,10 +14,8 @@ python:
   - 3.8
 
 env:
-  - matrix:
-    - LIBSME_FILE="https://github.com/AWehrhahn/SMElib/releases/latest/download/smelib_manylinux2010.tar.gz"
   - global:
-    - TWINE_USERNAME=__token__
+    - TWINE_USERNAME=__token__ LIBSME_FILE="https://github.com/AWehrhahn/SMElib/releases/latest/download/smelib_manylinux2010.tar.gz"
     # Note: TWINE_PASSWORD is set to a PyPI API token in Travis settings
 
 before_install:
