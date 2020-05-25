@@ -57,7 +57,7 @@ def sme_2segments():
     sme.vmac = 1
     sme.vsini = 1
     sme.abund = Abund(monh=0, pattern="asplund2009")
-    sme.linelist = ValdFile(f"{cwd}/testcase1.lin")
+    sme.linelist = ValdFile("{}/testcase1.lin".format((cwd)))
     sme.atmo.source = "marcs2012p_t2.0.sav"
     sme.atmo.method = "grid"
 

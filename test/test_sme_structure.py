@@ -14,7 +14,7 @@ def cwd():
 
 @pytest.fixture
 def filename(cwd):
-    filename = f"{cwd}/__test.sme"
+    filename = "{}/__test.sme".format((cwd))
     return filename
 
 
@@ -99,7 +99,7 @@ def test_save_and_load_structure(filename):
 
 
 def test_load_idl_savefile(cwd):
-    filename = f"{cwd}/testcase1.inp"
+    filename = "{}/testcase1.inp".format((cwd))
     sme = SME_Struct.load(filename)
 
     assert sme.teff == 5770

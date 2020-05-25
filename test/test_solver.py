@@ -7,7 +7,7 @@ from pysme.solve import solve
 from pysme.sme import SME_Structure as SME_Struct
 
 cwd = dirname(__file__)
-filename = f"{cwd}/testcase1.inp"
+filename = "{}/testcase1.inp".format((cwd))
 
 
 def test_simple():
