@@ -1,140 +1,94 @@
-env: 
-  global:
-    - TWINE_USERNAME=AWehrhahn
-    - TWINE_PASSWORD=YCJyHTiRXTIo0oB+vukZUIpdeUyGXOvUGVMcfxE8dcRq0FSWwPD55mj18LI7iZCAYnUocFeZGmC/zMyn0aUBVLAanucUUKKLvcy3zmiKrYUs5JSjPUp3m0AgXYxG2zVPfx1yZyjCdlHYx9BMHxzzMUE1cpiY3DFYu3Q5C9XhDtR+dzjs0vvjSyVq8WDKTrecNglnxzhusGASSsagtH1t5IWbg7DW9/k853hxRHTmczTN6Y5SviBS9ujgYtRmfNluTub4y15pNVIgwnOgthcJ1mW0p4zSKAsNNYDShTap1n6Cu5iaTP4TRrt+IOi6juqqlhnRGnZdPjBnjdfn6RQk422RueAkz2pBMTb20nidALnM1/xinuSe5NYuURUxCt1mkWoqViK0qsTB4Ph/TTdOEQ8e8qFvmqlqeLGm9ahBDPuhJyIdq5E5OAVOm0Xock4kL7UZmaq+PccT5/j0hsKg09f9mXR9lX80JWit+FJ1KjpHNcmfg68TPc6+tasinrjHt2Peid7VlnN8tbjb8XDGOWD0eLxKacXXmdgT+ql1nKL8TXBDbSszxj9Al0zNNwxzhlaimMR/xWsCuWw5ouLqiFOLHO31l8HH3tKWQX/z4urKUlVXayijje9hpXRO4RWFiHi6/CtrxPZZJeOhyopgBotf4KSliDspblLPe0F0KyE=
+# In this configuration, the package is tested against multiple versions of python
+# on Linux and on one version of Python on Windows. If and only if all tests pass
+# will the wheels be built and deployed. Further, deployment is only initiated if
+# the current branch is "master", the current commit is tagged, and the current
+# repo is yours (e.g. it won't run on a Pull Request). For convenience, a source
+# distribution is also created.
 
-jobs:
-  - name: linux-test
-    dist: bionic
-    language: gcc
-    env:
-      - $OUTPUT_DIRS="lib share"
-    addons:
-      apt:
-        packages:
-        - g++
-        - libgfortran3
-        - gfortran
-        - make
-        - python3.8
-        - python3-venv
-        - python3-pip
-    deploy:
-      provider: script
-      script: echo Hello there General Kenobi
-      on: 
-        tags: true
-  - name: manylinux2010
-    os: linux
-    dist: bionic
-    language: python
-    python: 3.8
-    service: docker
-    env:
-      - DOCKER_IMAGE=quay.io/pypa/manylinux2010_x86_64 PLAT=manylinux2010_x86_64
-    install:
-      - docker pull $DOCKER_IMAGE
-      - docker run --rm -e PLAT=$PLAT -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD /io/travis/build-wheels.sh
-    script:
-      - ls wheelhouse
-    deploy:
-      provider: script
-      script: bash travis/deploy.sh
-      on:
-        tags: true      
-  - name: osx
-    os: osx
-    language: gcc
-    env:
-      - TARGET=osx
-      - FORTRAN_DIR="/usr/local/gfortran/lib/"
-      - LDFLAGS="-L$FORTRAN_DIR"
-      - OUTPUT_DIRS="lib share"
-    addons:
-      homebrew:
-        update: true
-        packages:
-        - python@3.8
-        - gcc
-        - make
-        - automake
-        - autoconf
-        - libtool
-        - ccache
-        casks:
-        - gfortran
-    before_cache:
-      - brew cleanup
-    cache:
-      - pip
-      - ccache
-      - directories:
-        - $HOME/Library/Caches/Homebrew
-    before_install:
-      - alias python3="/usr/local/opt/python@3.8/bin/python3"
-      - alias pip3="/usr/local/opt/python@3.8/bin/pip3"
-      - alias python=python3
-      - alias pip=pip3
-      - export PATH="/usr/local/opt/ccache/libexec:$PATH"
-  - name: win32
-    os: linux
-    dist: bionic
-    language: gcc
-    env:
-      - TARGET=win64
-      - FORTRAN_DIR="$(x86_64-w64-mingw32-gfortran --print-file-name=)"
-      - LDFLAGS="-L$FORTRAN_DIR"
-      - CXX=x86_64-w64-mingw32-gcc
-      - F77=x86_64-w64-mingw32-gfortran
-      - CONFIG_FLAGS="--build=x86_64-pc-linux-gnu --host=x86_64-w64-mingw32"
-      - OUTPUT_DIRS="bin share"
-    addons:
-      apt:
-        packages:
-        - g++
-        - gfortran
-        - make
-        - libtool
-        - python3.8
-        - python3-venv
-        - python3-pip
-        - mingw-w64
-        - mingw-w64-tools
-        - mingw-w64-common
-        - gfortran-mingw-w64
-        - gfortran-mingw-w64-x86-64
-        - gcc-mingw-w64
-        - gcc-mingw-w64-x86-64
-        - g++-mingw-w64
-        - g++-mingw-w64-x86-64
-    # Skip testing for Windows target
-    before_install:
-      - alias python=python3
-    script:
-      - ls src/pysme
-      - ls src/pysme/bin
-      - ls src/pysme/share/libsme
+language: python
+python:
+  - 3.6
+  - 3.7
+  - 3.8
+
+
+before_install:
+  - |
+    if [[ "$TRAVIS_OS_NAME" = windows ]]; then
+        choco install python --version 3.8.0
+        export PATH="/c/Python38:/c/Python38/Scripts:$PATH"
+        # make sure it's on PATH as 'python3'
+        ln -s /c/Python38/python.exe /c/Python38/python3.exe
+    fi
 
 install:
-  - cd smelib
-  - ./bootstrap
-  - ./configure --prefix=$PWD $CONFIG_FLAGS
-  - make install
-  - cp -R $OUTPUT_DIRS ../src/pysme/
-  - cd ..
-  - pip3 install setuptools
-  - pip3 install pytest
-  - pip3 install -r requirements.txt
-  - pip3 install .
+  - python3 -m pip install -r requirements.txt
+  - python3 -m pip install -r test-requirements.txt
+  - python3 -m pip install .
 
 script:
-  - python3 -m pytest test/
+  - pytest
 
-deploy:
-  provider: pypi
-  user: AWehrhahn
-  skip_cleanup: true
-  password:
-    secure: YCJyHTiRXTIo0oB+vukZUIpdeUyGXOvUGVMcfxE8dcRq0FSWwPD55mj18LI7iZCAYnUocFeZGmC/zMyn0aUBVLAanucUUKKLvcy3zmiKrYUs5JSjPUp3m0AgXYxG2zVPfx1yZyjCdlHYx9BMHxzzMUE1cpiY3DFYu3Q5C9XhDtR+dzjs0vvjSyVq8WDKTrecNglnxzhusGASSsagtH1t5IWbg7DW9/k853hxRHTmczTN6Y5SviBS9ujgYtRmfNluTub4y15pNVIgwnOgthcJ1mW0p4zSKAsNNYDShTap1n6Cu5iaTP4TRrt+IOi6juqqlhnRGnZdPjBnjdfn6RQk422RueAkz2pBMTb20nidALnM1/xinuSe5NYuURUxCt1mkWoqViK0qsTB4Ph/TTdOEQ8e8qFvmqlqeLGm9ahBDPuhJyIdq5E5OAVOm0Xock4kL7UZmaq+PccT5/j0hsKg09f9mXR9lX80JWit+FJ1KjpHNcmfg68TPc6+tasinrjHt2Peid7VlnN8tbjb8XDGOWD0eLxKacXXmdgT+ql1nKL8TXBDbSszxj9Al0zNNwxzhlaimMR/xWsCuWw5ouLqiFOLHO31l8HH3tKWQX/z4urKUlVXayijje9hpXRO4RWFiHi6/CtrxPZZJeOhyopgBotf4KSliDspblLPe0F0KyE=
-  on:
-    tags: true
+stages:
+  - test
+  # Only execute deployment stage on tagged commits, and from your repository
+  # (e.g. not PRs). Replace with your repo name.
+  - name: deploy
+    if: tag IS PRESENT
+    # To only build tags that look like vX.Y.Z:
+    #   if: tag =~ ^v\d+\.\d+\.\d+$ AND repo = joerick/cibuildwheel
+
+jobs:
+  include:
+    # Optional: run a test on Windows
+    - os: windows
+      language: shell
+      name: Test on Windows
+
+    # Deploy source distribution
+    - stage: deploy
+      name: Deploy source distribution
+      install: skip
+      script: python3 setup.py sdist --formats=gztar
+      after_success: |
+        python3 -m pip install twine
+        python3 -m twine upload --skip-existing dist/*.tar.gz
+    # Deploy on linux
+    - stage: deploy
+      name: Build and deploy Linux wheels
+      env:
+        - LIBSME_FILE="https://github.com/AWehrhahn/SMElib/releases/latest/download/smelib_manylinux2010.tar.gz"
+      services: docker
+      install: python3 -m pip install cibuildwheel==1.4.2
+      script: python3 -m cibuildwheel --output-dir wheelhouse
+      after_success: |
+        python3 -m pip install twine
+        python3 -m twine upload --skip-existing wheelhouse/*.whl
+    # Deploy on mac
+    - stage: deploy
+      name: Build and deploy macOS wheels
+      os: osx
+      language: shell
+      env:
+        - LIBSME_FILE="https://github.com/AWehrhahn/SMElib/releases/latest/download/smelib_osx.tar.gz"
+      install: python3 -m pip install cibuildwheel==1.4.2
+      script: python3 -m cibuildwheel --output-dir wheelhouse
+      after_success: |
+        python3 -m pip install twine
+        python3 -m twine upload --skip-existing wheelhouse/*.whl
+    # Deploy on windows
+    - stage: deploy
+      name: Build and deploy Windows wheels
+      os: windows
+      language: shell
+      env:
+        - LIBSME_FILE="https://github.com/AWehrhahn/SMElib/releases/latest/download/smelib_win64.tar.gz"
+      install: python3 -m pip install cibuildwheel==1.4.2
+      script: python3 -m cibuildwheel --output-dir wheelhouse
+      after_success: |
+        python3 -m pip install twine
+        python3 -m twine upload --skip-existing wheelhouse/*.whl
+env:
+  global:
+    - TWINE_USERNAME=__token__
+    # Note: TWINE_PASSWORD is set to a PyPI API token in Travis settings
