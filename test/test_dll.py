@@ -189,15 +189,15 @@ def test_transf(
     print(nw, wave, synth, cont)
     assert nw == 47
 
-    # density = libsme.GetDensity()
-    # print(atmo.rho)
-    # print(density)
-    # assert np.allclose(density, atmo.rho, atol=1e-10, equal_nan=True)
+    density = libsme.GetDensity()
+    print(atmo.rho)
+    print(density)
+    assert np.allclose(density, atmo.rho, rtol=1e-1, equal_nan=True)
 
     xne = libsme.GetNelec()
     print(xne)
     print(atmo.xne)
-    assert np.allclose(xne, atmo.xne, rtol=1e-1)
+    assert np.allclose(xne, atmo.xne, rtol=2e-1)
 
     xna = libsme.GetNatom()
     print(xne)
