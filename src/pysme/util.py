@@ -213,9 +213,9 @@ def air2vac(wl_air, copy=True):
     sigma2 = (1e4 / wl_air[ii]) ** 2  # Compute wavenumbers squared
     fact = (
         1e0
-        + 8.336_624_212_083e-5
-        + 2.408_926_869_968e-2 / (1.301_065_924_522e2 - sigma2)
-        + 1.599_740_894_897e-4 / (3.892_568_793_293e1 - sigma2)
+        + 8.336624212083e-5
+        + 2.408926869968e-2 / (1.301065924522e2 - sigma2)
+        + 1.599740894897e-4 / (3.892568793293e1 - sigma2)
     )
     wl_vac[ii] = wl_air[ii] * fact  # Convert to vacuum wavelength
 
@@ -241,7 +241,7 @@ def vac2air(wl_vac, copy=True):
     fact = (
         1e0
         + 8.34254e-5
-        + 2.406_147e-2 / (130e0 - sigma2)
+        + 2.406147e-2 / (130e0 - sigma2)
         + 1.5998e-4 / (38.9e0 - sigma2)
     )
     wl_air[ii] = wl_vac[ii] / fact  # Convert to air wavelength
