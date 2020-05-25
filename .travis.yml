@@ -19,7 +19,11 @@ jobs:
         - python3.8
         - python3-venv
         - python3-pip
-    deploy: skip 
+    deploy:
+      provider: script
+      script: echo Hello there General Kenobi
+      on: 
+        tags: true
   - name: manylinux2010
     service: docker
     env:
@@ -85,6 +89,9 @@ jobs:
         - gfortran
         - make
         - libtool
+        - python3.8
+        - python3-venv
+        - python3-pip
         - mingw-w64
         - mingw-w64-tools
         - mingw-w64-common
