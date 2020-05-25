@@ -5,12 +5,16 @@
 # repo is yours (e.g. it won't run on a Pull Request). For convenience, a source
 # distribution is also created.
 
+os: linux
+dist: bionic
 language: python
 python:
   - 3.6
   - 3.7
   - 3.8
 
+env:
+  - LIBSME_FILE="https://github.com/AWehrhahn/SMElib/releases/latest/download/smelib_manylinux2010.tar.gz"
 
 before_install:
   - |
@@ -20,6 +24,12 @@ before_install:
         # make sure it's on PATH as 'python3'
         ln -s /c/Python38/python.exe /c/Python38/python3.exe
     fi
+    wget LIBSME_FILE
+    tar -xvzf smelib_*.tar.gz
+    mv -R lib|bin src/pysme
+    mv -R share src/pysme
+    rm LIBSME_FILE
+
 
 install:
   - python3 -m pip install -r requirements.txt
