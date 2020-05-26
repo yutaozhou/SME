@@ -30,7 +30,7 @@ before_install:
 install:
   - python3 -m pip install -r requirements.txt
   - python3 -m pip install -r test-requirements.txt
-  - python3 -m pip install .
+  - python3 -m pip install -v .
 
 script:
   - pytest

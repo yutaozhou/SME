@@ -14,7 +14,7 @@ import versioneer
 
 
 # Download compiled library from github releases
-
+print("Download and install the latest libsme version for this system")
 aliases = {"Linux": "manylinux2010", "Windows": "win64", "OSX": "osx"}
 
 system = platform.system()
@@ -41,7 +41,8 @@ os.remove(fname)
 
 
 # Create folder structure for config files
-directory = expanduser("~/.sme/ ")
+print("Set up the configuration files for PySME")
+directory = expanduser("~/.sme/")
 conf = join(directory, "config.json")
 atmo = join(directory, "atmospheres")
 nlte = join(directory, "nlte_grids")
@@ -71,8 +72,11 @@ if not exists(conf):
     # Save file to disk
     with open(conf, "w") as f:
         json.dump(defaults, f)
+else:
+    print("Configuration file already exists")
 
 # Copy datafile pointers, for use in the GUI
+print("Copy references to datafiles to config directory")
 copy(
     join(dirname(__file__), "src/pysme/datafiles_atmospheres.json"),
     expanduser("~/.sme/datafiles_atmospheres.json"),
