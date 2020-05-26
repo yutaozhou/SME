@@ -5,20 +5,10 @@
 # repo is yours (e.g. it won't run on a Pull Request). For convenience, a source
 # distribution is also created.
 
-os: linux
-dist: bionic
-language: python
-python:
-  - 3.6
-  - 3.7
-  - 3.8
-addons:
-  apt:
-    - libgfortran3
-
 env:
   - global:
       - TWINE_USERNAME=__token__
+      - CIBW_BEFORE_BUILD="sh travis/install_dependencies.sh && pip install -r requirements.txt && pip install ."
       # Note: TWINE_PASSWORD is set to a PyPI API token in Travis settings
 
 before_install:
@@ -50,7 +40,20 @@ stages:
 jobs:
   include:
     # Optional: run a test on Windows
-    - os: windows
+    - stage: test
+      os: linux
+      dist: bionic
+      language: python
+      python:
+        - 3.6
+        - 3.7
+        - 3.8
+      addons:
+        apt:
+          packages:
+            - libgfortran3
+    - stage: test
+      os: windows
       language: shell
       name: Test on Windows
     # Deploy source distribution
