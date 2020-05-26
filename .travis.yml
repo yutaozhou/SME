@@ -14,7 +14,8 @@ env:
 before_install:
   - |
     if [[ "$TRAVIS_OS_NAME" = windows ]]; then
-        choco install anaconda3 --params '"/AddToPath"'
+        choco install anaconda3 --params /AddToPath
+        python --version
         doskey python3=python
     fi
     if [[ "$TRAVIS_OS_NAME" = osx ]]; then
