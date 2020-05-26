@@ -15,7 +15,7 @@ import versioneer
 
 # Download compiled library from github releases
 print("Download and install the latest libsme version for this system")
-aliases = {"Linux": "manylinux2010", "Windows": "win64", "OSX": "osx"}
+aliases = {"Linux": "manylinux2010", "Windows": "win64", "Darwin": "osx"}
 
 system = platform.system()
 try:
