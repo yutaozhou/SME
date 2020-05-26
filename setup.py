@@ -4,12 +4,43 @@ import json
 import os
 from os.path import dirname, exists, expanduser, join
 from shutil import copy
+import platform
+import tarfile
 
 from setuptools import setup
+import wget
 
 import versioneer
 
-# Create folder structure
+
+# Download compiled library from github releases
+
+aliases = {"Linux": "manylinux2010", "Windows": "win64", "OSX": "osx"}
+
+system = platform.system()
+try:
+    system = aliases[system]
+except KeyError:
+    raise KeyError(
+        "Could not find the associated compiled library for this system {}. Either compile it yourself and place it in src/pysme/ or open an issue on Github"
+    )
+
+github_releases_url = "https://github.com/AWehrhahn/SMElib/releases/latest/download"
+github_releases_fname = "smelib_{system}.tar.gz".format(system=system)
+url = join(github_releases_url, github_releases_fname)
+loc = join(dirname(__file__), "src/pysme")
+fname = join(loc, github_releases_fname)
+
+if os.path.exists(fname):
+    os.remove(fname)
+
+wget.download(url, out=loc)
+tar = tarfile.open(fname)
+tar.extractall(loc)
+os.remove(fname)
+
+
+# Create folder structure for config files
 directory = expanduser("~/.sme/ ")
 conf = join(directory, "config.json")
 atmo = join(directory, "atmospheres")
