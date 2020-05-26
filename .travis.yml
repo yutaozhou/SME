@@ -14,10 +14,11 @@ env:
 before_install:
   - |
     if [[ "$TRAVIS_OS_NAME" = windows ]]; then
-        choco install python --version 3.8.0
-        export PATH="/c/Python38:/c/Python38/Scripts:$PATH"
-        # make sure it's on PATH as 'python3'
-        ln -s /c/Python38/python.exe /c/Python38/python3.exe
+        choco install anaconda3
+    fi
+    if [[ "$TRAVIS_OS_NAME" = osx ]]; then
+        alias python3="/usr/local/opt/python@3.8/bin/python3"
+        alias pip3="/usr/local/opt/python@3.8/bin/pip3"
     fi
 
 install:
@@ -70,6 +71,19 @@ jobs:
         apt:
           packages:
             - libgfortran5
+    - stage: test
+      os: osx
+      language: shell
+      name: Test on OSX
+      addons:
+        homebrew:
+          update: true
+          packages:
+            - python@3.8
+          casks:
+            - gfortran
+      before_cache:
+        - brew cleanup
     - stage: test
       os: windows
       language: shell
