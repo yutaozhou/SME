@@ -69,7 +69,7 @@ jobs:
         LS=dir \
         RM=rem \
         MV=move \
-        OUTPUT_DIRS="bin share"
+        OUTPUT_DIRS="bin share" 
     # Deploy source distribution
     - stage: deploy
       name: Deploy source distribution
