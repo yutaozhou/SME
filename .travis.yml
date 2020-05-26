@@ -50,7 +50,7 @@ jobs:
         apt:
           packages:
             - libgfortran5
-      - stage: test
+    - stage: test
       os: linux
       dist: bionic
       language: python
