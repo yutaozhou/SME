@@ -46,12 +46,30 @@ jobs:
       language: python
       python:
         - 3.6
+      addons:
+        apt:
+          packages:
+            - libgfortran5
+      - stage: test
+      os: linux
+      dist: bionic
+      language: python
+      python:
         - 3.7
+      addons:
+        apt:
+          packages:
+            - libgfortran5
+    - stage: test
+      os: linux
+      dist: bionic
+      language: python
+      python:
         - 3.8
       addons:
         apt:
           packages:
-            - libgfortran3
+            - libgfortran5
     - stage: test
       os: windows
       language: shell
