@@ -15,8 +15,7 @@ before_install:
   - |
     if [[ "$TRAVIS_OS_NAME" = windows ]]; then
         choco install anaconda3 --params /AddToPath
-        python --version
-        doskey python3=python
+        doskey python3="C:\tools\anaconda3\bin\python"
     fi
     if [[ "$TRAVIS_OS_NAME" = osx ]]; then
         alias python3="/usr/local/opt/python@3.8/bin/python3"
