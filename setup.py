@@ -10,7 +10,7 @@ from setuptools import setup
 import versioneer
 
 # Create folder structure
-directory = expanduser("~/.sme/")
+directory = expanduser("~/.sme/ ")
 conf = join(directory, "config.json")
 atmo = join(directory, "atmospheres")
 nlte = join(directory, "nlte_grids")
