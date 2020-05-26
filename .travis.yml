@@ -15,14 +15,8 @@ python:
 
 env:
   - global:
-    - TWINE_USERNAME=__token__ \
-    LIBSME_FILE="https://github.com/AWehrhahn/SMElib/releases/latest/download/smelib_manylinux2010.tar.gz" \
-    OUTPUT_DIRS="lib share" \
-    TAR="tar -xvzf" \
-    RM="rm" \
-    MV="mv" \
-    LS="ls"
-    # Note: TWINE_PASSWORD is set to a PyPI API token in Travis settings
+      - TWINE_USERNAME=__token__
+      # Note: TWINE_PASSWORD is set to a PyPI API token in Travis settings
 
 before_install:
   - |
@@ -32,13 +26,6 @@ before_install:
         # make sure it's on PATH as 'python3'
         ln -s /c/Python38/python.exe /c/Python38/python3.exe
     fi
-  - echo $LIBSME_FILE
-  - wget $LIBSME_FILE
-  - $TAR smelib_*.tar.gz
-  - $MV $OUTPUT_DIRS src/pysme
-  - $RM $LIBSME_FILE
-  - $LS src/pysme
-
 
 install:
   - python3 -m pip install -r requirements.txt
@@ -63,13 +50,6 @@ jobs:
     - os: windows
       language: shell
       name: Test on Windows
-      env:
-      - LIBSME_FILE="https://github.com/AWehrhahn/SMElib/releases/latest/download/smelib_win64.tar.gz" \
-        TAR=7z \
-        LS=dir \
-        RM=rem \
-        MV=move \
-        OUTPUT_DIRS="bin share" 
     # Deploy source distribution
     - stage: deploy
       name: Deploy source distribution
@@ -81,8 +61,6 @@ jobs:
     # Deploy on linux
     - stage: deploy
       name: Build and deploy Linux wheels
-      env:
-        - LIBSME_FILE="https://github.com/AWehrhahn/SMElib/releases/latest/download/smelib_manylinux2010.tar.gz"
       services: docker
       install: python3 -m pip install cibuildwheel==1.4.2
       script: python3 -m cibuildwheel --output-dir wheelhouse
@@ -94,8 +72,6 @@ jobs:
       name: Build and deploy macOS wheels
       os: osx
       language: shell
-      env:
-        - LIBSME_FILE="https://github.com/AWehrhahn/SMElib/releases/latest/download/smelib_osx.tar.gz"
       install: python3 -m pip install cibuildwheel==1.4.2
       script: python3 -m cibuildwheel --output-dir wheelhouse
       after_success: |
@@ -106,8 +82,6 @@ jobs:
       name: Build and deploy Windows wheels
       os: windows
       language: shell
-      env:
-        - LIBSME_FILE="https://github.com/AWehrhahn/SMElib/releases/latest/download/smelib_win64.tar.gz"
       install: python3 -m pip install cibuildwheel==1.4.2
       script: python3 -m cibuildwheel --output-dir wheelhouse
       after_success: |
