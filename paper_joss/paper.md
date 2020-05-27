@@ -64,6 +64,7 @@ The five sets are:
  \item Wavelength range(s) to calculate
  \item (optional) NLTE departure coefficients
 \end{itemize}
+
 To make the analysis easier, `PySME` provides access to several model atmosphere grids from
 `MARCS` [@marcs] and `ATLAS9` [@atlas9]. Also avalaible are several sets of solar abunances for
 the elemental composition of the star. The linelist meanwhile can most easily be obtained from `VALD` [@vald]
