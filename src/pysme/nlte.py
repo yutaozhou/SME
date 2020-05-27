@@ -99,20 +99,36 @@ class DirectAccessFile:
     def read_header(fname):
         """ parse Header data """
         with open(fname, "rb") as file:
-            header_dtype = np.dtype(
-                [
-                    ("version", "S64"),
-                    ("nblocks", "<u2"),
-                    ("dir_length", "<u2"),
-                    ("ndir", "<u2"),
-                ]
-            )
-            dir_dtype = np.dtype(
-                [("key", "S256"), ("size", "<i4", 23), ("pointer", "<i8")]
-            )
+            version_dtype = "S64"
+            version = np.fromfile(file, version_dtype, count=1)
+            version = version[0].decode()
+            major, minor = version[26], version[28:30]
+            if major == "1" and minor == "00":
+                header_dtype = np.dtype(
+                    [
+                        ("nblocks", "<u2"),
+                        ("dir_length", "<u2"),
+                        ("ndir", "<u2"),
+                    ]
+                )
+                dir_dtype = np.dtype(
+                    [("key", "S256"), ("size", "<i4", 23), ("pointer", "<i8")]
+                )
+            elif major == "1" and minor == "10":
+                header_dtype = np.dtype(
+                    [
+                        ("nblocks", "<u8"),
+                        ("dir_length", "<u2"),
+                        ("ndir", "<u8"),
+                    ]
+                )
+                dir_dtype = np.dtype(
+                    [("key", "S256"), ("size", "<i4", 23), ("pointer", "<i8")]
+                )
+            else:
+                raise ValueError("DirectAccess File Version '{version}' not understood.")
 
             header = np.fromfile(file, header_dtype, count=1)
-            version = header["version"][0].decode().strip()
             ndir = header["ndir"][0]
 
             directory = np.fromfile(file, dir_dtype, count=ndir)
