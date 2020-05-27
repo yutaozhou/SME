@@ -1,63 +1,51 @@
-
 jobs:
   include:
-    - os: linux
-      dist: bionic
-      language: python
-      python: 3.8
-      addons:
-        apt:
-          packages:
-            - libgfortran5
-    - os: linux
-      dist: xenial
-      language: python
-      python: 3.6
-      addons:
-        apt:
-          packages:
-            - libgfortran3
-    - os: osx
-      language: shell
-      addons:
-        homebrew:
-          update: true
-          packages:
-            - python@3.8
-          casks:
-            - gfortran
-      before_cache:
-        - brew cleanup
-      cache:
-        directories:
-          - $HOME/Library/Caches/Homebrew
-      before_install:
-        - alias python3="/usr/local/opt/python@3.8/bin/python3"
-        - alias pip3="/usr/local/opt/python@3.8/bin/pip3"
-    # - os: windows
-    #   language: shell
-    #   cache:
-    #     directories:
-    #       - $HOME/AppData/Local/Temp/chocolatey
-    #   before_install:
-    #     - choco install anaconda3 --params /AddToPath
-    #     - dir C:\\tools\\anaconda3
-    #     - doskey python3="C:\\tools\\anaconda3\\python.exe" $*
-    #     - python3 --version
-
+  - os: linux
+    dist: bionic
+    language: python
+    python: 3.8
+    addons:
+      apt:
+        packages:
+        - libgfortran5
+  - os: linux
+    dist: xenial
+    language: python
+    python: 3.6
+    addons:
+      apt:
+        packages:
+        - libgfortran3
+  - os: osx
+    language: shell
+    addons:
+      homebrew:
+        update: true
+        packages:
+        - python@3.8
+        casks:
+        - gfortran
+    before_cache:
+    - brew cleanup
+    cache:
+      directories:
+      - "$HOME/Library/Caches/Homebrew"
+    before_install:
+    - alias python3="/usr/local/opt/python@3.8/bin/python3"
+    - alias pip3="/usr/local/opt/python@3.8/bin/pip3"
 install:
-  - python3 -m pip install -r requirements.txt
-  - python3 -m pip install -r test-requirements.txt
-  - python3 -m pip install -v .
+- python3 -m pip install -r requirements.txt
+- python3 -m pip install -r test-requirements.txt
+- python3 -m pip install -v .
 
 script:
-  - python3 -m pytest
+- python3 -m pytest
 
 deploy:
   provider: pypi
   skip_existing: true
   user: AWehrhahn
   password:
-    secure: YCJyHTiRXTIo0oB+vukZUIpdeUyGXOvUGVMcfxE8dcRq0FSWwPD55mj18LI7iZCAYnUocFeZGmC/zMyn0aUBVLAanucUUKKLvcy3zmiKrYUs5JSjPUp3m0AgXYxG2zVPfx1yZyjCdlHYx9BMHxzzMUE1cpiY3DFYu3Q5C9XhDtR+dzjs0vvjSyVq8WDKTrecNglnxzhusGASSsagtH1t5IWbg7DW9/k853hxRHTmczTN6Y5SviBS9ujgYtRmfNluTub4y15pNVIgwnOgthcJ1mW0p4zSKAsNNYDShTap1n6Cu5iaTP4TRrt+IOi6juqqlhnRGnZdPjBnjdfn6RQk422RueAkz2pBMTb20nidALnM1/xinuSe5NYuURUxCt1mkWoqViK0qsTB4Ph/TTdOEQ8e8qFvmqlqeLGm9ahBDPuhJyIdq5E5OAVOm0Xock4kL7UZmaq+PccT5/j0hsKg09f9mXR9lX80JWit+FJ1KjpHNcmfg68TPc6+tasinrjHt2Peid7VlnN8tbjb8XDGOWD0eLxKacXXmdgT+ql1nKL8TXBDbSszxj9Al0zNNwxzhlaimMR/xWsCuWw5ouLqiFOLHO31l8HH3tKWQX/z4urKUlVXayijje9hpXRO4RWFiHi6/CtrxPZZJeOhyopgBotf4KSliDspblLPe0F0KyE=
+    secure: XJgwfU5TZ6mwnK//GJLI36ZZ2pPAhArySVRHtAsgx5Duo8RD+pcZUUjy5HJQTP5MeHARs0TnH7grQj/YmHv8+vA7LbkDIJt7YM8wC8TOTBJVngmiNNB8iVXBE+a9+DeGUDMYnBXvw0G8Xk984z3etJX+Pn/U6C3lVAmxBjsTdWfFXeWN9+JGNQ0RjDrmReVGwR72W56OOD2zJFfhvGboc7ulv/ydb+Cag24s6sXvCgiBMUJrbuEcBdNvm8edEHf04e4RhhR0I52sFOE2i1L5jM5XExrl592XzZmy5GoJFqixIL/i/9yPBRt3gNW2/MAQn0b7tDju0kKdr5q8f4oqPW6YhydwrEzE6fwk5J2Gs7metHWB1kyePezW1RFu2xP5bUkg+VeIwtbxaiF5D2T8hI9paOGZPE6id6Y8deo0mukxMdxAnqLZJ0pf+5N5p6dubaCFE9UhWA//MRjnpasL/rTMG2WFmmWVCIGlOcYgcvkzNjc2YhZUxXyReVAFv0RjvYHpSTm2hD/dviplq4inrU9z3hgGuD9f6AEXNd+uBMOYzMcfXrkS3EAGOvgJIyHzDrmiRhp2D9e1jg9ZF3+dcabhf7S67Mn4uujeoiN/mBlPM2DGU6zXW3wf1gNR1mmQSI/VlfbYqUzpn/tkaliYNa2GOReI8zLvyDgH3mfr1A4=
   on:
     tags: true
