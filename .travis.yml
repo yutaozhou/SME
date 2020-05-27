@@ -35,7 +35,7 @@ jobs:
       before_install:
         - choco install anaconda3 --params /AddToPath
         - dir C:\\tools\\anaconda3
-        - doskey python3=C:\\tools\\anaconda3\\python.exe
+        - doskey python3="C:\\tools\\anaconda3\\python.exe" $*
         - python3 --version
 
 install:
@@ -44,7 +44,7 @@ install:
   - python3 -m pip install -v .
 
 script:
-  - pytest
+  - python3 -m pytest
 
 deploy:
   provider: pypi

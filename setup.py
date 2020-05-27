@@ -8,36 +8,53 @@ import platform
 import tarfile
 
 from setuptools import setup
+from setuptools.command.install import install
+from setuptools.command.develop import develop
 import wget
 
 import versioneer
 
 
-# Download compiled library from github releases
-print("Download and install the latest libsme version for this system")
-aliases = {"Linux": "manylinux2010", "Windows": "win64", "Darwin": "osx"}
+def download_libsme():
+    # Download compiled library from github releases
+    print("Downloading and installing the latest libsme version for this system")
+    aliases = {"Linux": "manylinux2010", "Windows": "win64", "Darwin": "osx"}
 
-system = platform.system()
-try:
-    system = aliases[system]
-except KeyError:
-    raise KeyError(
-        "Could not find the associated compiled library for this system {}. Either compile it yourself and place it in src/pysme/ or open an issue on Github"
-    )
+    system = platform.system()
+    try:
+        system = aliases[system]
+    except KeyError:
+        raise KeyError(
+            "Could not find the associated compiled library for this system {}. Either compile it yourself and place it in src/pysme/ or open an issue on Github"
+        )
 
-github_releases_url = "https://github.com/AWehrhahn/SMElib/releases/latest/download"
-github_releases_fname = "smelib_{system}.tar.gz".format(system=system)
-url = join(github_releases_url, github_releases_fname)
-loc = join(dirname(__file__), "src/pysme")
-fname = join(loc, github_releases_fname)
+    github_releases_url = "https://github.com/AWehrhahn/SMElib/releases/latest/download"
+    github_releases_fname = "smelib_{system}.tar.gz".format(system=system)
+    url = github_releases_url + "/" + github_releases_fname
+    loc = join(dirname(__file__), "src/pysme")
+    fname = join(loc, github_releases_fname)
 
-if os.path.exists(fname):
+    if os.path.exists(fname):
+        os.remove(fname)
+
+    print("Downloading file %s" % url)
+    wget.download(url, out=loc)
+
+    with tarfile.open(fname) as tar:
+        tar.extractall(loc)
     os.remove(fname)
 
-wget.download(url, out=loc)
-tar = tarfile.open(fname)
-tar.extractall(loc)
-os.remove(fname)
+
+class InstallWrapper(install):
+    def run(self):
+        download_libsme()
+        install.run(self)
+
+
+class DevelopWrapper(develop):
+    def run(self):
+        download_libsme()
+        develop.run(self)
 
 
 # Create folder structure for config files
@@ -90,11 +107,15 @@ copy(
 with open(join(dirname(__file__), "README.md"), "r") as fh:
     long_description = fh.read()
 
+cmdclass = versioneer.get_cmdclass()
+cmdclass["install"] = InstallWrapper
+cmdclass["develop"] = DevelopWrapper
+
 # Setup package
 setup(
     name="pysme-astro",
     version=versioneer.get_version(),
-    cmdclass=versioneer.get_cmdclass(),
+    cmdclass=cmdclass,
     description="Spectroscopy Made Easy",
     long_description=long_description,
     long_description_content_type="text/markdown",
