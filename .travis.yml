@@ -1,7 +1,6 @@
 
 jobs:
   include:
-    # Optional: run a test on Windows
     - os: linux
       dist: bionic
       language: python
@@ -27,16 +26,16 @@ jobs:
       before_install:
         - alias python3="/usr/local/opt/python@3.8/bin/python3"
         - alias pip3="/usr/local/opt/python@3.8/bin/pip3"
-    - os: windows
-      language: shell
-      cache:
-        directories:
-          - $HOME/AppData/Local/Temp/chocolatey
-      before_install:
-        - choco install anaconda3 --params /AddToPath
-        - dir C:\\tools\\anaconda3
-        - doskey python3="C:\\tools\\anaconda3\\python.exe" $*
-        - python3 --version
+    # - os: windows
+    #   language: shell
+    #   cache:
+    #     directories:
+    #       - $HOME/AppData/Local/Temp/chocolatey
+    #   before_install:
+    #     - choco install anaconda3 --params /AddToPath
+    #     - dir C:\\tools\\anaconda3
+    #     - doskey python3="C:\\tools\\anaconda3\\python.exe" $*
+    #     - python3 --version
 
 install:
   - python3 -m pip install -r requirements.txt

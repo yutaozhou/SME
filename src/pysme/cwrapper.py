@@ -11,6 +11,10 @@ import platform
 import sys
 from pathlib import Path
 import warnings
+from os.path import join, dirname
+import os
+import wget
+import tarfile
 
 import numpy as np
 
@@ -31,8 +35,11 @@ class IDL_String(ct.Structure):
 def get_lib_name():
     """ Get the name of the sme C library """
     system = sys.platform
-    arch = platform.machine()
+    arch = "x86_64"
     bits = platform.architecture()[0][:-3]
+
+    if platform.system() in ["Windows"]:
+        return "libsme-5.dll"
 
     return f"sme_synth.so.{system}.{arch}.{bits}"
 
@@ -88,18 +95,54 @@ def get_dtype(type):
     else:
         raise ValueError(f"Data type {type} not understood")
 
+def download_libsme(loc=None):
+    if loc is None:
+        loc = dirname(__file__)
+    # Download compiled library from github releases
+    print("Downloading and installing the latest libsme version for this system")
+    aliases = {"Linux": "manylinux2010", "Windows": "win64", "Darwin": "osx"}
+
+    system = platform.system()
+    try:
+        system = aliases[system]
+    except KeyError:
+        raise KeyError(
+            "Could not find the associated compiled library for this system {}. Either compile it yourself and place it in src/pysme/ or open an issue on Github"
+        )
+
+    github_releases_url = "https://github.com/AWehrhahn/SMElib/releases/latest/download"
+    github_releases_fname = "smelib_{system}.tar.gz".format(system=system)
+    url = github_releases_url + "/" + github_releases_fname
+    fname = join(loc, github_releases_fname)
+
+    if os.path.exists(fname):
+        os.remove(fname)
+
+    print("Downloading file %s" % url)
+    os.makedirs(loc, exist_ok=True)
+    wget.download(url, out=loc)
+
+    with tarfile.open(fname) as tar:
+        tar.extractall(loc)
+    os.remove(fname)
+
 
 def get_full_libfile():
     localdir = Path(__file__).parent
     libfile = get_lib_name()
     # TODO: Or "bin" for Windows
-    libfile = str(localdir / "lib" / libfile)
+    if platform.system() in ["Windows"]:
+        dirpath = "bin"
+    else:
+        dirpath = "lib"
+    libfile = str(localdir / dirpath / libfile)
     return libfile
-
 
 def load_library(libfile):
     return ct.CDLL(str(libfile))
 
+if not os.path.exists(get_full_libfile()):
+    download_libsme()
 
 def idl_call_external(funcname, *args, restype="str", type=None, lib=None):
     r"""

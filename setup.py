@@ -4,58 +4,10 @@ import json
 import os
 from os.path import dirname, exists, expanduser, join
 from shutil import copy
-import platform
-import tarfile
 
 from setuptools import setup
 
-import wget
-
 import versioneer
-
-
-def download_libsme(lib=None):
-    if lib is None:
-        lib = dirname(__file__)
-    # Download compiled library from github releases
-    print("Downloading and installing the latest libsme version for this system")
-    aliases = {"Linux": "manylinux2010", "Windows": "win64", "Darwin": "osx"}
-
-    system = platform.system()
-    try:
-        system = aliases[system]
-    except KeyError:
-        raise KeyError(
-            "Could not find the associated compiled library for this system {}. Either compile it yourself and place it in src/pysme/ or open an issue on Github"
-        )
-
-    github_releases_url = "https://github.com/AWehrhahn/SMElib/releases/latest/download"
-    github_releases_fname = "smelib_{system}.tar.gz".format(system=system)
-    url = github_releases_url + "/" + github_releases_fname
-    loc = join(lib, "src/pysme")
-    fname = join(loc, github_releases_fname)
-
-    if os.path.exists(fname):
-        os.remove(fname)
-
-    print("Downloading file %s" % url)
-    os.makedirs(loc, exist_ok=True)
-    wget.download(url, out=loc)
-
-    with tarfile.open(fname) as tar:
-        tar.extractall(loc)
-    os.remove(fname)
-
-
-cmdclass = versioneer.get_cmdclass()
-_build_py = cmdclass["build_py"]
-
-class BuildWrapper(_build_py):
-    def run(self):
-        download_libsme(self.build_lib)
-        _build_py.run(self)
-
-cmdclass["build_py"] = BuildWrapper
 
 # Create folder structure for config files
 print("Set up the configuration files for PySME")
@@ -110,7 +62,7 @@ with open(join(dirname(__file__), "README.md"), "r") as fh:
 setup(
     name="pysme-astro",
     version=versioneer.get_version(),
-    cmdclass=cmdclass,
+    cmdclass=versioneer.get_cmdclass(),
     description="Spectroscopy Made Easy",
     long_description=long_description,
     long_description_content_type="text/markdown",
