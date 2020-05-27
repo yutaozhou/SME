@@ -1,16 +1,14 @@
-# In this configuration, the package is tested against multiple versions of python
-# on Linux and on one version of Python on Windows. If and only if all tests pass
-# will the wheels be built and deployed. Further, deployment is only initiated if
-# the current branch is "master", the current commit is tagged, and the current
-# repo is yours (e.g. it won't run on a Pull Request). For convenience, a source
-# distribution is also created.
+python:
+  - 3.6
+  - 3.7
+  - 3.8
 
 before_install:
   - |
     if [[ "$TRAVIS_OS_NAME" = windows ]]; then
         choco install anaconda3 --params /AddToPath
-        dir C:\\tools\\anaconda3\\bin
-        doskey python3=C:\\tools\\anaconda3\\bin\\python3
+        dir C:\\tools\\anaconda3
+        doskey python3=C:\\tools\\anaconda3\\python.exe
     fi
     if [[ "$TRAVIS_OS_NAME" = osx ]]; then
         alias python3="/usr/local/opt/python@3.8/bin/python3"
@@ -31,26 +29,6 @@ jobs:
     - os: linux
       dist: bionic
       language: python
-      python:
-        - 3.6
-      addons:
-        apt:
-          packages:
-            - libgfortran5
-    - os: linux
-      dist: bionic
-      language: python
-      python:
-        - 3.7
-      addons:
-        apt:
-          packages:
-            - libgfortran5
-    - os: linux
-      dist: bionic
-      language: python
-      python:
-        - 3.8
       addons:
         apt:
           packages:
