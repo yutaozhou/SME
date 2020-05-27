@@ -5,17 +5,12 @@
 # repo is yours (e.g. it won't run on a Pull Request). For convenience, a source
 # distribution is also created.
 
-env:
-  - global:
-      - TWINE_USERNAME=__token__
-      # Note: TWINE_PASSWORD is set to a PyPI API token in Travis settings
-
 before_install:
   - |
     if [[ "$TRAVIS_OS_NAME" = windows ]]; then
         choco install anaconda3 --params /AddToPath
-        dir C:\tools\anaconda3\bin
-        doskey python3=C:\tools\anaconda3\bin\python3
+        dir C:\\tools\\anaconda3\\bin
+        doskey python3=C:\\tools\\anaconda3\\bin\\python3
     fi
     if [[ "$TRAVIS_OS_NAME" = osx ]]; then
         alias python3="/usr/local/opt/python@3.8/bin/python3"
@@ -71,8 +66,14 @@ jobs:
             - gfortran
       before_cache:
         - brew cleanup
+      cache:
+        directories:
+          - $HOME/Library/Caches/Homebrew
     - os: windows
       language: shell
+      cache:
+        directories:
+          - $HOME/AppData/Local/Temp/chocolatey
 
 deploy:
   provider: pypi
