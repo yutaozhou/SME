@@ -8,14 +8,15 @@ import platform
 import tarfile
 
 from setuptools import setup
-from setuptools.command.install import install
-from setuptools.command.develop import develop
+
 import wget
 
 import versioneer
 
 
-def download_libsme():
+def download_libsme(lib=None):
+    if lib is None:
+        lib = dirname(__file__)
     # Download compiled library from github releases
     print("Downloading and installing the latest libsme version for this system")
     aliases = {"Linux": "manylinux2010", "Windows": "win64", "Darwin": "osx"}
@@ -31,13 +32,14 @@ def download_libsme():
     github_releases_url = "https://github.com/AWehrhahn/SMElib/releases/latest/download"
     github_releases_fname = "smelib_{system}.tar.gz".format(system=system)
     url = github_releases_url + "/" + github_releases_fname
-    loc = join(dirname(__file__), "src/pysme")
+    loc = join(lib, "src/pysme")
     fname = join(loc, github_releases_fname)
 
     if os.path.exists(fname):
         os.remove(fname)
 
     print("Downloading file %s" % url)
+    os.makedirs(loc, exist_ok=True)
     wget.download(url, out=loc)
 
     with tarfile.open(fname) as tar:
@@ -45,17 +47,15 @@ def download_libsme():
     os.remove(fname)
 
 
-class InstallWrapper(install):
+cmdclass = versioneer.get_cmdclass()
+_build_py = cmdclass["build_py"]
+
+class BuildWrapper(_build_py):
     def run(self):
-        download_libsme()
-        install.run(self)
+        download_libsme(self.build_lib)
+        _build_py.run(self)
 
-
-class DevelopWrapper(develop):
-    def run(self):
-        download_libsme()
-        develop.run(self)
-
+cmdclass["build_py"] = BuildWrapper
 
 # Create folder structure for config files
 print("Set up the configuration files for PySME")
@@ -71,7 +71,6 @@ os.makedirs(atmo, exist_ok=True)
 os.makedirs(nlte, exist_ok=True)
 os.makedirs(cache_atmo, exist_ok=True)
 os.makedirs(cache_nlte, exist_ok=True)
-
 
 # Create config file if it does not exist
 if not exists(conf):
@@ -106,10 +105,6 @@ copy(
 # TODO: Have smelib compiled before distribution
 with open(join(dirname(__file__), "README.md"), "r") as fh:
     long_description = fh.read()
-
-cmdclass = versioneer.get_cmdclass()
-cmdclass["install"] = InstallWrapper
-cmdclass["develop"] = DevelopWrapper
 
 # Setup package
 setup(
