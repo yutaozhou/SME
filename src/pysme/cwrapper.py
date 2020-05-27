@@ -7,6 +7,7 @@ and argc = list of pointers to those parameters
 """
 import logging
 import ctypes as ct
+from ctypes.util import find_library
 import platform
 import sys
 from pathlib import Path
@@ -105,7 +106,7 @@ def download_libsme(loc=None):
     system = platform.system()
 
     if system == "Linux":
-        fversion = ct.util.find_library("gfortran")
+        fversion = find_library("gfortran")
         if "3" in fversion:
             system = "linux-libgfortran3"
         else:
