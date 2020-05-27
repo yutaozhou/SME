@@ -95,6 +95,7 @@ def get_dtype(type):
     else:
         raise ValueError(f"Data type {type} not understood")
 
+
 def download_libsme(loc=None):
     if loc is None:
         loc = dirname(__file__)
@@ -106,7 +107,7 @@ def download_libsme(loc=None):
     if system == "Linux":
         fversion = ct.util.find_library("gfortran")
         if "3" in fversion:
-            system = "linux"
+            system = "linux-libgfortran3"
         else:
             system = "manylinux2010"
     else:
@@ -145,15 +146,18 @@ def get_full_libfile():
     libfile = str(localdir / dirpath / libfile)
     return libfile
 
+
 def load_library(libfile):
     try:
         os.add_dll_directory(dirname(libfile))
     except AttributeError:
-        os.environ['PATH'] = dirname(libfile) + os.pathsep + os.environ['PATH']
+        os.environ["PATH"] = dirname(libfile) + os.pathsep + os.environ["PATH"]
     return ct.CDLL(str(libfile))
+
 
 if not os.path.exists(get_full_libfile()):
     download_libsme()
+
 
 def idl_call_external(funcname, *args, restype="str", type=None, lib=None):
     r"""

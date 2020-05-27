@@ -9,6 +9,14 @@ jobs:
         apt:
           packages:
             - libgfortran5
+    - os: linux
+      dist: xenial
+      language: python
+      python: 3.6
+      addons:
+        apt:
+          packages:
+            - libgfortran3
     - os: osx
       language: shell
       addons:
