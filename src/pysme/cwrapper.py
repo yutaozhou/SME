@@ -101,14 +101,21 @@ def download_libsme(loc=None):
     # Download compiled library from github releases
     print("Downloading and installing the latest libsme version for this system")
     aliases = {"Linux": "manylinux2010", "Windows": "win64", "Darwin": "osx"}
-
     system = platform.system()
-    try:
-        system = aliases[system]
-    except KeyError:
-        raise KeyError(
-            "Could not find the associated compiled library for this system {}. Either compile it yourself and place it in src/pysme/ or open an issue on Github"
-        )
+
+    if system == "Linux":
+        fversion = ct.util.find_library("gfortran")
+        if "3" in fversion:
+            system = "linux"
+        else:
+            system = "manylinux2010"
+    else:
+        try:
+            system = aliases[system]
+        except KeyError:
+            raise KeyError(
+                "Could not find the associated compiled library for this system {}. Either compile it yourself and place it in src/pysme/ or open an issue on Github"
+            )
 
     github_releases_url = "https://github.com/AWehrhahn/SMElib/releases/latest/download"
     github_releases_fname = "smelib_{system}.tar.gz".format(system=system)
@@ -139,6 +146,10 @@ def get_full_libfile():
     return libfile
 
 def load_library(libfile):
+    try:
+        os.add_dll_directory(dirname(libfile))
+    except AttributeError:
+        os.environ['PATH'] = dirname(libfile) + os.pathsep + os.environ['PATH']
     return ct.CDLL(str(libfile))
 
 if not os.path.exists(get_full_libfile()):

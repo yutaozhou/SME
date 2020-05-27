@@ -67,6 +67,13 @@ class LargeFileStorage:
                 hasher.update(chunk)
         return hasher.hexdigest()
 
+    def symlink(self, src, dest):
+        try:
+            os.symlink(src, dest)
+        except OSError:
+            # Might Fail on Windows, then just copy the file
+            shutil.copy(src, dest)
+
     def get(self, key):
         """
         Request a datafile from the LargeFileStorage
@@ -124,14 +131,14 @@ class LargeFileStorage:
         # Step 4: Otherwise check the cache for the requested version
         if newest in self.cache:
             logger.debug("Using cached version of datafile")
-            os.symlink(str(self.cache / newest), str(self.current / key))
+            self.symlink(str(self.cache / newest), str(self.current / key))
             return str(self.current / key)
 
         # Step 5: If not in the cache, download from the server
         logger.info("Downloading newest version of %s from server", key)
         try:
             self.server.download(newest, self.cache)
-            os.symlink(str(self.cache / newest), str(self.current / key))
+            self.symlink(str(self.cache / newest), str(self.current / key))
         except TimeoutError:
             logger.warning("Server connection timed out.")
             if key in self.current:
@@ -168,7 +175,7 @@ class LargeFileStorage:
                 # Copy file
                 shutil.copy(str(fullpath), str(self.cache / self.pointers[name]))
                 os.remove(str(fullpath))
-                os.symlink(
+                self.symlink(
                     str(self.cache / self.pointers[name]), str(self.current / name)
                 )
 
