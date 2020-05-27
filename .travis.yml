@@ -8,14 +8,14 @@
 env:
   - global:
       - TWINE_USERNAME=__token__
-      - CIBW_BEFORE_BUILD="sh travis/install_dependencies.sh && pip install -r requirements.txt && pip install ."
       # Note: TWINE_PASSWORD is set to a PyPI API token in Travis settings
 
 before_install:
   - |
     if [[ "$TRAVIS_OS_NAME" = windows ]]; then
         choco install anaconda3 --params /AddToPath
-        doskey python3="C:\tools\anaconda3\bin\python"
+        dir C:\tools\anaconda3\bin
+        doskey python3=C:\tools\anaconda3\bin\python3
     fi
     if [[ "$TRAVIS_OS_NAME" = osx ]]; then
         alias python3="/usr/local/opt/python@3.8/bin/python3"
@@ -30,20 +30,10 @@ install:
 script:
   - pytest
 
-stages:
-  - test
-  # Only execute deployment stage on tagged commits, and from your repository
-  # (e.g. not PRs). Replace with your repo name.
-  - name: deploy
-    if: tag IS PRESENT
-    # To only build tags that look like vX.Y.Z:
-    #   if: tag =~ ^v\d+\.\d+\.\d+$ AND repo = joerick/cibuildwheel
-
 jobs:
   include:
     # Optional: run a test on Windows
-    - stage: test
-      os: linux
+    - os: linux
       dist: bionic
       language: python
       python:
@@ -52,8 +42,7 @@ jobs:
         apt:
           packages:
             - libgfortran5
-    - stage: test
-      os: linux
+    - os: linux
       dist: bionic
       language: python
       python:
@@ -62,8 +51,7 @@ jobs:
         apt:
           packages:
             - libgfortran5
-    - stage: test
-      os: linux
+    - os: linux
       dist: bionic
       language: python
       python:
@@ -72,10 +60,8 @@ jobs:
         apt:
           packages:
             - libgfortran5
-    - stage: test
-      os: osx
+    - os: osx
       language: shell
-      name: Test on OSX
       addons:
         homebrew:
           update: true
@@ -85,44 +71,14 @@ jobs:
             - gfortran
       before_cache:
         - brew cleanup
-    - stage: test
-      os: windows
+    - os: windows
       language: shell
-      name: Test on Windows
-    # Deploy source distribution
-    - stage: deploy
-      name: Deploy source distribution
-      install: skip
-      script: python3 setup.py sdist --formats=gztar
-      after_success: |
-        python3 -m pip install twine
-        python3 -m twine upload --skip-existing dist/*.tar.gz
-    # Deploy on linux
-    - stage: deploy
-      name: Build and deploy Linux wheels
-      services: docker
-      install: python3 -m pip install cibuildwheel==1.4.2
-      script: python3 -m cibuildwheel --output-dir wheelhouse
-      after_success: |
-        python3 -m pip install twine
-        python3 -m twine upload --skip-existing wheelhouse/*.whl
-    # Deploy on mac
-    - stage: deploy
-      name: Build and deploy macOS wheels
-      os: osx
-      language: shell
-      install: python3 -m pip install cibuildwheel==1.4.2
-      script: python3 -m cibuildwheel --output-dir wheelhouse
-      after_success: |
-        python3 -m pip install twine
-        python3 -m twine upload --skip-existing wheelhouse/*.whl
-    # Deploy on windows
-    - stage: deploy
-      name: Build and deploy Windows wheels
-      os: windows
-      language: shell
-      install: python3 -m pip install cibuildwheel==1.4.2
-      script: python3 -m cibuildwheel --output-dir wheelhouse
-      after_success: |
-        python3 -m pip install twine
-        python3 -m twine upload --skip-existing wheelhouse/*.whl
+
+deploy:
+  provider: pypi
+  skip_existing: true
+  user: AWehrhahn
+  password:
+    secure: YCJyHTiRXTIo0oB+vukZUIpdeUyGXOvUGVMcfxE8dcRq0FSWwPD55mj18LI7iZCAYnUocFeZGmC/zMyn0aUBVLAanucUUKKLvcy3zmiKrYUs5JSjPUp3m0AgXYxG2zVPfx1yZyjCdlHYx9BMHxzzMUE1cpiY3DFYu3Q5C9XhDtR+dzjs0vvjSyVq8WDKTrecNglnxzhusGASSsagtH1t5IWbg7DW9/k853hxRHTmczTN6Y5SviBS9ujgYtRmfNluTub4y15pNVIgwnOgthcJ1mW0p4zSKAsNNYDShTap1n6Cu5iaTP4TRrt+IOi6juqqlhnRGnZdPjBnjdfn6RQk422RueAkz2pBMTb20nidALnM1/xinuSe5NYuURUxCt1mkWoqViK0qsTB4Ph/TTdOEQ8e8qFvmqlqeLGm9ahBDPuhJyIdq5E5OAVOm0Xock4kL7UZmaq+PccT5/j0hsKg09f9mXR9lX80JWit+FJ1KjpHNcmfg68TPc6+tasinrjHt2Peid7VlnN8tbjb8XDGOWD0eLxKacXXmdgT+ql1nKL8TXBDbSszxj9Al0zNNwxzhlaimMR/xWsCuWw5ouLqiFOLHO31l8HH3tKWQX/z4urKUlVXayijje9hpXRO4RWFiHi6/CtrxPZZJeOhyopgBotf4KSliDspblLPe0F0KyE=
+  on:
+    tags: true
