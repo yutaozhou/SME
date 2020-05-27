@@ -34,8 +34,8 @@ jobs:
           - $HOME/AppData/Local/Temp/chocolatey
       before_install:
         - choco install anaconda3 --params /AddToPath
-        - dir C:\\tools\\anaconda3
-        - doskey python3="C:\\tools\\anaconda3\\python.exe" $*
+        - conda activate
+        - doskey python3=python $*
         - python3 --version
 
 install:
