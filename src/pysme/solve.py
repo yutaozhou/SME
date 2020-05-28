@@ -27,7 +27,6 @@ from .continuum_and_radial_velocity import match_rv_continuum
 from .integrate_flux import integrate_flux
 from .large_file_storage import setup_lfs
 from .iliffe_vector import Iliffe_vector
-from .nlte import update_nlte_coefficients
 from .sme_synth import SME_DLL
 from .uncertainties import uncertainties
 from .util import safe_interpolation, print_to_log

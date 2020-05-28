@@ -96,6 +96,66 @@ class DirectAccessFile:
         return typecode[i]
 
     @staticmethod
+    def get_typecode(dt):
+        """
+        relevant IDL typecodes and corresponding Numpy Codes
+        Most specify a byte size, but not all
+        """
+        typecode = {
+            "V" : 0,
+            "B" : 1,
+            "U" : 1,
+            "i2" : 2,
+            "i4" : 3,
+            "f4" : 4,
+            "f8" : 5,
+            "c4" : 6,
+            "S": 7,
+            "O" : 8,
+            "c8" : 9,
+             "i8" : 10,
+             "O" : 11,
+             "u2" : 12,
+             "u4" : 13,
+             "i8" : 14,
+             "u8"  :15,
+        }
+        if isinstance(dt, np.dtype):
+            dt = dt.str
+        if len(dt) > 2:
+            dt = dt[1:]
+
+        return typecode[dt]
+
+    @staticmethod
+    def get_dtypes(major, minor):
+        if major == "1" and minor == "00":
+            header_dtype = np.dtype(
+                [
+                    ("nblocks", "<u2"),
+                    ("dir_length", "<u2"),
+                    ("ndir", "<u2"),
+                ]
+            )
+            dir_dtype = np.dtype(
+                [("key", "S256"), ("size", "<i4", 23), ("pointer", "<i8")]
+            )
+        elif major == "1" and minor == "10":
+            header_dtype = np.dtype(
+                [
+                    ("nblocks", "<u8"),
+                    ("dir_length", "<u2"),
+                    ("ndir", "<u8"),
+                ]
+            )
+            dir_dtype = np.dtype(
+                [("key", "S256"), ("size", "<i4", 23), ("pointer", "<i8")]
+            )
+        else:
+            raise ValueError("DirectAccess File Version '{version}' not understood.")
+        return header_dtype, dir_dtype
+
+    @staticmethod
     def read_header(fname):
         """ parse Header data """
         with open(fname, "rb") as file:
@@ -103,30 +163,7 @@ class DirectAccessFile:
             version = np.fromfile(file, version_dtype, count=1)
             version = version[0].decode()
             major, minor = version[26], version[28:30]
-            if major == "1" and minor == "00":
-                header_dtype = np.dtype(
-                    [
-                        ("nblocks", "<u2"),
-                        ("dir_length", "<u2"),
-                        ("ndir", "<u2"),
-                    ]
-                )
-                dir_dtype = np.dtype(
-                    [("key", "S256"), ("size", "<i4", 23), ("pointer", "<i8")]
-                )
-            elif major == "1" and minor == "10":
-                header_dtype = np.dtype(
-                    [
-                        ("nblocks", "<u8"),
-                        ("dir_length", "<u2"),
-                        ("ndir", "<u8"),
-                    ]
-                )
-                dir_dtype = np.dtype(
-                    [("key", "S256"), ("size", "<i4", 23), ("pointer", "<i8")]
-                )
-            else:
-                raise ValueError("DirectAccess File Version '{version}' not understood.")
+            header_dtype, dir_dtype = DirectAccessFile.get_dtypes(major, minor)
 
             header = np.fromfile(file, header_dtype, count=1)
             ndir = header["ndir"][0]
@@ -142,7 +179,8 @@ class DirectAccessFile:
             [DirectAccessFile.idl_typecode(d[1 + d[0]]) for d in directory["size"]],
             dtype="U5",
         )
-        shape = np.array([tuple(d[1 : d[0] + 1]) for d in directory["size"]])
+        shape = np.empty(ndir, dtype=object)
+        shape[:] = [tuple(d[1 : d[0] + 1]) for d in directory["size"]]
         # Pointer to data arrays
         pointer = directory["pointer"]
 
@@ -151,9 +189,61 @@ class DirectAccessFile:
         # Also Null terminator is important to remember
         idx = dtype == "B"
         dtype[idx] = [f"S{s[0]}" for s in shape[idx]]
-        shape[idx] = [s[1:] for s in shape[idx]]
+        shape2 = np.empty(np.count_nonzero(idx), dtype=object)
+        shape2[:] = [tuple(s[1:]) for s in shape[idx]]
+        shape[idx] = shape2
 
         return key, pointer, dtype, shape, version
+
+    @staticmethod
+    def write(fname, **kwargs):
+        major, minor = "1", "10"
+        ndir = len(kwargs)
+        version = f"DirectAccess file Version {major}.{minor} 2011-03-24"
+        version = np.asarray([version], dtype="S64")
+        version_length = version.itemsize
+
+        header_dtype, dir_dtype = DirectAccessFile.get_dtypes(major, minor)
+        header_length = header_dtype.itemsize
+        dir_length = dir_dtype.itemsize
+
+        header = np.zeros(1, header_dtype)
+        header[0]["nblocks"] = len(kwargs)
+        header[0]["dir_length"] = dir_length
+        header[0]["ndir"] = ndir
+
+        directory = np.zeros(ndir, dir_dtype)
+        pointer = version_length + header_length + ndir * dir_length
+
+        for i, (key, value) in enumerate(kwargs.items()):
+            value = np.asarray(value)
+
+            directory[i]["key"] = key
+            shape = directory[i]["size"]
+            if np.issubdtype(value.dtype, np.dtype("U")) or np.issubdtype(value.dtype, np.dtype("S")):
+                value = value.astype("S")
+                shape[0] = value.ndim + 1
+                shape[1:2+value.ndim] = value.itemsize, *value.shape
+                shape[2+value.ndim] = 1
+                shape[3+value.ndim] = value.size * value.itemsize
+            else:
+                shape[0] = value.ndim
+                shape[1:1+value.ndim] = value.shape
+                shape[1+value.ndim] = DirectAccessFile.get_typecode(value.dtype)
+                shape[2+value.ndim] = value.size
+
+            directory[i]["pointer"] = pointer
+            pointer += value.nbytes
+            kwargs[key] = value
+            
+
+        with open(fname, "wb") as file:
+            version.tofile(file)
+            header.tofile(file)
+            directory.tofile(file)
+
+            for i, value in enumerate(kwargs.values()):
+                value.tofile(file)
 
 
 class Grid:
@@ -166,7 +256,7 @@ class Grid:
         #:LineList: Whole LineList that was passed to the C library
         self.linelist = sme.linelist
         #:array(str): Elemental Species Names for the linelist
-        self.species = sme.species
+        self.species = sme.linelist.species
         #:str: complete filename of the NLTE grid data file
         self.fname = lfs_nlte.get(sme.nlte.grids[elem])
         depth_name = str.lower(sme.atmo.interp)
@@ -204,6 +294,17 @@ class Grid:
         self.linerefs = None
         #:array: Indices of the lines in the LineList
         self.lineindices = None
+        #:array: Indices of the lines in the bgrid
+        self.iused = None
+
+        self.line_match_mode = "level"
+
+        conf = self.directory["conf"].astype("U")
+        term = self.directory["term"].astype("U")
+        species = self.directory["spec"].astype("U")
+        rotnum = self.directory["J"]  # rotational number of the atomic state
+        self.lineindices, self.linerefs, self.iused = self.select_levels(
+            conf, term, species, rotnum )
 
     def get(self, abund, teff, logg, monh):
         # TODO: NLTE grid should define which solar value has been used
@@ -266,9 +367,9 @@ class Grid:
 
         for i, j, k, l in np.ndindex(nabund, nteff, ngrav, nfeh):
             model = self._keys[f[l], g[k], t[j], x[i]]
-            if model != "":
+            try:
                 self.bgrid[:, :, i, j, k, l] = self.directory[model]
-            else:
+            except KeyError:
                 warnings.warn(
                     f"Missing Model for element {self.elem}: T={self._teff[t[j]]}, logg={self._grav[g[k]]}, feh={self._feh[f[l]]}, abund={self._xfe[x[i]]:.2f}"
                 )
@@ -278,16 +379,10 @@ class Grid:
         self.depth = self._depth[mask, :]
         self.depth.shape = nfeh, ngrav, nteff, -1
 
-        # Read more data from the table (conf, term, spec, J)
-        conf = self.directory["conf"].astype("U")
-        term = self.directory["term"].astype("U")
-        species = self.directory["spec"].astype("U")
-        rotnum = self.directory["J"]  # rotational number of the atomic state
-
-        # call sme_nlte_select_levels
-        self.bgrid, self.linerefs, self.lineindices = self.select_levels(
-            conf, term, species, rotnum
-        )
+        # Reduce the stored data to only relevant energy levels
+        # Remap the previous indices into a collapsed sequence
+        # level_labels = level_labels[iused]
+        self.bgrid = self.bgrid[self.iused, ...]
 
         self._points = (self._xfe[x], self._teff[t], self._grav[g], self._feh[f])
         self.limits = {
@@ -312,17 +407,17 @@ class Grid:
                 xp, yp, bounds_error=False, fill_value=(yp[0], yp[-1]), kind="cubic"
             )(self.target_depth)
 
-        return self.bgrid, self.linerefs, self.lineindices
+        return self.bgrid
 
     def select_levels(self, conf, term, species, rotnum):
         """
         Match our NLTE terms to transitions in the vald3-format linelist.
 
         Level descriptions in the vald3 long format look like this:
-        'LS                                                           2p6.3s                   2S'
-        'LS                                                             2p6.3p                2P*'
-        These are stored in line3_term_low and line3_term_upp.
-        The array line3_extra has dimensions [3 x nline3s]. It stores J_low, E_up, J_up
+        'LS                 2p6.3s               2S'
+        'LS                 2p6.3p               2P*'
+        These are stored in line_term_low and line_term_upp.
+        The array line_extra has dimensions [3 x nlines]. It stores J_low, E_up, J_up
         The sme.atomic array stores:
         0) atomic number, 1) ionization state, 2) wavelength (in A),
         3) excitation energy of lower level (in eV), 4) log(gf), 5) radiative,
@@ -330,41 +425,38 @@ class Grid:
 
         Parameters
         ----------
-        conf : array (nl,)
+        conf : array of shape (nl,)
             electronic configuration (for identification), e.g., 2p6.5s
-        term : array (nl,)
+        term : array of shape (nl,)
             term designations (for identification), e.g., a5F
-        species : array (nl,)
+        species : array of shape (nl,)
             Element and ion for each atomic level (for identification), e.g. Na 1.
-        rotnum : array (nl,)
+        rotnum : array of shape (nl,)
             rotational number J of atomic state (for identification).
 
         Returns
         -------
-        bgrid : array (nd, nlines, nx, nt, ng, nf,)
-            grid of departure coefficients, reduced to the lines used
-        level_labels : array (nl,)
-            string descriptions of each atomic level, usually
-            "[species]_[conf]_[term]_[2*J+1]", according to definitions above
-        linelevels : array (2, nlines,)
+        lineindices : array of shape (nl,)
+            Indices of the used lines in the linelist
+        linerefs : array of shape (2, nlines,)
             Cross references for the lower and upper level in each transition,
             to their indices in the list of atomic levels.
             Missing levels use indices of -1.
-        lineindices : array (nl,)
-            Indices of the used lines in the linelist
+        iused : array of shape (nl,)
+            Indices used in the subgrid
         """
 
-        self.lineindices = np.asarray(self.species, "U")
-        self.lineindices = np.char.startswith(self.lineindices, self.elem)
-        if not np.any(self.lineindices):
+        lineindices = np.asarray(self.species, "U")
+        lineindices = np.char.startswith(lineindices, self.elem)
+        if not np.any(lineindices):
             warnings.warn(f"No NLTE transitions for {self.elem} found")
-            return None, None, None, None
+            return None, None, None
 
-        sme_species = self.species[self.lineindices]
+        sme_species = self.species[lineindices]
 
         # Extract data from linelist
-        low = self.linelist["term_lower"][self.lineindices]
-        upp = self.linelist["term_upper"][self.lineindices]
+        low = self.linelist["term_lower"][lineindices]
+        upp = self.linelist["term_upper"][lineindices]
         # Remove quotation marks (if any are there)
         # parts_low = [s.replace("'", "") for s in parts_low]
         # parts_upp = [s.replace("'", "") for s in parts_upp]
@@ -373,7 +465,7 @@ class Grid:
         parts_upp = np.char.partition(upp, " ")[:, (0, 2)]
 
         # Transform into term symbol J (2*S+1) ?
-        extra = self.linelist.extra[self.lineindices]
+        extra = self.linelist.extra[lineindices]
         extra = extra[:, [0, 2]] * 2 + 1
         extra = np.rint(extra).astype("i8")
 
@@ -381,7 +473,6 @@ class Grid:
         rotnum = np.rint(2 * rotnum + 1).astype(int)
 
         # Create record arrays for each set of labels
-        names = ["species", "configuration", "term", "J"]
         dtype = [
             ("species", sme_species.dtype),
             ("configuration", parts_upp.dtype),
@@ -398,32 +489,88 @@ class Grid:
 
         # Prepare arrays
         nlines = parts_low.shape[0]
-        self.linerefs = np.full((nlines, 2), -1)
+        linerefs = np.full((nlines, 2), -1)
         iused = np.zeros(len(species), dtype=bool)
 
         # Loop through the NLTE levels
         # and match line levels
         for i, level in enumerate(level_labels):
             idx_l = line_label_low == level
-            self.linerefs[idx_l, 0] = i
+            linerefs[idx_l, 0] = i
             iused[i] = iused[i] or np.any(idx_l)
 
             idx_u = line_label_upp == level
-            self.linerefs[idx_u, 1] = i
+            linerefs[idx_u, 1] = i
             iused[i] = iused[i] or np.any(idx_u)
 
-        # Reduce the stored data to only relevant energy levels
-        # Remap the previous indices into a collapsed sequence
-        # level_labels = level_labels[iused]
-        self.bgrid = self.bgrid[iused, ...]
-        self.lineindices = np.where(self.lineindices)[0]
+        lineindices = np.where(lineindices)[0]
 
         # Remap the linelevel references
         for j, i in enumerate(np.where(iused)[0]):
-            self.linerefs[self.linerefs == i] = j
+            linerefs[linerefs == i] = j
 
-        # bgrid, level_labels, linelevels, lineindices
-        return self.bgrid, self.linerefs, self.lineindices
+        return lineindices, linerefs, iused
+
+    def select_energies(self, species, rotnum, energies):
+        lineindices = np.asarray(self.species, "U")
+        lineindices = np.char.startswith(lineindices, self.elem)
+        if not np.any(lineindices):
+            warnings.warn(f"No NLTE transitions for {self.elem} found")
+            return None, None, None
+        sme_species = self.species[lineindices]
+
+        # Energy levels in the linelist in eV
+        low = self.linelist["excit"][lineindices]
+        upp = self.linelist["e_upp"][lineindices]
+
+        # Transform into term symbol J (2*S+1) ?
+        extra = self.linelist.extra[lineindices]
+        extra = extra[:, [0, 2]] * 2 + 1
+        extra = np.rint(extra).astype(int)
+
+        # Transform into term symbol J (2*S+1) ?
+        rotnum = np.rint(2 * rotnum + 1).astype(int)
+
+        dtype = [
+            ("species", sme_species.dtype),
+            ("energy", low.dtype),
+            ("J", extra.dtype),
+        ]
+
+        level_labels = np.rec.fromarrays((species, energies, rotnum), dtype=dtype)
+        line_label_low = np.rec.fromarrays(
+            (sme_species, low, extra[:, 0]), dtype=dtype
+        )
+        line_label_upp = np.rec.fromarrays(
+            (sme_species, upp, extra[:, 1]), dtype=dtype
+        )
+        
+        nlines = low.shape[0]
+        linerefs = np.full((nlines, 2), -1)
+        iused = np.zeros(len(species), dtype=bool)
+
+        idx_map = np.arange(nlines)
+
+        def match(label, level):
+            idx = (label.species == level.species) & (label.J == level.J)
+            idx2 = np.argmin(np.abs(label[idx].energy - level[idx].energy))
+            idx_l = idx_map[idx][idx2]
+            return idx_l
+
+        # Loop through the NLTE levels
+        # and match line levels
+        for i, level in enumerate(level_labels):
+            # Instead of matching exactly we use the 
+            # Closest match within a reasonable range
+            idx_l = match(line_label_low, level)
+            linerefs[idx_l, 0] = i
+            iused[i] |=  np.any(idx_l)
+
+            idx_u = match(line_label_upp, level)
+            linerefs[idx_u, 1] = i
+            iused[i] |= np.any(idx_u)
+
+        return lineindices, linerefs, iused
 
     def interpolate(self, rabund, teff, logg, monh):
         """
@@ -483,6 +630,8 @@ def nlte(sme, dll, elem, lfs_nlte):
     if sme.nlte.grids[elem] is None:
         raise ValueError(f"Element {elem} has not been prepared for NLTE")
 
+    # TODO: The grids are cached in the DLL object
+    # Its probably better to store them in a seperate object
     if elem in dll._nlte_grids.keys():
         grid = dll._nlte_grids[elem]
     else:

@@ -2,7 +2,9 @@
 
 import pytest
 
+import os
 from os.path import dirname
+import tempfile
 
 import numpy as np
 
@@ -10,7 +12,7 @@ from pysme.sme import SME_Structure as SME_Struct
 from pysme.iliffe_vector import Iliffe_vector
 from pysme.linelist.vald import ValdFile
 from pysme.sme_synth import SME_DLL
-from pysme.nlte import nlte
+from pysme.nlte import nlte, DirectAccessFile
 from pysme.synthesize import Synthesizer, synthesize_spectrum
 from pysme.config import Config
 from pysme.abund import Abund
@@ -145,3 +147,29 @@ def test_dll(lfs_atmo, lfs_nlte):
 
     with pytest.raises(ValueError):
         libsme.InputNLTE(bmat[:, [0, 1]].T, -10)
+
+@pytest.fixture
+def temp():
+    file = tempfile.NamedTemporaryFile(delete=False)
+    yield file.name
+    try:
+        os.remove(file)
+    except:
+        pass
+
+def test_read_write_direct_access_file(temp : str):
+    content = {
+        "hello": "world",
+        "I" : ["have", "the", "high", "ground"],
+        "teff": np.arange(100)
+    }
+
+    DirectAccessFile.write(temp, **content)
+    daf = DirectAccessFile(temp)
+
+    for key, value in content.items():
+        vf = daf[key]
+        if np.issubdtype(vf.dtype, np.dtype("S")):
+            vf = np.char.decode(vf)
+
+        assert np.all(vf == value)
