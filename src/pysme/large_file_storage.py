@@ -156,6 +156,21 @@ class LargeFileStorage:
             if f not in used_files:
                 os.remove(f)
 
+    def delete_file(self, fname):
+        """ Delete a file, including the cache file """
+        # Delete the file
+        try:
+            os.remove(str(self.current / fname))
+        except OSError:
+            pass
+
+        # Delete the associated cache file
+        try:
+            p = self.pointers[fname]
+            os.remove(str(self.cache / p))
+        except (KeyError, IOError):
+            pass
+
     def generate_pointers(self):
         """ Generate the pointers dictionary from the existing storage directory """
         pointers = {}

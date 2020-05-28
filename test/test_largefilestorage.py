@@ -21,31 +21,12 @@ skipif_lfs = pytest.mark.skipif(lfs_available(), reason="LFS not available")
 def lfs_nlte():
     lfs_nlte = setup_nlte()
     yield lfs_nlte
-    for folder in [lfs_nlte.current, lfs_nlte.cache]:
-        for filename in listdir(folder):
-            file_path = join(folder, filename)
-            try:
-                remove(file_path)
-            except IsADirectoryError as e:
-                pass
-            except Exception as e:
-                print("Failed to delete %s. Reason: %s" % (file_path, e))
 
 
 @pytest.fixture
 def lfs_atmo():
     lfs_atmo = setup_atmo()
     yield lfs_atmo
-
-    for folder in [lfs_atmo.current, lfs_atmo.cache]:
-        for filename in listdir(folder):
-            file_path = join(folder, filename)
-            try:
-                remove(file_path)
-            except IsADirectoryError as e:
-                pass
-            except Exception as e:
-                print("Failed to delete %s. Reason: %s" % (file_path, e))
 
 
 @skipif_lfs
