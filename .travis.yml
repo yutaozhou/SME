@@ -44,7 +44,7 @@ script:
 deploy:
   provider: pypi
   skip_existing: true
-  user: AWehrhahn
+  user: __token__
   password:
     secure: WroUri/lUVhUaJyag3dKmAM0vb91nG0n4QvxQ1wIIiXMjpQEtobpqvzhhKIEmh6f++Ox7llD8TBAoOQO9VNh7urlYI7IRKDb9I1H+yFN+ZBfxGD+9kyEXRmeKhaOO2VJ+vHNdbPJe5dhk7N/fu63rjrCbKqVm3RYpufiZnIdU7K8i5b+IgvH20++EMKdi/jiiSpYhKx2qnp3c4CJtqEFVLIZaPVrDZ8PyRE12Z2+A6B8nEDfo7Ccb+WYg0XNikxV12UYIj1aq++chLEWcPpn16x6PUgz2JfLMlIejTunY9zL54F49xDY6r5kfK42LlPsHMpr2oTOoctOE+giEYQQl7J+bR65xpYpuovrsdieMJXAXUTKMEvrVKFA5Hbzq7XN/E1DP8I9pEIemE8q/vLFTmze/jJP73C9EJQe/YFkcuuu7pbs4kGMY3AnxRMgsUg2obnw7A1wJL3ufa2JAmZgA3oDs+ZFXtzT6y1XKFAq6HXVp3uXUq4wy7kgPipyGumjsjQC6Y9VibxIy3urD06l8EQZ/raIqAKS+5/0Q3lQroIvpAZ6vpjIk1gY0gECDuHtLI3BK8B0xL+Q6emWzFei/8Za/iXHb70tR6l6Y2qY/awCrTHJeJG5peu8JUfVNVbnPbLo0SSzLlgnlOQfxlyZqjOZSlLX15WfMMqa0XZkRng=
   on:
