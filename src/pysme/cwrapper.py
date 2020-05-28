@@ -301,15 +301,7 @@ def idl_call_external(funcname, *args, restype="str", type=None, lib=None):
 
 
 class IDL_DLL:
-    _instance = None
-
-    def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
-            cls._instance = object.__new__(cls)
-            IDL_DLL.init(cls._instance, *args, **kwargs)
-        return cls._instance
-
-    def init(self, libfile=None):
+    def __init__(self, libfile=None):
         if libfile is None:
             libfile = get_full_libfile()
         self.libfile = libfile

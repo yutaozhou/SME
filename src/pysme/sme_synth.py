@@ -13,16 +13,7 @@ logger = logging.getLogger(__name__)
 class SME_DLL:
     """ Object Oriented interface for the SME C library """
 
-    _instance = None
-
-    def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
-            cls._instance = object.__new__(cls)
-            SME_DLL.init(cls._instance, *args, **kwargs)
-        return cls._instance
-
-    @staticmethod
-    def init(self, libfile=None, datadir=None):
+    def __init__(self, libfile=None, datadir=None):
         #:LineList: Linelist passed to the library
         self.linelist = None
         #:int: Number of mu points passed to the library
