@@ -75,14 +75,6 @@ pysme.iliffe\_vector module
     :undoc-members:
     :show-inheritance:
 
-pysme.integrate\_flux module
---------------------------------
-
-.. automodule:: pysme.integrate_flux
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 pysme.large\_file\_storage module
 -------------------------------------
 
@@ -111,14 +103,6 @@ pysme.persistence module
 ----------------------------
 
 .. automodule:: pysme.persistence
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-pysme.resamp module
------------------------
-
-.. automodule:: pysme.resamp
     :members:
     :undoc-members:
     :show-inheritance:
