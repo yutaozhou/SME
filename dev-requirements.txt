@@ -10,4 +10,4 @@ emcee==3.0.2
 pybtex==0.22.2
 pytest==5.4.2
 
-future-fstrings; python_version < "3.6"
+future-fstrings==1.2.0; python_version < "3.6"
