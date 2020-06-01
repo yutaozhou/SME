@@ -23,6 +23,7 @@ jobs:
         update: true
         packages:
         - python@3.8
+        - gcc
         casks:
         - gfortran
     before_cache:
