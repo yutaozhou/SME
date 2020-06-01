@@ -7,7 +7,7 @@ requests==2.23.0
 tqdm==4.46.0
 colorlog==4.1.0
 emcee==3.0.2
-pybtex
+pybtex==0.22.2
 pytest
 
 future-fstrings; python_version < "3.6"
