@@ -6,7 +6,9 @@ import json
 import logging
 
 import numpy as np
+from flex.extensions.bindata import BinaryDataExtension
 from .persistence import IPersist
+
 
 logger = logging.getLogger(__name__)
 
@@ -482,7 +484,30 @@ class Abund(IPersist):
         pattern[0] = 0
         return pattern
 
-    def _save(self, file, folder="abund"):
+    def _save(self):
+        header = {
+            "monh": self.monh,
+            "type_internal": self._type_internal,
+            "type": self.type,
+            "citation_info": self.citation_info,
+        }
+        data = self._pattern
+        ext = BinaryDataExtension(header, data)
+        return ext
+
+    @classmethod
+    def _load(cls, ext: BinaryDataExtension):
+        header = ext.header
+        pattern = ext.data
+        abund = cls(
+            monh=header["monh"],
+            pattern=pattern,
+            type=header["type"],
+            citation_info=header["citation_info"],
+        )
+        return abund
+
+    def _save_v1(self, file, folder="abund"):
         """ Save the data to a file handler """
         if folder != "" or folder[-1] != "/":
             folder += "/"
@@ -496,7 +521,7 @@ class Abund(IPersist):
         file.writestr(f"{folder}pattern.npy", b.getvalue())
 
     @staticmethod
-    def _load(file, names, folder=""):
+    def _load_v1(file, names, folder=""):
         """ Load the data from a file handler """
         for name in names:
             if name.endswith("info.json"):

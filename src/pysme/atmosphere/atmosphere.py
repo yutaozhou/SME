@@ -3,6 +3,8 @@ import logging
 
 import numpy as np
 
+from flex.extensions.bindata import MultipleDataExtension
+
 from ..data_structure import (
     CollectionFactory,
     Collection,
@@ -106,6 +108,36 @@ class Atmosphere(Collection):
     @ndep.setter
     def ndep(self, value):
         pass
+
+    def _save(self):
+        data = {}
+        ext2 = self.abund._save()
+        header = ext2.header
+        data["abund"] = ext2.data
+        header["abund_format"] = header["type"]
+        del header["type"]
+
+        for name in self._names:
+            value = self[name]
+            if isinstance(value, (float, int, str)):
+                header[name] = value
+            elif isinstance(value, np.ndarray):
+                data[name] = value
+            elif value is None or isinstance(value, Abund):
+                pass
+            else:
+                raise ValueError("What is this? %s" % value)
+
+        ext = MultipleDataExtension(header, data)
+
+        return ext
+
+    @classmethod
+    def _load(cls, ext):
+        header = ext.header
+        header.update(ext.data)
+        obj = cls(**header)
+        return obj
 
 
 @CollectionFactory

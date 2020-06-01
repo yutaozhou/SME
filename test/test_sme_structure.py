@@ -14,8 +14,12 @@ def cwd():
 
 @pytest.fixture
 def filename(cwd):
-    filename = "{}/__test.sme".format((cwd))
-    return filename
+    fname = "{}/__test.sme".format((cwd))
+    yield fname
+    try:
+        remove(fname)
+    except:
+        pass
 
 
 def test_empty_structure():
@@ -92,7 +96,6 @@ def test_save_and_load_structure(filename):
     sme.spec = data
     sme.save(filename)
     sme = SME_Struct.load(filename)
-    remove(filename)
     assert np.all(sme.wave[0] == data)
     assert np.all(sme.spec[0] == data)
     assert sme.nseg == 1

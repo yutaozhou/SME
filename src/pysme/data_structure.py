@@ -6,7 +6,8 @@ from copy import copy
 from datetime import datetime as dt
 
 import numpy as np
-
+from flex.extensions.bindata import BinaryDataExtension
+from flex.flex import FlexExtension
 import pybtex
 
 
@@ -124,8 +125,10 @@ def vector(self, value):
         value = Iliffe_vector(nseg=len(value), values=value)
     elif isinstance(value, Iliffe_vector):
         pass
-    elif isinstance(value, np.lib.npyio.NpzFile):
+    elif isinstance(value, FlexExtension):
         value = Iliffe_vector._load(value)
+    elif isinstance(value, np.lib.npyio.NpzFile):
+        value = Iliffe_vector._load_v1(value)
     else:
         raise TypeError("Input value is of the wrong type")
 
@@ -207,3 +210,18 @@ class Collection(persistence.IPersist):
 
     def citation(self, output="string"):
         return self.create_citation(self.citation_info, output=output)
+
+    def _save(self):
+        header = {}
+        data = None
+
+        for name in self._names:
+            header[name] = self[name]
+
+        ext = BinaryDataExtension(header)
+        return ext
+
+    @classmethod
+    def _load(cls, ext: BinaryDataExtension):
+        obj = cls(**ext.header)
+        return obj

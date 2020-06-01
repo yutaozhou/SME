@@ -11,6 +11,8 @@ import logging
 import numpy as np
 import pandas as pd
 
+from flex.extensions.tabledata import JSONTableExtension
+
 from ..persistence import IPersist
 from ..util import air2vac, vac2air
 
@@ -341,7 +343,22 @@ class LineList(IPersist):
         }
         self._lines = self._lines.append([linedata])
 
-    def _save(self, file, folder="linelist"):
+    def _save(self):
+        header = {
+            "lineformat": self.lineformat,
+            "medium": self.medium,
+            "citation_info": self.citation_info,
+        }
+        data = self._lines
+        ext = JSONTableExtension(header, data)
+        return ext
+
+    @classmethod
+    def _load(cls, ext: JSONTableExtension):
+        ll = cls(ext.data, **ext.header)
+        return ll
+
+    def _save_v1(self, file, folder="linelist"):
         if folder != "" and folder[-1] != "/":
             folder = folder + "/"
 
@@ -362,7 +379,7 @@ class LineList(IPersist):
         file.writestr(f"{folder}data.json", linedata)
 
     @staticmethod
-    def _load(file, names, folder=""):
+    def _load_v1(file, names, folder=""):
         for name in names:
             if name.endswith("info.json"):
                 info = file.read(name)

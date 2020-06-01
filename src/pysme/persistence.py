@@ -6,13 +6,102 @@ import tempfile
 import sys
 import subprocess
 
+from flex.flex import FlexFile
+from . import __version__
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
+
+def save(fname, sme, compressed=False):
+    """
+    Create a folder structure inside a tarfile
+    See flex-format for details
+
+    Parameters
+    ----------
+    filename : str
+        Filename of the final file
+    sme : SME_Structure
+        sme structure to save
+    compressed : bool, optional
+        whether to compress the output
+    """
+    header = {}
+    extensions = {}
+
+    for name in sme._names:
+        value = sme[name]
+        if isinstance(value, IPersist):
+            extensions[name] = value._save()
+        elif value is not None:
+            header[name] = value
+
+    ff = FlexFile(header, extensions)
+    ff.write(fname)
+
+
+def load(fname, sme):
+    """
+    Load the SME Structure from disk
+
+    Parameters
+    ----------
+    fname : str
+        file to load
+    sme : SME_Structure
+        empty sme structure with default values set
+
+    Returns
+    -------
+    sme :  SME_Structure
+        loaded sme structure
+    """
+    try:
+        ff = FlexFile.read(fname)
+        header = ff.header
+        extensions = ff.extensions
+        for name in sme._names:
+            if name in updates.keys():
+                name = updates[name]
+            if name in header.keys():
+                sme[name] = header[name]
+            elif name in extensions.keys():
+                if sme[name] is not None:
+                    sme[name] = sme[name]._load(extensions[name])
+                else:
+                    sme[name] = extensions[name]
+        return sme
+    except Exception as ex:
+        return load_v1(fname, sme)
+
+
 # Update this if the names in sme change
 updates = {"idlver": "system_info"}
+
+
+class IPersist:
+    def _save(self):
+        raise NotImplementedError
+
+    @classmethod
+    def _load(cls, ext):
+        raise NotImplementedError
+
+    def _save_v1(self, file, folder=""):
+        saves_v1(file, self, folder)
+
+    @classmethod
+    def _load_v1(cls, file, names, folder=""):
+        logger.setLevel(logging.INFO)
+        data = cls()  # TODO Suppress warnings
+        data = loads_v1(file, data, names, folder)
+        logger.setLevel(logging.NOTSET)
+        return data
+
+
+# Version 1 IO (Deprecated)
 
 
 def toBaseType(value):
@@ -32,7 +121,7 @@ def toBaseType(value):
     return value
 
 
-def save(filename, data, folder="", compressed=False):
+def save_v1(filename, data, folder="", compressed=False):
     """
     Create a folder structure inside a zipfile
     Add .json and .npy and .npz files with the correct names
@@ -60,12 +149,12 @@ def save(filename, data, folder="", compressed=False):
         compression = ZIP_LZMA
 
     with ZipFile(filename, "w", compression) as file:
-        saves(file, data, folder=folder)
+        saves_v1(file, data, folder=folder)
 
 
 # TODO: this is specific for Collection type objects
 # Move this to Collection, and not here
-def saves(file, data, folder=""):
+def saves_v1(file, data, folder=""):
     if folder != "" and folder[-1] != "/":
         folder = folder + "/"
 
@@ -94,16 +183,16 @@ def saves(file, data, folder=""):
 
     for key, value in others.items():
         if value is not None:
-            value._save(file, f"{folder}{key}")
+            value._save_v1(file, f"{folder}{key}")
 
 
-def load(filename, data):
+def load_v1(filename, data):
     with ZipFile(filename, "r") as file:
         names = file.namelist()
-        return loads(file, data, names)
+        return loads_v1(file, data, names)
 
 
-def loads(file, data, names=None, folder=""):
+def loads_v1(file, data, names=None, folder=""):
     if folder != "" and folder[-1] != "/":
         folder = folder + "/"
     if names is None:
@@ -142,9 +231,12 @@ def loads(file, data, names=None, folder=""):
 
     for key, value in subdirs.items():
         data_key = updates.get(key, key)
-        data[data_key] = data[data_key]._load(file, value, folder=folder + key)
+        data[data_key] = data[data_key]._load_v1(file, value, folder=folder + key)
 
     return data
+
+
+# IDL IO
 
 
 def get_typecode(dtype):
@@ -393,16 +485,3 @@ sme = new_sme\n"""
         subprocess.run(["idl", "-e", ".r %s" % tempname])
         # input("Wait for me...")
         clean_temps()
-
-
-class IPersist:
-    def _save(self, file, folder=""):
-        saves(file, self, folder)
-
-    @classmethod
-    def _load(cls, file, names, folder=""):
-        logger.setLevel(logging.INFO)
-        data = cls()  # TODO Suppress warnings
-        data = loads(file, data, names, folder)
-        logger.setLevel(logging.NOTSET)
-        return data

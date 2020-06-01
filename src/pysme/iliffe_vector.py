@@ -2,6 +2,8 @@ import io
 import logging
 import numpy as np
 
+from flex.extensions.bindata import MultipleDataExtension
+
 from .persistence import IPersist
 
 logger = logging.getLogger(__name__)
@@ -396,7 +398,19 @@ class Iliffe_vector(IPersist):
         """
         self._values.append(other)
 
-    def _save(self, file, folder=""):
+    def _save(self):
+        data = {str(i): v for i, v in enumerate(self._values)}
+        ext = MultipleDataExtension(data=data)
+        return ext
+
+    @classmethod
+    def _load(cls, ext: MultipleDataExtension):
+        data = ext.data
+        values = [data[str(i)] for i in range(len(data))]
+        iv = cls(values=values)
+        return iv
+
+    def _save_v1(self, file, folder=""):
         """
         Creates a npz structure, representing the vector
 
@@ -410,7 +424,7 @@ class Iliffe_vector(IPersist):
         file.writestr(f"{folder}.npz", b.getvalue())
 
     @staticmethod
-    def _load(file):
+    def _load_v1(file):
         # file: npzfile
         names = file.files
         values = [file[n] for n in names]
