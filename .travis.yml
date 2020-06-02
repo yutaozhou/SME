@@ -23,9 +23,8 @@ jobs:
         update: true
         packages:
         - python@3.8
-        - gcc
         casks:
-        - gfortran
+        - gfortran@6.3
     before_cache:
     - brew cleanup
     cache:
@@ -34,9 +33,6 @@ jobs:
     before_install:
     - alias python3="/usr/local/opt/python@3.8/bin/python3"
     - alias pip3="/usr/local/opt/python@3.8/bin/pip3"
-    - sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.locate.plist
-    - locate libgfortran.3.dylib
-    - "ln ${locate libgfortran.3.dylib} /usr/local/lib/libgfortran.3.dylib"
 
 install:
 - python3 -m pip install -r requirements.txt
