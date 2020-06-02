@@ -14,6 +14,37 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
+def to_flex(sme):
+    header = {}
+    extensions = {}
+
+    for name in sme._names:
+        value = sme[name]
+        if isinstance(value, IPersist):
+            extensions[name] = value._save()
+        elif value is not None:
+            header[name] = value
+
+    ff = FlexFile(header, extensions)
+    return ff
+
+
+def from_flex(ff, sme):
+    header = ff.header
+    extensions = ff.extensions
+    for name in sme._names:
+        if name in updates.keys():
+            name = updates[name]
+        if name in header.keys():
+            sme[name] = header[name]
+        elif name in extensions.keys():
+            if sme[name] is not None:
+                sme[name] = sme[name]._load(extensions[name])
+            else:
+                sme[name] = extensions[name]
+    return sme
+
+
 def save(fname, sme, compressed=False):
     """
     Create a folder structure inside a tarfile
@@ -28,17 +59,7 @@ def save(fname, sme, compressed=False):
     compressed : bool, optional
         whether to compress the output
     """
-    header = {}
-    extensions = {}
-
-    for name in sme._names:
-        value = sme[name]
-        if isinstance(value, IPersist):
-            extensions[name] = value._save()
-        elif value is not None:
-            header[name] = value
-
-    ff = FlexFile(header, extensions)
+    ff = to_flex(sme)
     ff.write(fname)
 
 
@@ -60,18 +81,7 @@ def load(fname, sme):
     """
     try:
         ff = FlexFile.read(fname)
-        header = ff.header
-        extensions = ff.extensions
-        for name in sme._names:
-            if name in updates.keys():
-                name = updates[name]
-            if name in header.keys():
-                sme[name] = header[name]
-            elif name in extensions.keys():
-                if sme[name] is not None:
-                    sme[name] = sme[name]._load(extensions[name])
-                else:
-                    sme[name] = extensions[name]
+        sme = from_flex(ff, sme)
         return sme
     except Exception as ex:
         return load_v1(fname, sme)

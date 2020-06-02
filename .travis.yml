@@ -33,6 +33,7 @@ jobs:
     before_install:
     - alias python3="/usr/local/opt/python@3.8/bin/python3"
     - alias pip3="/usr/local/opt/python@3.8/bin/pip3"
+
 install:
 - python3 -m pip install -r requirements.txt
 - python3 -m pip install -r test-requirements.txt
