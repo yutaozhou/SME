@@ -24,7 +24,7 @@ jobs:
         packages:
         - python@3.8
         casks:
-        - gfortran@6.3
+        - gfortran
     before_cache:
     - brew cleanup
     cache:
