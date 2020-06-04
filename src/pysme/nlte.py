@@ -102,23 +102,23 @@ class DirectAccessFile:
         Most specify a byte size, but not all
         """
         typecode = {
-            "V" : 0,
-            "B" : 1,
-            "U" : 1,
-            "i2" : 2,
-            "i4" : 3,
-            "f4" : 4,
-            "f8" : 5,
-            "c4" : 6,
+            "V": 0,
+            "B": 1,
+            "U": 1,
+            "i2": 2,
+            "i4": 3,
+            "f4": 4,
+            "f8": 5,
+            "c4": 6,
             "S": 7,
-            "O" : 8,
-            "c8" : 9,
-             "i8" : 10,
-             "O" : 11,
-             "u2" : 12,
-             "u4" : 13,
-             "i8" : 14,
-             "u8"  :15,
+            "O": 8,
+            "c8": 9,
+            "i8": 10,
+            "O": 11,
+            "u2": 12,
+            "u4": 13,
+            "i8": 14,
+            "u8": 15,
         }
         if isinstance(dt, np.dtype):
             dt = dt.str
@@ -131,22 +131,14 @@ class DirectAccessFile:
     def get_dtypes(major, minor):
         if major == "1" and minor == "00":
             header_dtype = np.dtype(
-                [
-                    ("nblocks", "<u2"),
-                    ("dir_length", "<u2"),
-                    ("ndir", "<u2"),
-                ]
+                [("nblocks", "<u2"), ("dir_length", "<u2"), ("ndir", "<u2"),]
             )
             dir_dtype = np.dtype(
                 [("key", "S256"), ("size", "<i4", 23), ("pointer", "<i8")]
             )
         elif major == "1" and minor == "10":
             header_dtype = np.dtype(
-                [
-                    ("nblocks", "<u8"),
-                    ("dir_length", "<u2"),
-                    ("ndir", "<u8"),
-                ]
+                [("nblocks", "<u8"), ("dir_length", "<u2"), ("ndir", "<u8"),]
             )
             dir_dtype = np.dtype(
                 [("key", "S256"), ("size", "<i4", 23), ("pointer", "<i8")]
@@ -163,11 +155,17 @@ class DirectAccessFile:
             version = np.fromfile(file, version_dtype, count=1)
             version = version[0].decode()
             major, minor = version[26], version[28:30]
+            version = (major, minor)
             header_dtype, dir_dtype = DirectAccessFile.get_dtypes(major, minor)
 
             header = np.fromfile(file, header_dtype, count=1)
-            ndir = header["ndir"][0]
+            ndir = int(header["ndir"][0])
 
+            src = np.fromfile(file, dir_dtype, count=1)
+            # TODO: Temporary fix
+            ndir -= 1
+            file.read(64 * 2 - 16)
+            # End fix
             directory = np.fromfile(file, dir_dtype, count=ndir)
 
         # Decode bytes to strings
@@ -220,22 +218,23 @@ class DirectAccessFile:
 
             directory[i]["key"] = key
             shape = directory[i]["size"]
-            if np.issubdtype(value.dtype, np.dtype("U")) or np.issubdtype(value.dtype, np.dtype("S")):
+            if np.issubdtype(value.dtype, np.dtype("U")) or np.issubdtype(
+                value.dtype, np.dtype("S")
+            ):
                 value = value.astype("S")
                 shape[0] = value.ndim + 1
-                shape[1:2+value.ndim] = value.itemsize, *value.shape
-                shape[2+value.ndim] = 1
-                shape[3+value.ndim] = value.size * value.itemsize
+                shape[1 : 2 + value.ndim] = value.itemsize, *value.shape
+                shape[2 + value.ndim] = 1
+                shape[3 + value.ndim] = value.size * value.itemsize
             else:
                 shape[0] = value.ndim
-                shape[1:1+value.ndim] = value.shape
-                shape[1+value.ndim] = DirectAccessFile.get_typecode(value.dtype)
-                shape[2+value.ndim] = value.size
+                shape[1 : 1 + value.ndim] = value.shape
+                shape[1 + value.ndim] = DirectAccessFile.get_typecode(value.dtype)
+                shape[2 + value.ndim] = value.size
 
             directory[i]["pointer"] = pointer
             pointer += value.nbytes
             kwargs[key] = value
-            
 
         with open(fname, "wb") as file:
             version.tofile(file)
@@ -250,7 +249,7 @@ class Grid:
     """NLTE Grid class that handles all NLTE data reading and interpolation
     """
 
-    def __init__(self, sme, elem, lfs_nlte):
+    def __init__(self, sme, elem, lfs_nlte, selection="energy"):
         #:str: Element of the NLTE grid
         self.elem = elem
         #:LineList: Whole LineList that was passed to the C library
@@ -263,9 +262,12 @@ class Grid:
         #:array(float): depth points of the atmosphere that was passed to the C library (in log10 scale)
         self.target_depth = sme.atmo[depth_name]
         self.target_depth = np.log10(self.target_depth)
+        #:{"levels", "energy"}: Selection algorithm to match lines in grid with linelist
+        self.selection = selection
 
         #:DirectAccessFile: The NLTE data file
         self.directory = DirectAccessFile(self.fname)
+        self.version = self.directory.version
         # The possible labels
         self._teff = self.directory["teff"]
         self._grav = self.directory["grav"]
@@ -297,14 +299,36 @@ class Grid:
         #:array: Indices of the lines in the bgrid
         self.iused = None
 
+        #:str: citations in bibtex format, if known
+        self.citation_info = ""
+
         self.line_match_mode = "level"
 
         conf = self.directory["conf"].astype("U")
         term = self.directory["term"].astype("U")
         species = self.directory["spec"].astype("U")
         rotnum = self.directory["J"]  # rotational number of the atomic state
-        self.lineindices, self.linerefs, self.iused = self.select_levels(
-            conf, term, species, rotnum )
+        if self.version[0] == "1" and self.version[1] == "10":
+            energies = self.directory["energy"]  # energy in eV
+            self.citation_info = self.directory["citation"]
+        else:
+            self.citation_info = None
+            if self.selection != "levels":
+                logger.warning(
+                    "NLTE grid file version %s only supports level selection, not %s",
+                    self.version,
+                    self.selection,
+                )
+                self.selection = "levels"
+
+        if self.selection == "levels":
+            self.lineindices, self.linerefs, self.iused = self.select_levels(
+                conf, term, species, rotnum
+            )
+        elif self.selection == "energy":
+            self.lineindices, self.linerefs, self.iused = self.select_energies(
+                conf, term, species, rotnum, energies
+            )
 
     def get(self, abund, teff, logg, monh):
         # TODO: NLTE grid should define which solar value has been used
@@ -511,7 +535,7 @@ class Grid:
 
         return lineindices, linerefs, iused
 
-    def select_energies(self, species, rotnum, energies):
+    def select_energies(self, conf, term, species, rotnum, energies):
         lineindices = np.asarray(self.species, "U")
         lineindices = np.char.startswith(lineindices, self.elem)
         if not np.any(lineindices):
@@ -519,52 +543,115 @@ class Grid:
             return None, None, None
         sme_species = self.species[lineindices]
 
+        # Extract data from linelist
+        term_low = self.linelist["term_lower"][lineindices]
+        term_upp = self.linelist["term_upper"][lineindices]
+        # Split the string into configuration and term
+        term_low = np.char.partition(term_low, " ")
+        term_upp = np.char.partition(term_upp, " ")
+        # Remove whitespaces
+        term_low = np.char.replace(term_low, " ", "")
+        term_upp = np.char.replace(term_upp, " ", "")
+        # Get only the relevant part
+        conf_low, term_low = term_low[:, 0], term_low[:, 2]
+        conf_upp, term_upp = term_upp[:, 0], term_upp[:, 2]
+
         # Energy levels in the linelist in eV
-        low = self.linelist["excit"][lineindices]
-        upp = self.linelist["e_upp"][lineindices]
+        energy_low = self.linelist["excit"][lineindices]
+        energy_upp = self.linelist["e_upp"][lineindices]
 
         # Transform into term symbol J (2*S+1) ?
         extra = self.linelist.extra[lineindices]
         extra = extra[:, [0, 2]] * 2 + 1
         extra = np.rint(extra).astype(int)
+        j_low, j_upp = extra[:, 0], extra[:, 1]
 
         # Transform into term symbol J (2*S+1) ?
         rotnum = np.rint(2 * rotnum + 1).astype(int)
 
         dtype = [
             ("species", sme_species.dtype),
-            ("energy", low.dtype),
+            ("configuration", term_low.dtype),
+            ("term", term_low.dtype),
             ("J", extra.dtype),
+            ("energy", energy_low.dtype),
         ]
 
-        level_labels = np.rec.fromarrays((species, energies, rotnum), dtype=dtype)
+        level_labels = np.rec.fromarrays(
+            (species, conf, term, rotnum, energies), dtype=dtype
+        )
         line_label_low = np.rec.fromarrays(
-            (sme_species, low, extra[:, 0]), dtype=dtype
+            (sme_species, conf_low, term_low, j_low, energy_low), dtype=dtype
         )
         line_label_upp = np.rec.fromarrays(
-            (sme_species, upp, extra[:, 1]), dtype=dtype
+            (sme_species, conf_upp, term_upp, j_upp, energy_upp), dtype=dtype
         )
-        
-        nlines = low.shape[0]
+
+        nlines = term_low.shape[0]  # np.count_nonzero(lineindices)
         linerefs = np.full((nlines, 2), -1)
         iused = np.zeros(len(species), dtype=bool)
 
         idx_map = np.arange(nlines)
+        # Maximum energy in the grid
+        max_energy = np.max(energies)
+        # Maximum seperation between energy levels
+        energy_diff_limit = np.max(np.abs(np.diff(energies)))
 
         def match(label, level):
-            idx = (label.species == level.species) & (label.J == level.J)
-            idx2 = np.argmin(np.abs(label[idx].energy - level[idx].energy))
-            idx_l = idx_map[idx][idx2]
-            return idx_l
+            # Try to match the label and the level
+            # Using various metrics in decreasing order of confidence
+            idx_species = label.species == level.species
+            idx_conf = label.configuration == level.configuration
+            idx_term = label.term == level.term
+            idx_j = label.J == level.J
+            # 1. Try to match conf/term/spec/J as usual
+            idx = idx_species & idx_conf & idx_term & idx_j
+            if np.any(idx):
+                return idx
+            # 2. If it fails, try to match conf/term/spec, but ignore J
+            idx = idx_species & idx_conf & idx_term
+            if np.any(idx):
+                return idx
+            # 3. Try to match H
+            # If spec is 'H 1', then try to match conf with conf,
+            # *or* try to match term with term, *or* try to match conf with term,
+            # *or* try to match term with conf
+            if level.species == "H 1":
+                # TODO
+                idx = (
+                    idx_conf
+                    | idx_term
+                    | (label.term == level.configuration)
+                    | (label.configuration == level.term)
+                )
+                if np.any(idx):
+                    return idx
+            # 4. Try to match energies (including H, if step 3 failed)
+            # Find the level in the nlte grid with the same spec,
+            # and the closest energy; *provided* that the desired energy does
+            # not exceed the highest energy out of all the levels in the nlte grid with this spec
+            idx = idx_species
+            if np.any(idx):
+                if level.energy > max_energy or level.energy < 0:
+                    # We exceed the maximum energy of the grid, ignore NLTE
+                    return []
+                diff = np.abs(label[idx].energy - level.energy)
+                idx2 = np.argmin(diff)
+                mindiff = diff[idx2]
+                # difference needs to be smaller than some limit?
+                if mindiff < energy_diff_limit:
+                    return idx_map[idx][idx2]
+                else:
+                    return []
+            # 5. If everything fails return nothing
+            return []
 
         # Loop through the NLTE levels
         # and match line levels
         for i, level in enumerate(level_labels):
-            # Instead of matching exactly we use the 
-            # Closest match within a reasonable range
             idx_l = match(line_label_low, level)
             linerefs[idx_l, 0] = i
-            iused[i] |=  np.any(idx_l)
+            iused[i] |= np.any(idx_l)
 
             idx_u = match(line_label_upp, level)
             linerefs[idx_u, 1] = i
@@ -618,6 +705,8 @@ class Grid:
             idx = [slice(None, None) if m else 0 for m in mask]
             grid = grid[idx]
 
+        # TODO: Interpolate with splines
+        # Possibly in order of importance, since scipy doesn't have spline interpolation on a grid
         subgrid = interpolate.interpn(
             points, grid, target, method="linear", bounds_error=False, fill_value=None,
         )
@@ -632,11 +721,11 @@ def nlte(sme, dll, elem, lfs_nlte):
 
     # TODO: The grids are cached in the DLL object
     # Its probably better to store them in a seperate object
-    if elem in dll._nlte_grids.keys():
-        grid = dll._nlte_grids[elem]
+    if elem in sme.nlte._nlte_grids.keys():
+        grid = sme.nlte._nlte_grids[elem]
     else:
         grid = Grid(sme, elem, lfs_nlte)
-        dll._nlte_grids[elem] = grid
+        sme.nlte._nlte_grids[elem] = grid
 
     subgrid = grid.get(sme.abund[elem], sme.teff, sme.logg, sme.monh)
 

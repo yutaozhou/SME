@@ -13,6 +13,7 @@ from .abund import Abund, elements as abund_elem
 from .atmosphere.atmosphere import Atmosphere
 from .iliffe_vector import Iliffe_vector
 from .linelist.linelist import LineList
+from .nlte import Grid as NlteGrid
 
 from .data_structure import *
 
@@ -117,6 +118,12 @@ class NLTE(Collection):
                 }
             self.grids = grids
 
+        # TODO
+        #:dict: the cached subgrid data for each element
+        # This is NOT saved on sme.save
+        # But maybe should be ?
+        self.grid_data = {}
+
     def set_nlte(self, element, grid=None):
         """
         Add an element to the NLTE calculations
@@ -164,9 +171,10 @@ class NLTE(Collection):
         self.elements.remove(element)
         self.grids.pop(element)
 
-    def citation(self, output="string"):
-        # TODO
-        citations = [self.grids[el] for el in self.elements]
+    @property
+    def _citation_info(self):
+        citations = [grid.citation_info for grid in self.grid_data.items()]
+        citations = "\n".join(citations)
         return citations
 
 
