@@ -43,7 +43,7 @@ class Atmosphere(Collection):
         ("vturb", 0, absolute, this, "float: turbulence velocity in km/s"),
         ("lonh", 0, asfloat, this, "float: ?"),
         ("source", None, asstr, this, "str: datafile name of this data"),
-        ("method", None, lowercase(oneof(None, "grid", "embedded")), this, 
+        ("method", "grid", lowercase(oneof("grid", "embedded")), this, 
             "str: whether the data source is a grid or a fixed atmosphere"),
         ("geom", None, uppercase(oneof(None, "PP", "SPH")), this,
             "str: the geometry of the atmopshere model"),
@@ -151,7 +151,7 @@ class AtmosphereGrid(np.recarray):
     # fmt: off
     _fields = [
         ("source", None, asstr, this, "str: datafile name of this data"),
-        ("method", None, lowercase(oneof(None, "grid", "embedded")), this, 
+        ("method", "grid", lowercase(oneof("grid", "embedded")), this, 
             "str: whether the data source is a grid or a fixed atmosphere"),
         ("geom", None, uppercase(oneof(None, "PP", "SPH")), this,
             "str: the geometry of the atmopshere model"),

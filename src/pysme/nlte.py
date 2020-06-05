@@ -138,7 +138,7 @@ class DirectAccessFile:
             )
         elif major == "1" and minor == "10":
             header_dtype = np.dtype(
-                [("nblocks", "<u8"), ("dir_length", "<u2"), ("ndir", "<u8"),]
+                [("nblocks", "<u8"), ("dir_length", "<i8"), ("ndir", "<u8"),]
             )
             dir_dtype = np.dtype(
                 [("key", "S256"), ("size", "<i4", 23), ("pointer", "<i8")]
@@ -160,11 +160,13 @@ class DirectAccessFile:
 
             header = np.fromfile(file, header_dtype, count=1)
             ndir = int(header["ndir"][0])
+            dir_length = int(header["dir_length"][0])
 
-            src = np.fromfile(file, dir_dtype, count=1)
             # TODO: Temporary fix
+            src = np.fromfile(file, dir_dtype, count=1)
             ndir -= 1
-            file.read(64 * 2 - 16)
+            file.seek(64 + 18 + dir_length)
+            # file.read(64 * 2 - 16)
             # End fix
             directory = np.fromfile(file, dir_dtype, count=ndir)
 
@@ -310,7 +312,7 @@ class Grid:
         rotnum = self.directory["J"]  # rotational number of the atomic state
         if self.version[0] == "1" and self.version[1] == "10":
             energies = self.directory["energy"]  # energy in eV
-            self.citation_info = self.directory["citation"]
+            self.citation_info = self.directory["citation"][()].decode()
         else:
             self.citation_info = None
             if self.selection != "levels":
@@ -539,8 +541,8 @@ class Grid:
         lineindices = np.asarray(self.species, "U")
         lineindices = np.char.startswith(lineindices, self.elem)
         if not np.any(lineindices):
-            warnings.warn(f"No NLTE transitions for {self.elem} found")
-            return None, None, None
+            logger.warning("No NLTE transitions for %s found", self.elem)
+            return [], [], []
         sme_species = self.species[lineindices]
 
         # Extract data from linelist
@@ -657,6 +659,12 @@ class Grid:
             linerefs[idx_u, 1] = i
             iused[i] |= np.any(idx_u)
 
+        # Lineindices as integer pointers
+        lineindices = np.arange(len(lineindices))[lineindices]
+        # Remap the linelevel references
+        for j, i in enumerate(np.where(iused)[0]):
+            linerefs[linerefs == i] = j
+
         return lineindices, linerefs, iused
 
     def interpolate(self, rabund, teff, logg, monh):
@@ -721,11 +729,11 @@ def nlte(sme, dll, elem, lfs_nlte):
 
     # TODO: The grids are cached in the DLL object
     # Its probably better to store them in a seperate object
-    if elem in sme.nlte._nlte_grids.keys():
-        grid = sme.nlte._nlte_grids[elem]
+    if elem in sme.nlte.grid_data.keys():
+        grid = sme.nlte.grid_data[elem]
     else:
         grid = Grid(sme, elem, lfs_nlte)
-        sme.nlte._nlte_grids[elem] = grid
+        sme.nlte.grid_data[elem] = grid
 
     subgrid = grid.get(sme.abund[elem], sme.teff, sme.logg, sme.monh)
 
@@ -756,16 +764,12 @@ def update_nlte_coefficients(sme, dll, lfs_nlte):
     if sme.linelist.lineformat == "short":
         if self.first:
             self.first = False
-            warnings.warn(
+            logger.warning(
                 "NLTE line formation was requested, but VALD3 long-format linedata\n"
                 "are required in order to relate line terms to NLTE level corrections!\n"
                 "Line formation will proceed under LTE."
             )
         return sme
-
-    if self.first:
-        self.first = False
-        logger.info("Running in NLTE")
 
     # Reset the departure coefficient every time, just to be sure
     # It would be more efficient to just Update the values, but this doesn't take long

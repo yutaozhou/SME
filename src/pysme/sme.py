@@ -173,7 +173,7 @@ class NLTE(Collection):
 
     @property
     def _citation_info(self):
-        citations = [grid.citation_info for grid in self.grid_data.items()]
+        citations = [grid.citation_info for el, grid in self.grid_data.items()]
         citations = "\n".join(citations)
         return citations
 
