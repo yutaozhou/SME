@@ -120,7 +120,7 @@ def vector(self, value):
             wind = [0, *np.cumsum(self.wave.sizes)] if self.wave is not None else None
             value = Iliffe_vector(values=value, index=wind)
         else:
-            value = Iliffe_vector(nseg=len(value), values=value)
+            value = Iliffe_vector(nseg=len(value), values=[v for v in value])
     elif isinstance(value, list):
         value = Iliffe_vector(nseg=len(value), values=value)
     elif isinstance(value, Iliffe_vector):

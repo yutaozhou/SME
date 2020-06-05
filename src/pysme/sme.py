@@ -177,6 +177,10 @@ class NLTE(Collection):
         citations = "\n".join(citations)
         return citations
 
+    @_citation_info.setter
+    def _citation_info(self, value):
+        pass
+
 
 @CollectionFactory
 class Version(Collection):

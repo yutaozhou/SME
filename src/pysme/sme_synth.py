@@ -338,6 +338,7 @@ class SME_DLL:
         # metallicity is included in the abundance class, ignored in function call
         abund = abund("sme", raw=True)
         assert isinstance(abund, np.ndarray)
+        abund[np.isnan(abund)] = -99
         self.lib.InputAbund(abund, type="double")
 
         self.abund = abund

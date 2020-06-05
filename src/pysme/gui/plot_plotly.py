@@ -162,7 +162,11 @@ class FinalPlot:
             # Annoying I know, but plotly doesn't seem to have good controls for the z order
             # Or Legend order for that matter
 
-            if self.mask is not None:
+            if (
+                self.mask is not None
+                and self.spec is not None
+                and self.wave is not None
+            ):
                 # Line mask
                 x, y = self.create_mask_points(
                     self.wave[seg], self.spec[seg], self.mask[seg], 1

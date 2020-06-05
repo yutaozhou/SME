@@ -763,6 +763,10 @@ def update_nlte_coefficients(sme, dll, lfs_nlte):
             )
         return sme
 
+    if self.first:
+        self.first = False
+        logger.info("Running in NLTE")
+
     # Reset the departure coefficient every time, just to be sure
     # It would be more efficient to just Update the values, but this doesn't take long
     dll.ResetNLTE()
