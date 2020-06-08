@@ -138,7 +138,7 @@ class DirectAccessFile:
             )
         elif major == "1" and minor == "10":
             header_dtype = np.dtype(
-                [("nblocks", "<u8"), ("dir_length", "<i8"), ("ndir", "<u8"),]
+                [("nblocks", "<u8"), ("dir_length", "<i2"), ("ndir", "<u8"),]
             )
             dir_dtype = np.dtype(
                 [("key", "S256"), ("size", "<i4", 23), ("pointer", "<i8")]
@@ -160,14 +160,6 @@ class DirectAccessFile:
 
             header = np.fromfile(file, header_dtype, count=1)
             ndir = int(header["ndir"][0])
-            dir_length = int(header["dir_length"][0])
-
-            # TODO: Temporary fix
-            src = np.fromfile(file, dir_dtype, count=1)
-            ndir -= 1
-            file.seek(64 + 18 + dir_length)
-            # file.read(64 * 2 - 16)
-            # End fix
             directory = np.fromfile(file, dir_dtype, count=ndir)
 
         # Decode bytes to strings
@@ -303,8 +295,6 @@ class Grid:
 
         #:str: citations in bibtex format, if known
         self.citation_info = ""
-
-        self.line_match_mode = "level"
 
         conf = self.directory["conf"].astype("U")
         term = self.directory["term"].astype("U")
