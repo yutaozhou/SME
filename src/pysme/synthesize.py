@@ -149,11 +149,12 @@ class Synthesizer:
             if np.any(segments < 0) or np.any(segments >= sme.nseg):
                 raise IndexError("Segment(s) out of range")
 
-        segments = [
-            seg
-            for seg in segments
-            if not np.all(sme.mask[seg] == sme.mask_values["bad"])
-        ]
+        if sme.mask is not None:
+            segments = [
+                seg
+                for seg in segments
+                if not np.all(sme.mask[seg] == sme.mask_values["bad"])
+            ]
         return segments
 
     def apply_radial_velocity_and_continuum(
