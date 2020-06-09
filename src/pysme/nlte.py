@@ -296,6 +296,8 @@ class Grid:
         #:str: citations in bibtex format, if known
         self.citation_info = ""
 
+        self.line_match_mode = "level"
+
         conf = self.directory["conf"].astype("U")
         term = self.directory["term"].astype("U")
         species = self.directory["spec"].astype("U")

@@ -316,7 +316,6 @@ def write_as_idl(sme):
     data arrays are stored in seperate temp files, and only the filename is passed to idl
     """
 
-    wind = np.cumsum(sme.wave.shape[1]) - 1
     vrad_flag = {"none": -2, "whole": -1, "each": 0}[sme.vrad_flag]
     cscale_flag = {"none": -3, "fix": -3, "constant": 0, "linear": 1, "quadratic": 1,}[
         sme.cscale_flag
@@ -365,11 +364,6 @@ def write_as_idl(sme):
         "short_line_format": {"short": 1, "long": 2}[sme.linelist.lineformat],
         "wran": sme.wran.tolist(),
         "mu": sme.mu.tolist() if sme.nmu > 1 else sme.mu[0],
-        "wave": save_as_binary(sme.wave.ravel()),
-        "wind": wind.tolist(),
-        "sob": save_as_binary(sme.spec.ravel()),
-        "uob": save_as_binary(sme.uncs.ravel()),
-        "mob": save_as_binary(sme.mask.ravel().astype("int16")),
         "obs_name": "",
         "obs_type": 0,
         "glob_free": fitvars,
@@ -388,6 +382,16 @@ def write_as_idl(sme):
     #     # "ip_x": sme.ip_x,
     #     # "ip_y": sme.ip_y,
 
+    if sme.wave is not None:
+        wind = np.cumsum(sme.wave.shape[1]) - 1
+        idl_fields["wave"] = save_as_binary(sme.wave.ravel())
+        idl_fields["wind"] = wind.tolist()
+    if sme.spec is not None:
+        idl_fields["sob"] = save_as_binary(sme.spec.ravel())
+    if sme.uncs is not None:
+        idl_fields["uob"] = save_as_binary(sme.uncs.ravel())
+    if sme.mask is not None:
+        idl_fields["mob"] = save_as_binary(sme.mask.ravel().astype("int16"))
     if sme.synth is not None:
         idl_fields["smod"] = save_as_binary(sme.synth.ravel())
 
