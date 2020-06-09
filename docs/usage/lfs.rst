@@ -14,7 +14,9 @@ Available Files
 ---------------
 
 Atmosphere grids:
+
   - recommended:
+
     - marcs2012.sav `(Gustafsson et al. 2008) <https://ui.adsabs.harvard.edu/abs/2008A%26A...486..951G>`_
     - marcs2012p_t0.0.sav
     - marcs2012p_t1.0.sav
@@ -25,7 +27,9 @@ Atmosphere grids:
     - marcs2012t00cooldwarfs.sav
     - marcs2012t01cooldwarfs.sav
     - marcs2012t02cooldwarfs.sav
+
   - deprecated:
+
     - atlas12.sav
     - atlas9_vmic0.0.sav
     - atlas9_vmic2.0.sav
@@ -34,7 +38,9 @@ Atmosphere grids:
     - ll_vmic2.0.sav
 
 NLTE grids:
+
   - recommended:
+
     - marcs2012_Fe2016.grd `(Amarsi et al. 2016) <https://ui.adsabs.harvard.edu/abs/2016MNRAS.463.1518A>`_
     - marcs2012_Li.grd `(Lind et al. 2009) <https://ui.adsabs.harvard.edu/abs/2009A%26A...503..541L>`_
     - marcs2012_Li2009.grd `(Lind et al. 2009) <https://ui.adsabs.harvard.edu/abs/2009A%26A...503..541L>`_
@@ -50,7 +56,9 @@ NLTE grids:
     - marcs2012s_t2.0_Ca.grd `(Mashonkina et al. 2007) <https://ui.adsabs.harvard.edu/abs/2007A%26A...461..261M>`_
     - marcs2012s_t2.0_Fe.grd `(Mashonkina et al. 2011) <https://ui.adsabs.harvard.edu/abs/2011A%26A...528A..87M>`_
     - marcs2012s_t2.0_Ti.grd `(Sitnova et al. 2016) <https://ui.adsabs.harvard.edu/abs/2016MNRAS.461.1000S>`_
+
   - deprecated:
+  
     - nlte_Ba.grd
     - nlte_Ba_test.grd
     - nlte_C.grd
