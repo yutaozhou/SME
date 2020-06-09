@@ -71,19 +71,20 @@ def determine_continuum(sme, segment):
         x, y, m, u = x[segment], y[segment], m[segment], u[segment]
 
         # Set continuum mask
-        if np.all(m != 2):
+        if np.all(m != sme.mask_values["continuum"]):
             # If no continuum mask has been set
             # Use the effective wavelength ranges of the lines to determine continuum points
             logger.info(
-                "No Continuum mask was set, "
-                "Using effective wavelength range of lines to find continuum instead"
+                "No Continuum mask was set in segment %s, "
+                "Using effective wavelength range of lines to find continuum instead",
+                segment,
             )
             cont = get_continuum_mask(x, y, sme.linelist, mask=m)
             # Save mask for next iteration
-            m[cont == 2] = 2
+            m[cont == 2] = sme.mak_values["continuum"]
             logger.debug("Continuum mask points: %i", np.count_nonzero(cont == 2))
 
-        cont = m == 2
+        cont = m == sme.mask_values["continuum"]
         x = x - x[0]
         x, y, u = x[cont], y[cont], u[cont]
 
@@ -91,7 +92,7 @@ def determine_continuum(sme, segment):
         try:
             func = lambda coef: (np.polyval(coef, x) - y) / u
             c0 = np.polyfit(x, y, deg=ndeg)
-            res = least_squares(func, x0=c0, loss="soft_l1")
+            res = least_squares(func, x0=c0)
             cscale = res.x
         except TypeError:
             warnings.warn("Could not fit continuum, set continuum mask?")
@@ -242,31 +243,39 @@ def determine_radial_velocity(sme, segment, cscale, x_syn, y_syn):
                 f"Radial velocity flag {sme.vrad_flag} not recognised, expected one of 'each', 'whole', 'none'"
             )
 
+        mask = mask == sme.mask_values["line"]
+        x_obs = x_obs[mask]
+        y_obs = y_obs[mask]
+        u_obs = u_obs[mask]
         y_tmp = np.interp(x_obs, x_syn, y_syn)
 
-        # Get a first rough estimate from cross correlation
-        # Subtract continuum level of 1, for better correlation
-        corr = correlate(
-            y_obs - np.median(y_obs), y_tmp - np.median(y_tmp), mode="same"
-        )
-        offset = np.argmax(corr)
-
-        x1 = x_obs[offset]
-        x2 = x_obs[len(x_obs) // 2]
-        rvel = c_light * (1 - x2 / x1)
-
         rv_bounds = (-100, 100)
-        rvel = np.clip(rvel, *rv_bounds)
+        if np.all(sme.vrad[segment] == 0):
+            # Get a first rough estimate from cross correlation
+            # Subtract continuum level of 1, for better correlation
+            corr = correlate(
+                y_obs - np.median(y_obs), y_tmp - np.median(y_tmp), mode="same"
+            )
+            offset = np.argmax(corr)
 
-        lines = mask != 0
+            x1 = x_obs[offset]
+            x2 = x_obs[len(x_obs) // 2]
+            rvel = c_light * (1 - x2 / x1)
+
+            rvel = np.clip(rvel, *rv_bounds)
+        else:
+            if sme.vrad_flag == "whole":
+                rvel = sme.vrad[0]
+            else:
+                rvel = sme.vrad[segment]
 
         # Then minimize the least squares for a better fit
         # as cross correlation can only find
         def func(rv):
             rv_factor = np.sqrt((1 - rv / c_light) / (1 + rv / c_light))
-            shifted = interpolator(x_obs[lines] * rv_factor)
+            shifted = interpolator(x_obs * rv_factor)
             # shifted = np.interp(x_obs[lines], x_syn * rv_factor, y_syn)
-            resid = (y_obs[lines] - shifted) / u_obs[lines]
+            resid = (y_obs - shifted) / u_obs
             resid = np.nan_to_num(resid, copy=False)
             return resid
 
