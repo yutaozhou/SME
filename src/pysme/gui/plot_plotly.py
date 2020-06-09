@@ -91,10 +91,13 @@ class FinalPlot:
             "sliders": [{"active": self.segment, "steps": steps}],
             "legend": {"traceorder": "reversed"},
         }
-        self.fig = go.FigureWidget(data=data, layout=layout)
+        if in_notebook:
+            self.fig = go.FigureWidget(data=data, layout=layout)
 
-        # add selection callback
-        self.fig.data[0].on_selection(self.selection_fn)
+            # add selection callback
+            self.fig.data[0].on_selection(self.selection_fn)
+        else:
+            self.fig = go.Figure(data=data, layout=layout)
 
         # Add button to save figure
         if in_notebook:

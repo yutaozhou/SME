@@ -12,7 +12,7 @@ import platform
 import sys
 from pathlib import Path
 import warnings
-from os.path import join, dirname
+from os.path import join, dirname, basename
 import os
 import wget
 import tarfile
@@ -107,7 +107,7 @@ def download_libsme(loc=None):
 
     if system == "Linux":
         fversion = find_library("gfortran")
-        if "3" in fversion:
+        if "4" in basename(fversion):
             system = "linux-libgfortran3"
         else:
             system = "manylinux2010"
