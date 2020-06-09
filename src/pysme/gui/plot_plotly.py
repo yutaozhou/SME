@@ -17,7 +17,7 @@ try:
 
     cfg = get_ipython()
     in_notebook = cfg is not None
-except (AttributeError, ImportError):
+except (AttributeError, ImportError, ModuleNotFoundError):
     in_notebook = False
 
 clight = speed_of_light * 1e-3

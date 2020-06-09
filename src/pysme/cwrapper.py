@@ -107,7 +107,7 @@ def download_libsme(loc=None):
 
     if system == "Linux":
         fversion = find_library("gfortran")
-        if "4" in basename(fversion):
+        if "4" in basename(fversion) or "3" in basename(fversion):
             system = "linux-libgfortran3"
         else:
             system = "manylinux2010"
