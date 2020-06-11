@@ -259,7 +259,7 @@ class SME_Structure(Parameters):
             The x coordinates of each polynomial are chosen so that x = 0, at the first wavelength point,
             i.e. x is shifted by wave[segment][0]
             """),
-        ("cscale_flag", "none", lowercase(oneof(-3, -2, -1, 0, 1, 2, "none", "fix", "constant", "linear", "quadratic")), this,
+        ("cscale_flag", "none", lowercase(oneof(-3, -2, -1, 0, 1, 2, 3, 4, 5, "none", "fix", "constant", "linear", "quadratic", "cubic", "quintic", "quantic")), this,
             """str: Flag that describes how to correct for the continuum
 
             allowed values are:
@@ -553,9 +553,12 @@ class SME_Structure(Parameters):
                 0: "constant",
                 1: "linear",
                 2: "quadratic",
+                3: "cubic",
+                4: "quintic",
+                5: "quantic",
             }[value]
-        if value == "quadratic":
-            logger.warning("Quadratic continuum scale is experimental")
+        if value in ["quadratic", "cubic", "quintic", "quantic"]:
+            logger.warning(f"{value} continuum scale is experimental")
 
         self.__cscale_flag = value
 
@@ -617,6 +620,12 @@ class SME_Structure(Parameters):
             return 1
         if self.cscale_flag == "quadratic":
             return 2
+        if self.cscale_flag == "cubic":
+            return 3
+        if self.cscale_flag == "quintic":
+            return 4
+        if self.cscale_flag == "quantic":
+            return 5
         if self.cscale_flag == "fix":
             # Use the underying element to avoid a loop
             if self.__cscale is not None:
