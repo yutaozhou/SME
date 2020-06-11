@@ -30,6 +30,7 @@ from .sme_synth import SME_DLL
 from .uncertainties import uncertainties
 from .util import safe_interpolation, print_to_log
 from .synthesize import Synthesizer
+from .nlte import DirectAccessFile
 
 logger = logging.getLogger(__name__)
 
@@ -142,6 +143,11 @@ class SME_Solver:
         synth = synth[segments]
         synth = synth[mask] if mask is not None else synth
 
+        if sme.telluric is not None:
+            tell = sme.telluric[segments]
+            tell = tell[mask] if mask is not None else tell
+            synth *= tell
+
         # TODO: update based on lineranges
         uncs_linelist = 0
 
@@ -204,7 +210,7 @@ class SME_Solver:
 
         return g
 
-    def __get_bounds(self, atmo_file):
+    def __get_bounds(self, sme):
         """
         Create Bounds based on atmosphere grid and general rules
 
@@ -217,8 +223,8 @@ class SME_Solver:
         ----------
         param_names : array(str)
             names of the parameters to vary
-        atmo_file : str
-            filename of the atmosphere grid
+        sme : SME_Structure
+            sme structure to get bounds for
 
         Raises
         ------
@@ -239,6 +245,7 @@ class SME_Solver:
             or "logg" in self.parameter_names
             or "monh" in self.parameter_names
         ):
+            atmo_file = sme.atmo.source
             _, ext = splitext(atmo_file)
             atmo_file = self.lfs_atmo.get(atmo_file)
 
@@ -271,10 +278,24 @@ class SME_Solver:
         # bounds.update({"abund %s" % el: [-10, 11] for el in abund_elem})
 
         result = np.array([[-np.inf, np.inf]] * self.nparam)
-
+        solar = Abund.solar()
         for i, name in enumerate(self.parameter_names):
             if name[:5].lower() == "abund":
-                result[i] = [-10, 11]
+                element = name[5:].strip().capitalize()
+                if element in sme.nlte.elements:
+                    fname = sme.nlte.grids[element]
+                    fname = self.lfs_nlte.get(fname)
+                    grid = DirectAccessFile(fname)
+                    available = grid["abund"]
+                    xmin, xmax = available.min(), available.max()
+                    xmin += solar[element]
+                    xmax += solar[element]
+                    if xmin == xmax:
+                        xmin -= 1
+                        xmax += 1
+                    result[i] = [xmin, xmax]
+                else:
+                    result[i] = [-10, 11]
             elif name[:8].lower() == "linelist":
                 pass
             else:
@@ -439,10 +460,15 @@ class SME_Solver:
                 break
 
         # Create appropiate bounds
-        bounds = self.__get_bounds(sme.atmo.source)
+        bounds = self.__get_bounds(sme)
         scales = self.__get_scale()
         # Starting values
         p0 = self.__get_default_values(sme)
+        if np.any((p0 < bounds[0]) | (p0 > bounds[1])):
+            logger.warning(
+                "Initial values are incompatible with the bounds, clipping initial values"
+            )
+            p0 = np.clip(p0, bounds[0], bounds[1])
 
         # Get constant data from sme structure
         sme.mask[segments][sme.uncs[segments] == 0] = 0

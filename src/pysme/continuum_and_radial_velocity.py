@@ -746,4 +746,10 @@ def match_rv_continuum(sme, segments, x_syn, y_syn):
             f"Did not understand cscale_type, expected one of ('whole', 'mask'), but got {sme.cscale_type}."
         )
 
+    # Keep values from unused segments
+    for seg in range(sme.nseg):
+        if seg not in segments:
+            vrad[seg] = sme.vrad[seg]
+            cscale[seg] = sme.cscale[seg]
+
     return cscale, cscale_unc, vrad, vrad_unc

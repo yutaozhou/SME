@@ -173,7 +173,11 @@ class NLTE(Collection):
 
     @property
     def _citation_info(self):
-        citations = [grid.citation_info for el, grid in self.grid_data.items()]
+        citations = [
+            grid.citation_info
+            for el, grid in self.grid_data.items()
+            if grid.citation_info is not None
+        ]
         citations = "\n".join(citations)
         return citations
 
@@ -306,6 +310,8 @@ class SME_Structure(Parameters):
             "Iliffe_vector of shape (nseg, ...): observed spectrum"),
         ("uncs", None, vector, this,
             "Iliffe_vector of shape (nseg, ...): uncertainties of the observed spectrum"),
+        ("telluric", None, vector, this, 
+            "Illife_vector of shape (nseg, ...): telluric spectrum that is multiplied with synth during the fit"),
         ("mask", None, vector, this,
             "Iliffe_vector of shape (nseg, ...): mask defining good and bad points for the fit"),
         ("synth", None, vector, this,

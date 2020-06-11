@@ -692,7 +692,7 @@ class Grid:
         # Check if we need to extrapolate
         if any([t < min(p) or t > max(p) for t, p in zip(target, points)]):
             logger.warning(
-                f"Extrapolate on the NLTE grid. Requested values of {target} on grid {points}"
+                f"Extrapolate on the {self.elem} NLTE grid. Requested values of {target} on grid {points}"
             )
 
         # Some grids have only one value in that direction
