@@ -57,14 +57,7 @@ def determine_continuum(sme, segment):
         cscale = sme.cscale[segment]
     else:
         # fit a line to the continuum points
-        if sme.cscale_flag in ["constant", 0]:
-            ndeg = 0
-        elif sme.cscale_flag in ["linear", 1]:
-            ndeg = 1
-        elif sme.cscale_flag in ["quadratic", 2]:
-            ndeg = 2
-        else:
-            ndeg = sme.cscale_flag
+        ndeg = sme.cscale_degree
 
         # Extract points in this segment
         x, y, m, u = sme.wave, sme.spec, sme.mask, sme.uncs
@@ -81,7 +74,7 @@ def determine_continuum(sme, segment):
             )
             cont = get_continuum_mask(x, y, sme.linelist, mask=m)
             # Save mask for next iteration
-            m[cont == 2] = sme.mak_values["continuum"]
+            m[cont == 2] = sme.mask_values["continuum"]
             logger.debug("Continuum mask points: %i", np.count_nonzero(cont == 2))
 
         cont = m == sme.mask_values["continuum"]
