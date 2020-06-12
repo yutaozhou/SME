@@ -210,6 +210,7 @@ class Server:
     def download(self, fname, location):
         url = self.url + "/" + fname
         loc = str(location)
+        os.makedirs(loc, exist_ok=True)
         wget.download(url, out=loc)
         print("\n")
 
