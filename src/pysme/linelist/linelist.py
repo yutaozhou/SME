@@ -188,7 +188,12 @@ class LineList(IPersist):
         self.lineformat = lineformat
         #:pandas.DataFrame: DataFrame that contains all the data
         self._lines = linedata  # should have all the fields (20)
-        self.medium = medium
+        if medium in ["air", "vac", None]:
+            self._medium = medium
+        else:
+            raise ValueError(
+                f"Medium not recognized, expected one of ['air', 'vac'] , but got {medium} instead."
+            )
 
         if "citation_info" in kwargs.keys():
             self.citation_info = kwargs["citation_info"]
