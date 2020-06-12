@@ -188,7 +188,7 @@ class LineList(IPersist):
         self.lineformat = lineformat
         #:pandas.DataFrame: DataFrame that contains all the data
         self._lines = linedata  # should have all the fields (20)
-        self._medium = medium
+        self.medium = medium
 
         if "citation_info" in kwargs.keys():
             self.citation_info = kwargs["citation_info"]
@@ -204,6 +204,8 @@ class LineList(IPersist):
 
     def __getitem__(self, index):
         if isinstance(index, (list, str)):
+            if len(index) == 0:
+                return LineList(lineformat=self.lineformat, medium=self.medium)
             values = self._lines[index].values
             if index in self.string_columns:
                 values = values.astype(str)
@@ -212,7 +214,9 @@ class LineList(IPersist):
             if isinstance(index, int):
                 index = slice(index, index + 1)
             # just pass on a subsection of the linelist data, but keep it a linelist object
-            return LineList(self._lines.iloc[index], self.lineformat)
+            return LineList(
+                self._lines.iloc[index], self.lineformat, medium=self.medium
+            )
 
     def __getattribute__(self, name):
         if name[0] != "_" and name not in dir(self):
