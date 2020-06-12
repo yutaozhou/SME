@@ -13,7 +13,7 @@ from .abund import Abund, elements as abund_elem
 from .atmosphere.atmosphere import Atmosphere
 from .iliffe_vector import Iliffe_vector
 from .linelist.linelist import LineList
-from .nlte import Grid as NlteGrid
+from .nlte import NLTE
 
 from .data_structure import *
 
@@ -67,123 +67,6 @@ class Parameters(Collection):
     def citation(self, format="string"):
         return self.abund.citation()
 
-
-@CollectionFactory
-class NLTE(Collection):
-    # fmt: off
-    _fields = Collection._fields + [
-        ("elements", [], astype(list), this,
-            "list: elements for which nlte calculations will be performed"),
-        ("grids", {}, astype(dict), this,
-            "dict: nlte grid datafiles for each element"),
-        ("subgrid_size", [2, 2, 2, 2], array(4, int), this,
-            "array of shape (4,): defines size of nlte grid cache."
-            "Each entry is for one parameter abund, teff, logg, monh"),
-        ("flags", None, array(None, np.bool_), this,
-            "array: contains a flag for each line, whether it was calculated in NLTE (True) or not (False)")
-    ]
-    # fmt: on
-
-    _default_grids = {
-        "Al": "marcs2012_Al2017.grd",
-        "Fe": "marcs2012_Fe2016.grd",
-        "Li": "marcs2012_Li.grd",
-        "Mg": "marcs2012_Mg2016.grd",
-        "Na": "marcs2012p_t1.0_Na.grd",
-        "O": "marcs2012_O2015.grd",
-        "Ba": "marcs2012p_t1.0_Ba.grd",
-        "Ca": "marcs2012p_t1.0_Ca.grd",
-        "Si": "marcs2012_SI2016.grd",
-        "Ti": "marcs2012s_t2.0_Ti.grd",
-    }
-
-    def __init__(self, **kwargs):
-        super().__init__()
-
-        # Convert IDL keywords to Python
-        if "nlte_elem_flags" in kwargs.keys():
-            elements = kwargs["nlte_elem_flags"]
-            self.elements = [abund_elem[i] for i, j in enumerate(elements) if j == 1]
-
-        if "nlte_subgrid_size" in kwargs.keys():
-            self.subgrid_size = kwargs["nlte_subgrid_size"]
-
-        if "nlte_grids" in kwargs:
-            grids = kwargs["nlte_grids"]
-            if isinstance(grids, (list, np.ndarray)):
-                grids = {
-                    abund_elem[i]: name.decode()
-                    for i, name in enumerate(grids)
-                    if name != ""
-                }
-            self.grids = grids
-
-        # TODO
-        #:dict: the cached subgrid data for each element
-        # This is NOT saved on sme.save
-        # But maybe should be ?
-        self.grid_data = {}
-
-    def set_nlte(self, element, grid=None):
-        """
-        Add an element to the NLTE calculations
-
-        Parameters
-        ----------
-        element : str
-            The abbreviation of the element to add to the NLTE calculations
-        grid : str, optional
-            Filename of the NLTE data grid to use for this element
-            the file must be in nlte_grids directory
-            Defaults to a set of "known" files for some elements
-        """
-        if element in self.elements:
-            # Element already in NLTE
-            # Change grid if given
-            if grid is not None:
-                self.grids[element] = grid
-            return
-
-        if grid is None:
-            # Use default grid
-            if element not in NLTE._default_grids.keys():
-                raise ValueError(f"No default grid known for element {element}")
-            grid = NLTE._default_grids[element]
-            logger.info("Using default grid %s for element %s", grid, element)
-
-        if element not in self.elements:
-            self.elements += [element]
-        self.grids[element] = grid
-
-    def remove_nlte(self, element):
-        """
-        Remove an element from the NLTE calculations
-
-        Parameters
-        ----------
-        element : str
-            Abbreviation of the element to remove from NLTE
-        """
-        if element not in self.elements:
-            # Element not included in NLTE anyways
-            return
-
-        self.elements.remove(element)
-        self.grids.pop(element)
-
-    @property
-    def _citation_info(self):
-        citations = [
-            grid.citation_info
-            for el, grid in self.grid_data.items()
-            if grid.citation_info is not None
-        ]
-        citations = "\n".join(citations)
-        return citations
-
-    @_citation_info.setter
-    def _citation_info(self, value):
-        pass
 
 
 @CollectionFactory

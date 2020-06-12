@@ -10,7 +10,8 @@ import warnings
 import numpy as np
 from scipy import interpolate
 
-from .abund import Abund
+from .abund import Abund, elements as abund_elem
+from .data_structure import Collection, CollectionFactory, astype, array, this
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ class DirectAccessFile:
             raise KeyError(f"Key {key} not found")
         return value
 
-    def get(self, key, alt=None):
+    def get(self, key: str, alt=None) -> np.memmap:
         """ get field from file """
         idx = np.where(self.key == key)[0]
 
@@ -128,15 +129,16 @@ class DirectAccessFile:
         return typecode[dt]
 
     @staticmethod
-    def get_dtypes(major, minor):
-        if major == "1" and minor == "00":
+    def get_dtypes(version):
+        major, minor = version
+        if major == 1 and minor == 00:
             header_dtype = np.dtype(
                 [("nblocks", "<u2"), ("dir_length", "<u2"), ("ndir", "<u2"),]
             )
             dir_dtype = np.dtype(
                 [("key", "S256"), ("size", "<i4", 23), ("pointer", "<i8")]
             )
-        elif major == "1" and minor == "10":
+        elif major == 1 and minor >= 10:
             header_dtype = np.dtype(
                 [("nblocks", "<u8"), ("dir_length", "<i2"), ("ndir", "<u8"),]
             )
@@ -148,16 +150,22 @@ class DirectAccessFile:
         return header_dtype, dir_dtype
 
     @staticmethod
-    def read_header(fname):
+    def read_version(version_string: str):
+        if isinstance(version_string, bytes):
+            version_string = version_string.decode()
+
+        major, minor = int(version_string[26]), int(version_string[28:30])
+        version = (major, minor)
+        return version
+
+    @classmethod
+    def read_header(cls, fname: str):
         """ parse Header data """
         with open(fname, "rb") as file:
             version_dtype = "S64"
             version = np.fromfile(file, version_dtype, count=1)
-            version = version[0].decode()
-            major, minor = version[26], version[28:30]
-            version = (major, minor)
-            header_dtype, dir_dtype = DirectAccessFile.get_dtypes(major, minor)
-
+            version = cls.read_version(version[0])
+            header_dtype, dir_dtype = cls.get_dtypes(version)
             header = np.fromfile(file, header_dtype, count=1)
             ndir = int(header["ndir"][0])
             directory = np.fromfile(file, dir_dtype, count=ndir)
@@ -168,8 +176,7 @@ class DirectAccessFile:
         # Get relevant info from size parameter
         # ndim, n1, n2, ..., typecode, size
         dtype = np.array(
-            [DirectAccessFile.idl_typecode(d[1 + d[0]]) for d in directory["size"]],
-            dtype="U5",
+            [cls.idl_typecode(d[1 + d[0]]) for d in directory["size"]], dtype="U5",
         )
         shape = np.empty(ndir, dtype=object)
         shape[:] = [tuple(d[1 : d[0] + 1]) for d in directory["size"]]
@@ -187,15 +194,15 @@ class DirectAccessFile:
 
         return key, pointer, dtype, shape, version
 
-    @staticmethod
-    def write(fname, **kwargs):
-        major, minor = "1", "10"
+    @classmethod
+    def write(cls, fname, **kwargs):
+        major, minor = 1, 10
         ndir = len(kwargs)
         version = f"DirectAccess file Version {major}.{minor} 2011-03-24"
         version = np.asarray([version], dtype="S64")
         version_length = version.itemsize
 
-        header_dtype, dir_dtype = DirectAccessFile.get_dtypes(major, minor)
+        header_dtype, dir_dtype = cls.get_dtypes((major, minor))
         header_length = header_dtype.itemsize
         dir_length = dir_dtype.itemsize
 
@@ -223,7 +230,7 @@ class DirectAccessFile:
             else:
                 shape[0] = value.ndim
                 shape[1 : 1 + value.ndim] = value.shape
-                shape[1 + value.ndim] = DirectAccessFile.get_typecode(value.dtype)
+                shape[1 + value.ndim] = cls.get_typecode(value.dtype)
                 shape[2 + value.ndim] = value.size
 
             directory[i]["pointer"] = pointer
@@ -262,6 +269,15 @@ class Grid:
         #:DirectAccessFile: The NLTE data file
         self.directory = DirectAccessFile(self.fname)
         self.version = self.directory.version
+
+        # Check atmosphere compatibility
+        if self.version[0] >= 1 and self.version[1] >= 10:
+            self.atmosphere_grid = self.directory["atmosphere_grid"][0]
+            if self.atmosphere_grid != sme.atmo.source:
+                logger.warning(
+                    "The {elem} NLTE grid was created with {self.atmosphere_grid}, but we are using {sme.atmo.source} for the synthesis"
+                )
+
         # The possible labels
         self._teff = self.directory["teff"]
         self._grav = self.directory["grav"]
@@ -792,3 +808,122 @@ def update_nlte_coefficients(sme, dll, lfs_nlte):
     # flags = sme_synth.GetNLTEflags(sme.linelist)
 
     return sme
+
+
+@CollectionFactory
+class NLTE(Collection):
+    # fmt: off
+    _fields = Collection._fields + [
+        ("elements", [], astype(list), this,
+            "list: elements for which nlte calculations will be performed"),
+        ("grids", {}, astype(dict), this,
+            "dict: nlte grid datafiles for each element"),
+        ("subgrid_size", [2, 2, 2, 2], array(4, int), this,
+            "array of shape (4,): defines size of nlte grid cache."
+            "Each entry is for one parameter abund, teff, logg, monh"),
+        ("flags", None, array(None, np.bool_), this,
+            "array: contains a flag for each line, whether it was calculated in NLTE (True) or not (False)")
+    ]
+    # fmt: on
+
+    # For marcs2012 atmosphere
+    _default_grids = {
+        "Al": "marcs2012_Al2017.grd",
+        "Fe": "marcs2012_Fe2016.grd",
+        "Li": "marcs2012_Li.grd",
+        "Mg": "marcs2012_Mg2016.grd",
+        "Na": "marcs2012p_t1.0_Na.grd",
+        "O": "marcs2012_O2015.grd",
+        "Ba": "marcs2012p_t1.0_Ba.grd",
+        "Ca": "marcs2012p_t1.0_Ca.grd",
+        "Si": "marcs2012_SI2016.grd",
+        "Ti": "marcs2012s_t2.0_Ti.grd",
+    }
+
+    def __init__(self, **kwargs):
+        super().__init__()
+
+        # Convert IDL keywords to Python
+        if "nlte_elem_flags" in kwargs.keys():
+            elements = kwargs["nlte_elem_flags"]
+            self.elements = [abund_elem[i] for i, j in enumerate(elements) if j == 1]
+
+        if "nlte_subgrid_size" in kwargs.keys():
+            self.subgrid_size = kwargs["nlte_subgrid_size"]
+
+        if "nlte_grids" in kwargs:
+            grids = kwargs["nlte_grids"]
+            if isinstance(grids, (list, np.ndarray)):
+                grids = {
+                    abund_elem[i]: name.decode()
+                    for i, name in enumerate(grids)
+                    if name != ""
+                }
+            self.grids = grids
+
+        # TODO
+        #:dict: the cached subgrid data for each element
+        # This is NOT saved on sme.save
+        # But maybe should be ?
+        self.grid_data = {}
+
+    def set_nlte(self, element, grid=None):
+        """
+        Add an element to the NLTE calculations
+
+        Parameters
+        ----------
+        element : str
+            The abbreviation of the element to add to the NLTE calculations
+        grid : str, optional
+            Filename of the NLTE data grid to use for this element
+            the file must be in nlte_grids directory
+            Defaults to a set of "known" files for some elements
+        """
+        if element in self.elements:
+            # Element already in NLTE
+            # Change grid if given
+            if grid is not None:
+                self.grids[element] = grid
+            return
+
+        if grid is None:
+            # Use default grid
+            if element not in NLTE._default_grids.keys():
+                raise ValueError(f"No default grid known for element {element}")
+            grid = NLTE._default_grids[element]
+            logger.info("Using default grid %s for element %s", grid, element)
+
+        if element not in self.elements:
+            self.elements += [element]
+        self.grids[element] = grid
+
+    def remove_nlte(self, element):
+        """
+        Remove an element from the NLTE calculations
+
+        Parameters
+        ----------
+        element : str
+            Abbreviation of the element to remove from NLTE
+        """
+        if element not in self.elements:
+            # Element not included in NLTE anyways
+            return
+
+        self.elements.remove(element)
+        self.grids.pop(element)
+
+    @property
+    def _citation_info(self):
+        citations = [
+            grid.citation_info
+            for el, grid in self.grid_data.items()
+            if grid.citation_info is not None
+        ]
+        citations = "\n".join(citations)
+        return citations
+
+    @_citation_info.setter
+    def _citation_info(self, value):
+        pass
