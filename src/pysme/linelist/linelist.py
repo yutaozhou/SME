@@ -145,7 +145,11 @@ class LineList(IPersist):
         return (linedata, lineformat)
 
     def __init__(self, linedata=None, lineformat="short", medium=None, **kwargs):
-        if linedata is None or len(linedata) == 0:
+        if (
+            linedata is None
+            or len(linedata) == 0
+            and not isinstance(linedata, pd.DataFrame)
+        ):
             if "atomic" in kwargs.keys():
                 # everything is in the kwargs (usually by loading from old SME file)
                 linedata, lineformat = LineList.from_IDL_SME(**kwargs)
@@ -210,7 +214,9 @@ class LineList(IPersist):
     def __getitem__(self, index):
         if isinstance(index, (list, str)):
             if len(index) == 0:
-                return LineList(lineformat=self.lineformat, medium=self.medium)
+                return LineList(
+                    self._lines.iloc[[]], lineformat=self.lineformat, medium=self.medium
+                )
             values = self._lines[index].values
             if index in self.string_columns:
                 values = values.astype(str)
