@@ -220,6 +220,10 @@ class LineList(IPersist):
         return super().__getattribute__(name)
 
     @property
+    def columns(self):
+        return self._lines.columns
+
+    @property
     def medium(self):
         return self._medium
 
