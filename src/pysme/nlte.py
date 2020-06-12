@@ -271,7 +271,7 @@ class Grid:
         self.version = self.directory.version
 
         # Check atmosphere compatibility
-        if self.version[0] >= 1 and self.version[1] >= 10:
+        if "atmosphere_grid" in self.directory.key:
             self.atmosphere_grid = self.directory["atmosphere_grid"][0]
             if self.atmosphere_grid != sme.atmo.source:
                 logger.warning(
@@ -318,7 +318,7 @@ class Grid:
         term = self.directory["term"].astype("U")
         species = self.directory["spec"].astype("U")
         rotnum = self.directory["J"]  # rotational number of the atomic state
-        if self.version[0] == "1" and self.version[1] == "10":
+        if self.version[0] == 1 and self.version[1] >= 10:
             energies = self.directory["energy"]  # energy in eV
             self.citation_info = self.directory["citation"][()].decode()
         else:
