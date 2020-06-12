@@ -145,12 +145,10 @@ class LineList(IPersist):
         return (linedata, lineformat)
 
     def __init__(self, linedata=None, lineformat="short", medium=None, **kwargs):
-        if (
-            linedata is None
-            or len(linedata) == 0
-            and not isinstance(linedata, pd.DataFrame)
-        ):
-            if "atomic" in kwargs.keys():
+        if linedata is None or len(linedata) == 0:
+            if isinstance(linedata, pd.DataFrame):
+                linedata = pd.DataFrame(data=linedata, columns=self._base_columns)
+            elif "atomic" in kwargs.keys():
                 # everything is in the kwargs (usually by loading from old SME file)
                 linedata, lineformat = LineList.from_IDL_SME(**kwargs)
             else:
@@ -174,7 +172,7 @@ class LineList(IPersist):
 
                 if "ionization" in kwargs.keys():
                     linedata["ionization"] = kwargs["ionization"]
-                elif "ionization" not in linedata:
+                elif "ionization" not in linedata and "species" in linedata:
                     linedata["ionization"] = np.array(
                         [int(s[-1]) for s in linedata["species"]], dtype=float
                     )
