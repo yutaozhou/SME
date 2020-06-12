@@ -249,10 +249,12 @@ class FinalPlot:
                 lines = self.lines[lines]
 
                 # Keep only the 100 stongest lines for performance
-                lines.sort("depth", ascending=False)
-                lines = lines[
-                    :20,
-                ]
+                if "depth" in lines.columns:
+                    lines.sort("depth", ascending=False)
+                    lines = lines[:20]
+                else:
+                    idx = np.random.choice(len(lines), 20, replace=False)
+                    lines = lines[idx]
 
                 x = lines.wlcent * (1 + self.vrad[seg] / clight)
                 if self.spec is not None:
