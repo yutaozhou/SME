@@ -146,7 +146,9 @@ class LineList(IPersist):
 
     def __init__(self, linedata=None, lineformat="short", medium=None, **kwargs):
         if linedata is None or len(linedata) == 0:
-            if "atomic" in kwargs.keys():
+            if isinstance(linedata, pd.DataFrame):
+                linedata = pd.DataFrame(data=linedata, columns=self._base_columns)
+            elif "atomic" in kwargs.keys():
                 # everything is in the kwargs (usually by loading from old SME file)
                 linedata, lineformat = LineList.from_IDL_SME(**kwargs)
             else:
@@ -170,7 +172,7 @@ class LineList(IPersist):
 
                 if "ionization" in kwargs.keys():
                     linedata["ionization"] = kwargs["ionization"]
-                elif "ionization" not in linedata:
+                elif "ionization" not in linedata and "species" in linedata:
                     linedata["ionization"] = np.array(
                         [int(s[-1]) for s in linedata["species"]], dtype=float
                     )
@@ -188,7 +190,12 @@ class LineList(IPersist):
         self.lineformat = lineformat
         #:pandas.DataFrame: DataFrame that contains all the data
         self._lines = linedata  # should have all the fields (20)
-        self._medium = medium
+        if medium in ["air", "vac", None]:
+            self._medium = medium
+        else:
+            raise ValueError(
+                f"Medium not recognized, expected one of ['air', 'vac'] , but got {medium} instead."
+            )
 
         if "citation_info" in kwargs.keys():
             self.citation_info = kwargs["citation_info"]
@@ -204,6 +211,10 @@ class LineList(IPersist):
 
     def __getitem__(self, index):
         if isinstance(index, (list, str)):
+            if len(index) == 0:
+                return LineList(
+                    self._lines.iloc[[]], lineformat=self.lineformat, medium=self.medium
+                )
             values = self._lines[index].values
             if index in self.string_columns:
                 values = values.astype(str)
@@ -212,12 +223,18 @@ class LineList(IPersist):
             if isinstance(index, int):
                 index = slice(index, index + 1)
             # just pass on a subsection of the linelist data, but keep it a linelist object
-            return LineList(self._lines.iloc[index], self.lineformat)
+            return LineList(
+                self._lines.iloc[index], self.lineformat, medium=self.medium
+            )
 
     def __getattribute__(self, name):
         if name[0] != "_" and name not in dir(self):
             return self._lines[name].values
         return super().__getattribute__(name)
+
+    @property
+    def columns(self):
+        return self._lines.columns
 
     @property
     def medium(self):

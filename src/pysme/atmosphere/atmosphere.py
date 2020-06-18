@@ -45,7 +45,7 @@ class Atmosphere(Collection):
         ("source", None, asstr, this, "str: datafile name of this data"),
         ("method", "grid", lowercase(oneof("grid", "embedded")), this, 
             "str: whether the data source is a grid or a fixed atmosphere"),
-        ("geom", None, uppercase(oneof(None, "PP", "SPH")), this,
+        ("geom", "PP", uppercase(oneof("PP", "SPH")), this,
             "str: the geometry of the atmopshere model"),
         ("radius", 0, asfloat, this, "float: radius of the spherical model"),
         ("height", 0, asfloat, this, "float: height of the spherical model"),
@@ -71,6 +71,8 @@ class Atmosphere(Collection):
         ("citation_info", "", asstr, this, "str: citation for this atmosphere"),
     ]
     # fmt: on
+
+    # TODO: pick the right geometry for the grid, based on whether it has height/radius values or not
 
     def __init__(self, **kwargs):
         monh = kwargs.pop("monh", kwargs.pop("feh", 0))
@@ -206,7 +208,7 @@ class AtmosphereGrid(np.recarray):
         self.interp = getattr(self, "interp", "TAU")
         self.depth = getattr(self, "depth", "RHOX")
         self.source = getattr(self, "source", "")
-        self.geom = getattr(self, "geom", "pp")
+        self.geom = getattr(self, "geom", "PP")
         self.citation_info = getattr(self, "citation_info", "")
         self.method = getattr(self, "method", "grid")
         self.abund_format = getattr(self, "abund_format", "sme")
