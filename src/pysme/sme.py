@@ -68,7 +68,6 @@ class Parameters(Collection):
         return self.abund.citation()
 
 
-
 @CollectionFactory
 class Version(Collection):
     # fmt: off
@@ -130,7 +129,7 @@ class SME_Structure(Parameters):
     # fmt: off
     _fields = Parameters._fields + [
         ("id", dt.now(), asstr, this, "str: DateTime when this structure was created"),
-        ("object", "", asstr, this, "str: Name of the observed/simulated object"),
+        ("meta", {}, this, this, "dict: Arbitrary extra information"),
         ("version", __version__, this, this, "str: PySME version used to create this structure"),
         ("vrad", 0, array(None, float), this, "array of size (nseg,): radial velocity of each segment in km/s"),
         ("vrad_flag", "none", lowercase(oneof(-2, -1, 0, "none", "each", "whole", "fix")), this,
@@ -261,7 +260,7 @@ class SME_Structure(Parameters):
         self.mask = kwargs.get("mob", None)
         self.synth = kwargs.get("smod", None)
 
-        self.object = kwargs.get("obs_name", "")
+        self.meta["object"] = kwargs.get("obs_name", "")
         try:
             self.linelist = LineList(**kwargs)
         except (KeyError, AttributeError):
