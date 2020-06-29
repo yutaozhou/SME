@@ -278,7 +278,18 @@ class SME_DLL:
             raise ValueError("Turbulence velocity must be positive or zero")
 
         try:
-            motype = atmo.depth
+
+            #   MOTYPE==0   means depth scale is "Tau", plane-parralel
+            #   MOTYPE==1   means depth scale is "Rhox", plane-parralel
+            #   MOTYPE==3   means depth scale is "RhoX", spherical
+            #   MOTYPE==-1  fake value used with the call to OPMTRX get just
+            #               just the line opacities
+
+            if atmo.geom == "SPH":
+                # Spherical only supports RHOX
+                motype = "RHOX"
+            else:
+                motype = atmo.depth
             depth = atmo[motype]
             ndepth = len(depth)
             t = atmo.temp
