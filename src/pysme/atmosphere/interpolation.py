@@ -780,7 +780,7 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
     if "geom" in atags and atmo_in.geom != geom:
         if atmo_in.geom == "SPH":
             raise AtmosphereError(
-                "Input ATMO.GEOM='%s' was requested but the model only supports PP."
+                "Input ATMO.GEOM='%s' was requested but the model only supports PP (at this point)."
                 % atmo_in.geom
             )
         else:
