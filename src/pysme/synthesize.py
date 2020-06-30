@@ -164,9 +164,9 @@ class Synthesizer:
             if vrad[il] is not None:
                 rv_factor = np.sqrt((1 + vrad[il] / clight) / (1 - vrad[il] / clight))
                 wmod[il] *= rv_factor
-            smod[il] = safe_interpolation(wmod[il], smod[il], wave[il])
+            smod[il] = np.interp(wave[il], wmod[il], smod[il])
             if cmod is not None:
-                cmod[il] = safe_interpolation(wmod[il], cmod[il], wave[il])
+                cmod[il] = np.interp(wave[il], wmod[il], cmod[il])
 
             if cscale[il] is not None and not np.all(cscale[il] == 0):
                 x = wave[il] - wave[il][0]
