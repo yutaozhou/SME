@@ -6,10 +6,18 @@ import numpy as np
 from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
 
+from astropy import constants as const
+
 from .atmosphere import Atmosphere as Atmo, AtmosphereError
 from .savfile import SavFile
 
 logger = logging.getLogger(__name__)
+
+# Radius and Surface Gravity of the Sun
+# Required for spherical models
+R_sun = const.R_sun.to_value("cm")
+g_sun = (const.G * const.M_sun / const.R_sun ** 2).to_value("cm/s**2")
+logg_sun = np.log10(g_sun)
 
 
 def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
@@ -143,22 +151,33 @@ def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
     ##
 
     # Define depth scale for atmosphere #1
+    mask1 = np.full(len(atmo1[interpvar]), True)
+    mask1[:itop] = False
+
     itop1 = itop
     while (atmo1[interpvar][itop1 + 1] / atmo1[interpvar][itop1] - 1) <= min_drhox:
+        mask1[itop1] = False
         itop1 += 1
 
-    ibot1 = atmo1[interpvar].size - 1
-    ndep1 = ibot1 - itop1 + 1
-    depth1 = np.log10(atmo1[interpvar][itop : ibot1 + 1])
+    mask1 &= atmo1[interpvar] != 0
+    mask1 &= np.isfinite(atmo1[interpvar])
+    ndep1 = np.count_nonzero(mask1)
+
+    depth1 = np.log10(atmo1[interpvar][mask1])
 
     # Define depth scale for atmosphere #2
+    mask2 = np.full(len(atmo2[interpvar]), True)
+    mask2[:itop] = False
     itop2 = itop
     while (atmo2[interpvar][itop2 + 1] / atmo2[interpvar][itop2] - 1) <= min_drhox:
+        mask2[itop2] = False
         itop2 += 1
 
-    ibot2 = atmo2[interpvar].size - 1
-    ndep2 = ibot2 - itop2 + 1
-    depth2 = np.log10(atmo2[interpvar][itop2 : ibot2 + 1])
+    mask2 &= atmo2[interpvar] != 0
+    mask2 &= np.isfinite(atmo2[interpvar])
+    ndep2 = np.count_nonzero(mask2)
+
+    depth2 = np.log10(atmo2[interpvar][mask2])
 
     ##
     ## Prepare to find best shift parameters for each atmosphere vector.
@@ -180,10 +199,10 @@ def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
     # Put depth and TEMP midpoints for atmo1 and atmo2 on top of one another.
     npar = 4
     ipar = np.zeros(npar, dtype="f4")
-    temp1 = np.log10(atmo1.temp[itop1 : ibot1 + 1])
-    temp2 = np.log10(atmo2.temp[itop2 : ibot2 + 1])
-    mid1 = np.argmin(np.abs(temp1 - 0.5 * (temp1[1] + temp1[ndep1 - 2])))
-    mid2 = np.argmin(np.abs(temp2 - 0.5 * (temp2[1] + temp2[ndep2 - 2])))
+    temp1 = np.log10(atmo1.temp[mask1])
+    temp2 = np.log10(atmo2.temp[mask2])
+    mid1 = np.argmin(np.abs(temp1 - 0.5 * (temp1[1] + temp1[-2])))
+    mid2 = np.argmin(np.abs(temp2 - 0.5 * (temp2[1] + temp2[-2])))
     ipar[0] = depth1[mid1] - depth2[mid2]  # horizontal
     ipar[1] = temp1[mid1] - temp2[mid2]  # vertical
 
@@ -193,8 +212,8 @@ def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
     constraints[0] = 0.5  # weakly constrain the horizontal shift
 
     # For first pass ('TEMP'), use all available depth points.
-    ngd = ndep1
-    igd = np.arange(ngd)
+    igd = np.isfinite(depth1)
+    ngd = igd.size
 
     ##
     ## Find best shift parameters for each atmosphere vector.
@@ -210,8 +229,8 @@ def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
         if vtag not in tags2:
             raise AtmosphereError("atmo2 does not contain " + vtag)
 
-        vect1 = np.log10(atmo1[vtag][itop1 : ibot1 + 1])
-        vect2 = np.log10(atmo2[vtag][itop2 : ibot2 + 1])
+        vect1 = np.log10(atmo1[vtag][mask1])
+        vect2 = np.log10(atmo2[vtag][mask2])
 
         # Fit the second atmosphere onto the first by finding the best horizontal
         # shift in depth2 and the best vertical shift in vect2.
@@ -231,7 +250,8 @@ def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
         if ivtag == 0:
             ipar = [pars[0, 0], 0.0, 0.0, 0.0]
             igd = np.where(
-                (depth1 >= min(depth2) + ipar[0]) & (depth1 <= max(depth2) + ipar[0])
+                (depth1 >= min(depth2[igd]) + ipar[0])
+                & (depth1 <= max(depth2[igd]) + ipar[0])
             )[0]
             if igd.size < 2:
                 raise AtmosphereError("unstable shift in temperature")
@@ -264,8 +284,8 @@ def interp_atmo_pair(atmo1, atmo2, frac, interpvar="RHOX", itop=0):
     for ivtag, (vtag, par) in enumerate(zip(vtags, pars)):
 
         # Extract data
-        vect1 = np.log10(atmo1[vtag][itop1 : ibot1 + 1])
-        vect2 = np.log10(atmo2[vtag][itop2 : ibot2 + 1])
+        vect1 = np.log10(atmo1[vtag][mask1])
+        vect2 = np.log10(atmo2[vtag][mask2])
 
         # Identify output depth points that require extrapolation of atmosphere vector.
         depth1f = depth1 - par[0] * frac
@@ -738,14 +758,14 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
     #  log(M/Msol) = log g - log g_sol - 2*log(R_sol / R)
     #  2 * log(R / R_sol) = log g_sol - log g + log(M / M_sol)
     #
-    if "radius" in gtags and "height" in gtags and np.min(atmo_grid[icor].radius) > 1 :
-        solR = 69.550e9  # radius of sun in cm
-        sollogg = 4.44  # solar log g [cm s^-2]
+    if "radius" in gtags and "height" in gtags and np.min(atmo_grid[icor].radius) > 1:
         mass_cor = (
-            atmo_grid[icor].logg - sollogg - 2 * np.log10(solR / atmo_grid[icor].radius)
+            atmo_grid[icor].logg
+            - logg_sun
+            - 2 * np.log10(R_sun / atmo_grid[icor].radius)
         )
         mass = 10 ** np.mean(mass_cor)
-        radius = solR * 10 ** ((sollogg - logg + np.log10(mass)) * 0.5)
+        radius = R_sun * 10 ** ((logg_sun - logg + np.log10(mass)) * 0.5)
         krz.radius = radius
         geom = "SPH"
     else:
@@ -760,13 +780,14 @@ def interp_atmo_grid(Teff, logg, MonH, atmo_in, lfs_atmo, verbose=0, reload=Fals
     if "geom" in atags and atmo_in.geom != geom:
         if atmo_in.geom == "SPH":
             raise AtmosphereError(
-                "Input ATMO.GEOM='%s' not valid for requested model." % atmo_in.geom
+                "Input ATMO.GEOM='%s' was requested but the model only supports PP (at this point)."
+                % atmo_in.geom
             )
         else:
             logger.info(
                 "Input ATMO.GEOM='%s' overrides '%s' from grid.", atmo_in.geom, geom
             )
-    atmo.geom = geom
+    atmo.geom = atmo_in.geom
     atmo.source = atmo_in.source
     atmo.method = atmo_in.method
 

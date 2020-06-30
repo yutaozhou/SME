@@ -129,7 +129,7 @@ class SME_Structure(Parameters):
     # fmt: off
     _fields = Parameters._fields + [
         ("id", dt.now(), asstr, this, "str: DateTime when this structure was created"),
-        ("object", "", asstr, this, "str: Name of the observed/simulated object"),
+        ("meta", {}, this, this, "dict: Arbitrary extra information"),
         ("version", __version__, this, this, "str: PySME version used to create this structure"),
         ("vrad", 0, array(None, float), this, "array of size (nseg,): radial velocity of each segment in km/s"),
         ("vrad_flag", "none", lowercase(oneof(-2, -1, 0, "none", "each", "whole", "fix")), this,
@@ -170,10 +170,10 @@ class SME_Structure(Parameters):
             "bool: Whether to keep the specific intensities or integrate them together"),
         ("gam6", 1, asfloat, this, "float: van der Waals scaling factor"),
         ("h2broad", True, asbool, this, "bool: Whether to use H2 broadening or not"),
-        ("accwi", 0.003, asfloat, this,
-            "float: minimum accuracy for linear spectrum interpolation vs. wavelength. Values below 1e-4 are not meaningful."),
-        ("accrt", 0.001, asfloat, this,
-            "float: minimum accuracy for synthethized spectrum at wavelength grid points in sme.wint. Values below 1e-4 are not meaningful."),
+        ("accwi", 3e-3, asfloat, this,
+            "float: minimum accuracy for linear spectrum interpolation vs. wavelength."),
+        ("accrt", 1e-6, asfloat, this,
+            "float: minimum accuracy for synthethized spectrum at wavelength grid points in sme.wint."),
         ("iptype", None, lowercase(oneof(None, "gauss", "sinc", "table")), this, "str: instrumental broadening type"),
         ("ipres", 0, asfloat, this, "float: Instrumental resolution for instrumental broadening"),
         ("ip_x", None, this, this, "array: Instrumental broadening table in x direction"),
@@ -260,7 +260,7 @@ class SME_Structure(Parameters):
         self.mask = kwargs.get("mob", None)
         self.synth = kwargs.get("smod", None)
 
-        self.object = kwargs.get("obs_name", "")
+        self.meta["object"] = kwargs.get("obs_name", "")
         try:
             self.linelist = LineList(**kwargs)
         except (KeyError, AttributeError):
