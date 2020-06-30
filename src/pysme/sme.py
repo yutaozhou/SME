@@ -172,7 +172,7 @@ class SME_Structure(Parameters):
         ("h2broad", True, asbool, this, "bool: Whether to use H2 broadening or not"),
         ("accwi", 3e-3, asfloat, this,
             "float: minimum accuracy for linear spectrum interpolation vs. wavelength."),
-        ("accrt", 1e-6, asfloat, this,
+        ("accrt", 1e-4, asfloat, this,
             "float: minimum accuracy for synthethized spectrum at wavelength grid points in sme.wint."),
         ("iptype", None, lowercase(oneof(None, "gauss", "sinc", "table")), this, "str: instrumental broadening type"),
         ("ipres", 0, asfloat, this, "float: Instrumental resolution for instrumental broadening"),
