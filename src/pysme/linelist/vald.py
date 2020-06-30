@@ -102,10 +102,10 @@ class ValdFile(LineList):
     }
     """
 
-    acknowledgement = r"""
-    This work has made use of the VALD database, operated at Uppsala University,
-    the Institute of Astronomy RAS in Moscow, and the University of Vienna.
-    """
+    acknowledgement = (
+        r"This work has made use of the VALD database, operated at Uppsala University,"
+        r"the Institute of Astronomy RAS in Moscow, and the University of Vienna."
+    )
 
     def __init__(self, filename, medium=None):
         self.filename = filename
