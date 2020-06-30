@@ -18,7 +18,6 @@ from .large_file_storage import setup_lfs
 from .iliffe_vector import Iliffe_vector
 from .nlte import update_nlte_coefficients
 from .sme_synth import SME_DLL
-from .util import safe_interpolation
 
 logger = logging.getLogger(__name__)
 
