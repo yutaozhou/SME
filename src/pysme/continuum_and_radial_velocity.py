@@ -117,6 +117,11 @@ def get_continuum_mask(wave, synth, linelist, threshold=0.1, mask=None):
         True for points between lines and False for points within lines
     """
 
+    if "depth" not in linelist.columns:
+        raise ValueError(
+            "No depth specified in the linelist, can't auto compute the mask"
+        )
+
     if threshold <= 0:
         threshold = 0.01
 

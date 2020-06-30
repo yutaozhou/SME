@@ -68,7 +68,6 @@ class Parameters(Collection):
         return self.abund.citation()
 
 
-
 @CollectionFactory
 class Version(Collection):
     # fmt: off
