@@ -277,7 +277,7 @@ def determine_radial_velocity(sme, segment, cscale, x_syn, y_syn):
             resid = np.nan_to_num(resid, copy=False)
             return resid
 
-        interpolator = util.safe_interpolation(x_syn, y_syn, None)
+        interpolator = lambda x: np.interp(x, x_syn, y_syn)
         res = least_squares(func, x0=rvel, loss="soft_l1", bounds=rv_bounds)
         rvel = res.x[0]
 
