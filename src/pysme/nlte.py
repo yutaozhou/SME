@@ -293,8 +293,14 @@ class Grid:
         #:list(int): number of points in the grid to cache for each parameter, order; abund, teff, logg, monh
         self.subgrid_size = sme.nlte.subgrid_size
         #:float: Solar Abundance of the element
-        self.solar = Abund(0, solar)[self.elem]
-        # self.solar = Abund.solar()[self.elem]
+        if solar is None:
+            self.solar = Abund.solar()
+        elif isinstance(solar, Abund):
+            self.solar = Abund(0, solar._pattern, type=solar._type_internal)
+        else:
+            self.solar = Abund(0, solar)
+
+        self.solar = solar.get_pattern("sme")[self.elem]
 
         #:dict: upper and lower parameters covered by the grid
         self.limits = {}
@@ -744,7 +750,7 @@ class NLTE(Collection):
             "Each entry is for one parameter abund, teff, logg, monh"),
         ("flags", None, array(None, np.bool_), this,
             "array: contains a flag for each line, whether it was calculated in NLTE (True) or not (False)"),
-        ("solar", "asplund2009", astype(str), this, "str: defines which default to use as the solar metallicitiies"),
+        ("solar", None, this, this, "str: defines which default to use as the solar metallicitiies"),
     ]
     # fmt: on
 
