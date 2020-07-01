@@ -294,11 +294,11 @@ class Grid:
         self.subgrid_size = sme.nlte.subgrid_size
         #:float: Solar Abundance of the element
         if solar is None:
-            self.solar = Abund.solar()
+            solar = Abund.solar()
         elif isinstance(solar, Abund):
-            self.solar = Abund(0, solar._pattern, type=solar._type_internal)
+            solar = Abund(0, solar._pattern, type=solar._type_internal)
         else:
-            self.solar = Abund(0, solar)
+            solar = Abund(0, solar)
 
         self.solar = solar.get_pattern("sme")[self.elem]
 
