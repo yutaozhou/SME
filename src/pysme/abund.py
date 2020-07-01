@@ -296,6 +296,16 @@ class Abund(IPersist):
                 f"Got element abreviation {elem}, expected one of {elements}"
             )
 
+    def __copy__(self):
+        pattern = self._pattern.copy()
+        other = Abund(
+            monh=self.monh,
+            type=self.type,
+            pattern=pattern,
+            citation_info=self.citation_info,
+        )
+        return other
+
     @staticmethod
     def fromtype(pattern, fromtype, raw=False):
         """Return a copy of the input abundance pattern, transformed from
@@ -372,10 +382,6 @@ class Abund(IPersist):
             return {el: abund[elements_dict[el]] for el in elements}
 
     _formats = ["H=12", "sme", "n/nTot", "n/nH"]
-
-    # fmt: off
-
-    # fmt: on
 
     @property
     def elem(self):
